@@ -17,18 +17,18 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
+from django.shortcuts import render
 from django.http import HttpResponse
-
 
 from .views import api_test
 
+
 def home(request):
-    return HttpResponse("Server läuft ✅")
+    return render(request, "home.html")
+
 
 urlpatterns = [
-    path('', home),
-    path('admin/', admin.site.urls),
-    path('api/test/', api_test),
+    path("", home),
+    path("admin/", admin.site.urls),
+    path("api/test/", api_test),
 ]
-
-

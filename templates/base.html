@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Meine App{% endblock %}</title>
+</head>
+<body>
+
+    {% include "components/navbar.html" %}
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    {% include "components/footer.html" %}
+
+</body>
+</html>
