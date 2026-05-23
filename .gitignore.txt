@@ -1,13 +1,12 @@
 # Python
 venv/
-.venv/
 __pycache__/
 *.pyc
 
 # Django
 db.sqlite3
 
-# Secrets
+# Env
 .env
 
 # Node
@@ -21,5 +20,5 @@ frontend/dist/
 # Logs
 *.log
 
-# VSCode (optional)
+# Editor
 .vscode/
