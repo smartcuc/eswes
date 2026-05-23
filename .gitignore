@@ -5,9 +5,12 @@ __pycache__/
 
 # Django
 db.sqlite3
+*.sqlite3
 
 # Env
 .env
+.env.local
+.env.prod
 
 # Node
 node_modules/
@@ -16,9 +19,18 @@ frontend/node_modules/
 # Build
 dist/
 frontend/dist/
+build/
 
 # Logs
 *.log
 
+# System files
+.DS_Store
+Thumbs.db
+
 # Editor
 .vscode/
+.idea/
+
+# OS / misc
+*.swp
