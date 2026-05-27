@@ -1,3 +1,6 @@
+#####################
+# backend/settings.py
+#####################
 """
 Django settings for backend project.
 
@@ -13,6 +16,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -47,6 +53,8 @@ if HTTPS:
 else:
     SECURE_HSTS_SECONDS = 0
 
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -56,10 +64,19 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_celery_beat",
+    "rest_framework",  # ✅ hinzufügen
+    "core",
+    "integrations",  # ✅ DAS IST WICHTIG
+    "metering",
+    "channels",
+    "accounts",
+    "billing",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.RequestIdMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -93,8 +110,12 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT"),
     }
 }
 # Password validation
@@ -115,16 +136,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTH_USER_MODEL = "accounts.User"
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+USE_I18N = True
+LANGUAGE_CODE = "de-DE"
+LANGUAGES = [("de", "Deutsch"), ("en", "English")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 TIME_ZONE = "UTC"
-
-USE_I18N = True
-
 USE_TZ = True
 
 
@@ -136,3 +159,132 @@ STATIC_ROOT = "/var/www/eswes/static/"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = "/var/www/eswes/media/"
+
+# Celery-Settings
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND") or os.getenv("REDIS_URL")
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_WORKER_LOG_FORMAT = "%(message)s"
+
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_SOFT_TIME_LIMIT = 270
+
+CELERY_BEAT_SCHEDULE = {
+    "aggregate-hourly": {
+        "task": "metering.tasks.aggregate_hourly",
+        "schedule": 3600.0,  # jede Stunde
+    },
+    "aggregate-daily": {
+        "task": "metering.tasks.aggregate_daily",
+        "schedule": 86400.0,
+    },
+    "aggregate-weekly": {
+        "task": "metering.tasks.aggregate_weekly",
+        "schedule": 604800.0,
+    },
+    "aggregate-monthly": {
+        "task": "metering.tasks.aggregate_monthly",
+        "schedule": 2592000.0,
+    },
+    "aggregate-yearly": {
+        "task": "metering.tasks.aggregate_yearly",
+        "schedule": 31536000.0,
+    },
+}
+
+CELERY_BEAT_SCHEDULE.update(
+    {
+        "fetch-spot-prices": {
+            "task": "billing.tasks.fetch_spot_prices",
+            "schedule": 3600.0,  # jede Stunde
+        },
+    }
+)
+
+
+# REDIS
+
+import os
+
+ASGI_APPLICATION = "backend.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.getenv("CHANNEL_LAYERS_URL")],
+        },
+    },
+}
+
+
+# backend/settings.py (unten ergänzen)
+
+
+# Defenition of Logging
+DJANGO_LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "context": {
+            "()": "core.logging_filters.ContextFilter",
+        }
+    },
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s %(tenant_id)s %(event_id)s",
+        },
+        "console": {
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s [req=%(request_id)s tenant=%(tenant_id)s event=%(event_id)s]"
+        },
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "level": DJANGO_LOG_LEVEL,
+            "formatter": "json" if not DEBUG else "console",
+            "filters": ["context"],
+        },
+    },
+    "root": {
+        "handlers": ["stdout"],
+        "level": DJANGO_LOG_LEVEL,
+    },
+    "loggers": {
+        "django": {"level": "INFO", "handlers": ["stdout"], "propagate": False},
+        "integrations": {
+            "level": DJANGO_LOG_LEVEL,
+            "handlers": ["stdout"],
+            "propagate": False,
+        },
+        "metering": {
+            "level": DJANGO_LOG_LEVEL,
+            "handlers": ["stdout"],
+            "propagate": False,
+        },
+    },
+}
+
+
+##################
+# Sentry Config
+#
+
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        send_default_pii=False,
+        traces_sample_rate=0.1,
+    )

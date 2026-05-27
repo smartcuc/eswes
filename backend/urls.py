@@ -1,3 +1,10 @@
+#####################
+# backend/urls.py
+#####################
+import logging
+
+logger = logging.getLogger(__name__)
+
 """
 URL configuration for backend project.
 
@@ -16,11 +23,11 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.shortcuts import render
 from django.http import HttpResponse
 
-from .views import api_test
+from .views import api_test, trigger_task
 
 
 def home(request):
@@ -30,5 +37,7 @@ def home(request):
 urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
-    path("api/test/", api_test),
+    #   path("api/test/", api_test),
+    #   path("api/trigger-task/", trigger_task),
+    path("api/v1/", include("integrations.api_urls")),
 ]

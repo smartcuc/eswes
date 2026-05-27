@@ -1,0 +1,10 @@
+{
+    "tenant_id": "6582f7dc-18c9-4342-9a11-5e8a4ca9f684",
+    "readings": [
+        {
+            "meter_serial": "MTR-001",
+            "ts_start": "2026-01-01T00:00:00Z",
+            "value_kwh": 1.23
+        }
+    ]
+}
