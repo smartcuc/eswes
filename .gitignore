@@ -42,3 +42,4 @@ ml_models/
 
 # Secrets
 .env.*
+".env" 
