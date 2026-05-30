@@ -27,7 +27,15 @@ from django.urls import path, include
 from django.shortcuts import render
 from django.http import HttpResponse
 
+from rest_framework.routers import DefaultRouter
+
+from metering.api import MeterViewSet, IntervalReadingViewSet, AggregatedReadingViewSet
 from .views import api_test, trigger_task
+
+router = DefaultRouter()
+router.register(r"meters", MeterViewSet, basename="meter")
+router.register(r"readings", IntervalReadingViewSet, basename="reading")
+router.register(r"aggregates", AggregatedReadingViewSet, basename="aggregate")
 
 
 def home(request):
@@ -37,6 +45,9 @@ def home(request):
 urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
+    path("api/auth/", include("accounts.urls")),
+    path("api/", include(router.urls)),
+    path("api/dashboard/", include("metering.urls_dashboard")),
     #   path("api/test/", api_test),
     #   path("api/trigger-task/", trigger_task),
     path("api/v1/", include("integrations.api_urls")),

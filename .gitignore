@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.env
+
+# Django
+*.log
+db.sqlite3
+staticfiles/
+media/
+
+# Bytecode
+*.py[cod]
+
+# Celery (wichtig bei dir!)
+celerybeat-schedule*
+celery*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Backup / temporär
+*.bak
+*.tmp
+
+# Migrations cache
+*/migrations/__pycache__/
+
+# ML Models (falls gespeichert)
+ml_models/
+*.joblib
+
+# Secrets
+.env.*

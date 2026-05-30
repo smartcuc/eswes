@@ -9,7 +9,6 @@ from celery import shared_task
 import requests
 from celery import shared_task
 from django.utils import timezone
-from billing.models import SpotPrice
 
 
 @shared_task(bind=True)

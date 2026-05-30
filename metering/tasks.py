@@ -2,103 +2,179 @@
 # metering/tasks.py
 ###################
 
+from __future__ import annotations
+
+from datetime import timedelta
+from decimal import Decimal
+
 from celery import shared_task
 from django.db.models import Sum
 from django.utils import timezone
-from datetime import timedelta
 
 from metering.models import IntervalReading, AggregatedReading
-from metering.obis import OBIS_MAP
 
 
-def aggregate_period(period_type, start, end):
+def _floor_to_15min(dt):
+    # dt ist timezone-aware
+    minute = (dt.minute // 15) * 15
+    return dt.replace(minute=minute, second=0, microsecond=0)
 
-    readings = IntervalReading.objects.filter(ts_start__gte=start, ts_start__lt=end)
 
-    for reading in readings:
+def _is_energy_obis(obis: str) -> bool:
+    # Wir aggregieren nur Energie-Register (1.8.* Verbrauch, 2.8.* Einspeisung/Erzeugung)
+    return obis.startswith("1.8") or obis.startswith("2.8")
 
-        obis_meta = OBIS_MAP.get(reading.obis_code, {})
 
-        # ✅ nur Energie (kein Power!)
-        if obis_meta.get("type") not in ["energy_import", "energy_export"]:
+def aggregate_15min_range(start, end):
+    """
+    Aggregiert IntervalReading in 15-Minuten Slots und schreibt AggregatedReading(period_type='15min').
+
+    Wichtig: Erwartet, dass IntervalReading.value bereits eine Intervall-Energie ist (kWh pro Intervall).
+    """
+    # Hole nur relevanten Zeitraum
+    qs = IntervalReading.objects.filter(ts_start__gte=start, ts_start__lt=end)
+
+    # Wir könnten das komplett in SQL machen, aber die Python-Variante ist robust und schnell genug für den Start.
+    # Optimierung können wir später machen.
+    buckets = {}
+
+    for r in qs.iterator():
+        if not _is_energy_obis(r.obis_code):
             continue
 
-        # ✅ Period Start berechnen
-        if period_type == "hour":
-            period_start = reading.ts_start.replace(minute=0, second=0, microsecond=0)
+        slot = _floor_to_15min(r.ts_start)
 
-        elif period_type == "day":
-            period_start = reading.ts_start.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+        key = (
+            r.tenant_id,
+            r.member_id if hasattr(r.meter, "member_id") else None,
+            r.meter_id,
+            r.obis_code,
+            slot,
+        )
 
-        elif period_type == "week":
-            period_start = reading.ts_start - timedelta(days=reading.ts_start.weekday())
-            period_start = period_start.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+        if key not in buckets:
+            buckets[key] = Decimal("0")
 
-        elif period_type == "month":
-            period_start = reading.ts_start.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+        buckets[key] += r.value
 
-        elif period_type == "year":
-            period_start = reading.ts_start.replace(
-                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
-            )
-
-        else:
-            return
-
-        # ✅ Aggregation
-        result = IntervalReading.objects.filter(
-            meter=reading.meter,
-            obis_code=reading.obis_code,
-            ts_start__gte=period_start,
-            ts_start__lt=end,
-        ).aggregate(total=Sum("value"))
-
+    # Upsert AggregatedReading
+    for (tenant_id, member_id, meter_id, obis, slot), total in buckets.items():
         AggregatedReading.objects.update_or_create(
-            tenant=reading.tenant,
-            meter=reading.meter,
-            obis_code=reading.obis_code,
-            period_start=period_start,
+            tenant_id=tenant_id,
+            member_id=member_id,
+            meter_id=meter_id,
+            obis_code=obis,
+            period_start=slot,
+            period_type="15min",
+            defaults={"value": total},
+        )
+
+
+@shared_task
+def aggregate_15min():
+    """
+    Läuft regelmäßig (z.B. jede Minute / alle 5 Minuten) und aggregiert die letzten 2 Stunden
+    in 15-Minuten Slots. Das reicht, um Spätankommer (Late Data) zu erfassen.
+    """
+    now = timezone.now()
+    start = now - timedelta(hours=2)
+    aggregate_15min_range(start, now)
+    return {
+        "status": "ok",
+        "range_start": start.isoformat(),
+        "range_end": now.isoformat(),
+    }
+
+
+# Optional: weiterhin hour/day/week/month/year Aggregationen aus den 15min Aggregates bauen
+def _period_start(dt, period_type: str):
+    if period_type == "hour":
+        return dt.replace(minute=0, second=0, microsecond=0)
+    if period_type == "day":
+        return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    if period_type == "week":
+        d = dt - timedelta(days=dt.weekday())
+        return d.replace(hour=0, minute=0, second=0, microsecond=0)
+    if period_type == "month":
+        return dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if period_type == "year":
+        return dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    raise ValueError("unknown period_type")
+
+
+def aggregate_period_from_15min(period_type: str, start, end):
+    """
+    Aggregiert aus AggregatedReading(period_type='15min') in größere Zeiträume.
+    """
+    base = AggregatedReading.objects.filter(
+        period_type="15min",
+        period_start__gte=start,
+        period_start__lt=end,
+    )
+
+    # Gruppiert nach (tenant, member, meter, obis, period_start_bucket)
+    # Python-Bucketting ist ok; später kann man es SQL-seitig optimieren.
+    buckets = {}
+
+    for r in base.iterator():
+        if not _is_energy_obis(r.obis_code):
+            continue
+
+        slot = _period_start(r.period_start, period_type)
+        key = (r.tenant_id, r.member_id, r.meter_id, r.obis_code, slot)
+
+        if key not in buckets:
+            buckets[key] = Decimal("0")
+
+        buckets[key] += r.value
+
+    for (tenant_id, member_id, meter_id, obis, slot), total in buckets.items():
+        AggregatedReading.objects.update_or_create(
+            tenant_id=tenant_id,
+            member_id=member_id,
+            meter_id=meter_id,
+            obis_code=obis,
+            period_start=slot,
             period_type=period_type,
-            defaults={"value": result["total"] or 0},
+            defaults={"value": total},
         )
 
 
 @shared_task
 def aggregate_hourly():
     now = timezone.now()
-    start = now - timedelta(hours=1)
-    aggregate_period("hour", start, now)
+    start = now - timedelta(days=2)
+    aggregate_period_from_15min("hour", start, now)
+    return {"status": "ok"}
 
 
 @shared_task
 def aggregate_daily():
     now = timezone.now()
-    start = now - timedelta(days=1)
-    aggregate_period("day", start, now)
+    start = now - timedelta(days=40)
+    aggregate_period_from_15min("day", start, now)
+    return {"status": "ok"}
 
 
 @shared_task
 def aggregate_weekly():
     now = timezone.now()
-    start = now - timedelta(days=7)
-    aggregate_period("week", start, now)
+    start = now - timedelta(days=120)
+    aggregate_period_from_15min("week", start, now)
+    return {"status": "ok"}
 
 
 @shared_task
 def aggregate_monthly():
     now = timezone.now()
-    start = now - timedelta(days=30)
-    aggregate_period("month", start, now)
+    start = now - timedelta(days=400)
+    aggregate_period_from_15min("month", start, now)
+    return {"status": "ok"}
 
 
 @shared_task
 def aggregate_yearly():
     now = timezone.now()
-    start = now - timedelta(days=365)
-    aggregate_period("year", start, now)
+    start = now - timedelta(days=365 * 5)
+    aggregate_period_from_15min("year", start, now)
+    return {"status": "ok"}

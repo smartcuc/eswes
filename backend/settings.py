@@ -66,12 +66,16 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_celery_beat",
     "rest_framework",  # ✅ hinzufügen
+    "rest_framework_simplejwt",
     "core",
     "integrations",  # ✅ DAS IST WICHTIG
     "metering",
     "channels",
+    "forecast",
     "accounts",
     "billing",
+    "market",
+    "energy",
 ]
 
 MIDDLEWARE = [
@@ -200,8 +204,27 @@ CELERY_BEAT_SCHEDULE = {
 
 CELERY_BEAT_SCHEDULE.update(
     {
+        # 15min Aggregation häufig laufen lassen, damit Late Data schnell korrigiert wird
+        "aggregate-15min-every-5min": {
+            "task": "metering.tasks.aggregate_15min",
+            "schedule": 300.0,  # alle 5 Minuten
+        },
+        # Balance regelmäßig nachziehen
+        "compute-balance-every-5min": {
+            "task": "billing.tasks.compute_balance_last_2h",
+            "schedule": 300.0,
+        },
+        # Optionale rollups
+        "aggregate-hourly": {
+            "task": "metering.tasks.aggregate_hourly",
+            "schedule": 3600.0,
+        },
+        "aggregate-daily": {
+            "task": "metering.tasks.aggregate_daily",
+            "schedule": 86400.0,
+        },
         "fetch-spot-prices": {
-            "task": "billing.tasks.fetch_spot_prices",
+            "task": "market.tasks.fetch_spot_prices",
             "schedule": 3600.0,  # jede Stunde
         },
     }
@@ -225,6 +248,14 @@ CHANNEL_LAYERS = {
 
 
 # backend/settings.py (unten ergänzen)
+
+#  DRF Auth
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+}
 
 
 # Defenition of Logging
@@ -276,8 +307,24 @@ LOGGING = {
 
 
 ##################
+# MQTT- Config
+##################
+MQTT_HOST = os.getenv("MQTT_HOST", "127.0.0.1")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
+MQTT_TLS = os.getenv("MQTT_TLS", "False") == "True"
+
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "energy/+/+/telemetry")
+MQTT_QOS = int(os.getenv("MQTT_QOS", "1"))
+
+# Steady-State: Auto-Provision optional (in Prod eher False)
+MQTT_AUTO_PROVISION = os.getenv("MQTT_AUTO_PROVISION", "False") == "True"
+
+
+##################
 # Sentry Config
-#
+##################
 
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
 
