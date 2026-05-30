@@ -1,0 +1,111 @@
+##################################
+# forecast/services_ml_features.py
+##################################
+
+import math
+import numpy as np
+
+
+def _time_features(dt):
+    """
+    Zyklische Zeitfeatures: Stunde + Wochentag
+    """
+    hour = dt.hour
+    weekday = dt.weekday()
+
+    hour_sin = math.sin(2 * math.pi * hour / 24)
+    hour_cos = math.cos(2 * math.pi * hour / 24)
+
+    weekday_sin = math.sin(2 * math.pi * weekday / 7)
+    weekday_cos = math.cos(2 * math.pi * weekday / 7)
+
+    return [hour_sin, hour_cos, weekday_sin, weekday_cos]
+
+
+def build_training_matrix_with_weather(prod_rows, weather_map):
+    """
+    prod_rows: [{"timestamp": ..., "value": ...}, ...]
+    weather_map: {
+        timestamp: {
+            "temperature_c": ...,
+            "cloud_cover_pct": ...,
+            "shortwave_radiation_wm2": ...
+        }
+    }
+    """
+    X = []
+    y = []
+
+    if len(prod_rows) < 60:
+        return np.array([]), np.array([])
+
+    values = [float(r["value"]) for r in prod_rows]
+    timestamps = [r["timestamp"] for r in prod_rows]
+
+    for i in range(48, len(prod_rows)):
+        ts = timestamps[i]
+        weather = weather_map.get(ts)
+        if not weather:
+            continue
+
+        lag_1 = values[i - 1]
+        lag_2 = values[i - 2]
+        lag_3 = values[i - 3]
+        lag_24 = values[i - 24]
+        lag_48 = values[i - 48]
+        rolling_4h = sum(values[i - 4 : i]) / 4.0
+
+        temperature = float(weather.get("temperature_c") or 0)
+        cloud_cover = float(weather.get("cloud_cover_pct") or 0)
+        shortwave = float(weather.get("shortwave_radiation_wm2") or 0)
+
+        features = [
+            lag_1,
+            lag_2,
+            lag_3,
+            lag_24,
+            lag_48,
+            rolling_4h,
+            temperature,
+            cloud_cover,
+            shortwave,
+            *_time_features(ts),
+        ]
+
+        X.append(features)
+        y.append(values[i])
+
+    return np.array(X), np.array(y)
+
+
+def build_recursive_feature_vector(history_values, future_dt, weather):
+    """
+    Baut Feature-Vektor für rekursive Vorhersage.
+    """
+    lag_1 = history_values[-1]
+    lag_2 = history_values[-2]
+    lag_3 = history_values[-3]
+    lag_24 = history_values[-24]
+    lag_48 = history_values[-48]
+    rolling_4h = sum(history_values[-4:]) / 4.0
+
+    temperature = float(weather.get("temperature_c") or 0)
+    cloud_cover = float(weather.get("cloud_cover_pct") or 0)
+    shortwave = float(weather.get("shortwave_radiation_wm2") or 0)
+
+    return np.array(
+        [
+            [
+                lag_1,
+                lag_2,
+                lag_3,
+                lag_24,
+                lag_48,
+                rolling_4h,
+                temperature,
+                cloud_cover,
+                shortwave,
+                *_time_features(future_dt),
+            ]
+        ]
+    )
