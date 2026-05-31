@@ -4,40 +4,42 @@
 
 from forecast.models import SolarForecast
 from forecast.services_solar_forecast import tenant_solar_forecast_24h
+from forecast.services_ml import predict_next_24h_ml_for_tenant
+from forecast.services_compare import build_hybrid_series
 
 
-def compute_tenant_forecast_series(tenant):
+def save_all_forecasts_for_tenant(tenant):
     """
-    Liefert die physikalische Tenant-Level-Forecast-Serie.
+    Speichert Physics, ML und Hybrid Forecasts für einen Tenant.
     """
-    return tenant_solar_forecast_24h(tenant)
 
+    # ✅ berechnen
+    phys = tenant_solar_forecast_24h(tenant)
+    ml = predict_next_24h_ml_for_tenant(tenant)
+    hybrid = build_hybrid_series(ml, phys, use_dynamic_weight=True)
 
-def save_tenant_forecast(tenant, source="physics"):
-    """
-    Speichert Tenant-Level Forecasts in forecast_solarforecast.
-
-    WICHTIG:
-    - Kein meter-Feld verwenden (existiert im aktuellen Modell nicht)
-    - Eindeutigkeit läuft über (tenant, timestamp)
-    """
-    series = compute_tenant_forecast_series(tenant)
-
-    saved = 0
-
-    for entry in series:
-        _, created = SolarForecast.objects.update_or_create(
-            tenant=tenant,
-            timestamp=entry["timestamp"],
-            defaults={
-                "forecast_kwh": entry["forecast_kw"],
-                "source": source,
-            },
-        )
-        if created:
-            saved += 1
+    # ✅ speichern
+    _save_series(tenant, phys, source="physics")
+    _save_series(tenant, ml, source="ml")
+    _save_series(tenant, hybrid, source="hybrid")
 
     return {
-        "saved": saved,
-        "total": len(series),
+        "status": "ok",
+        "counts": {
+            "physics": len(phys),
+            "ml": len(ml),
+            "hybrid": len(hybrid),
+        },
     }
+
+
+def _save_series(tenant, series, source):
+    for entry in series:
+        SolarForecast.objects.update_or_create(
+            tenant=tenant,
+            timestamp=entry["timestamp"],
+            source=source,
+            defaults={
+                "forecast_kwh": entry["forecast_kw"],
+            },
+        )

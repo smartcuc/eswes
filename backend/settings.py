@@ -321,6 +321,11 @@ MQTT_QOS = int(os.getenv("MQTT_QOS", "1"))
 # Steady-State: Auto-Provision optional (in Prod eher False)
 MQTT_AUTO_PROVISION = os.getenv("MQTT_AUTO_PROVISION", "False") == "True"
 
+# MQTT Flags
+MQTT_INGEST_ENABLED = os.getenv("MQTT_INGEST_ENABLED", "False") == "True"
+MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "eswes-mqtt")
+MQTT_PROFILE = os.getenv("MQTT_PROFILE", "default")
+
 
 ##################
 # Sentry Config

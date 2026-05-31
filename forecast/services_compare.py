@@ -1,0 +1,139 @@
+##############################
+# forecast/services_compare.py
+##############################
+
+from datetime import timedelta
+from django.utils import timezone
+
+
+def _normalize_to_utc_aware(dt):
+    """
+    Macht naive Datetimes UTC-aware.
+    Lässt aware Datetimes unverändert.
+    """
+    if timezone.is_naive(dt):
+        return timezone.make_aware(dt, timezone=timezone.UTC)
+    return dt
+
+
+def round_to_hour(dt):
+    """
+    Rundet Timestamp auf volle Stunde ab und sorgt für UTC-aware Datetimes.
+    """
+    dt = _normalize_to_utc_aware(dt)
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+
+def blend_hybrid(physics_value, ml_value, weight_ml=0.6):
+    """
+    Kombiniert ML- und Physics-Vorhersagen.
+
+    weight_ml = Anteil ML (0–1)
+    """
+    if physics_value is None:
+        return ml_value
+
+    if ml_value is None:
+        return physics_value
+
+    return weight_ml * ml_value + (1 - weight_ml) * physics_value
+
+
+def dynamic_weight(radiation):
+    """
+    Dynamische Gewichtung je nach Strahlung.
+
+    Wenig Sonne / Nacht:
+        -> Physics dominiert stärker
+    Viel Sonne:
+        -> ML darf stärker gewichtet werden
+    """
+    if radiation is None:
+        return 0.5
+
+    radiation = float(radiation)
+
+    if radiation < 50:
+        return 0.2
+    elif radiation < 300:
+        return 0.4
+    else:
+        return 0.7
+
+
+def closest_physics_entry(ts, phys_map):
+    """
+    Sucht zuerst die exakt passende Stunde.
+    Falls nicht vorhanden, probiert -1h / +1h als Fallback.
+    """
+    ts_hour = round_to_hour(ts)
+
+    if ts_hour in phys_map:
+        return phys_map[ts_hour]
+
+    prev_hour = ts_hour - timedelta(hours=1)
+    next_hour = ts_hour + timedelta(hours=1)
+
+    if prev_hour in phys_map:
+        return phys_map[prev_hour]
+
+    if next_hour in phys_map:
+        return phys_map[next_hour]
+
+    return None
+
+
+def build_hybrid_series(ml_preds, phys_preds, weight_ml=0.6, use_dynamic_weight=False):
+    """
+    Baut eine kombinierte Zeitreihe aus ML und Physics.
+
+    Erwartet:
+    ml_preds = [
+        {"timestamp": ..., "forecast_kw": ...},
+        ...
+    ]
+
+    phys_preds = [
+        {
+            "timestamp": ...,
+            "forecast_kw": ...,
+            "radiation_wm2": ...,
+            "temperature_c": ...,
+            "cloud_cover_pct": ...
+        },
+        ...
+    ]
+
+    Wenn use_dynamic_weight=True:
+        -> weight_ml wird abhängig von radiation_wm2 berechnet
+    """
+    hybrid = []
+
+    phys_map = {round_to_hour(p["timestamp"]): p for p in phys_preds}
+
+    for row in ml_preds:
+        ts = row["timestamp"]
+        ml_val = row["forecast_kw"]
+
+        phys_entry = closest_physics_entry(ts, phys_map)
+
+        if phys_entry:
+            phys_val = phys_entry["forecast_kw"]
+
+            if use_dynamic_weight:
+                weight = dynamic_weight(phys_entry.get("radiation_wm2"))
+            else:
+                weight = weight_ml
+
+            combined = blend_hybrid(phys_val, ml_val, weight)
+        else:
+            combined = ml_val
+
+        hybrid.append(
+            {
+                "timestamp": ts,
+                "forecast_kw": combined,
+            }
+        )
+
+    return hybrid

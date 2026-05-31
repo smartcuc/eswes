@@ -2,7 +2,11 @@
 # backend/celery.py
 #####################
 
+import os
 import logging
+
+from celery import Celery, bootsteps
+from celery.schedules import crontab
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +18,6 @@ Celery App Initialisierung.
 - Auto-discover: findet tasks.py in INSTALLED_APPS
 """
 
-import os
-from celery import Celery
-from celery import bootsteps
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 
 app = Celery("backend")
@@ -25,6 +25,18 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
 
+# ✅ ✅ ✅ HIER richtig platzieren!
+app.conf.beat_schedule = {
+    "update-forecasts-every-hour": {
+        "task": "forecast.tasks.update_all_forecasts",
+        "schedule": crontab(hour=2, minute=0),  # jeden Tag um 02:00
+    },
+}
+
+
+# =========================================================
+# MQTT Worker Step
+# =========================================================
 class MQTTIngestStep(bootsteps.StartStopStep):
     requires = {"celery.worker.components:Pool"}
 

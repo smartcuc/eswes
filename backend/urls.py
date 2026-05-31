@@ -41,6 +41,9 @@ router.register(r"aggregates", AggregatedReadingViewSet, basename="aggregate")
 def home(request):
     return render(request, "home.html")
 
+    #   path("api/test/", api_test),
+    #   path("api/trigger-task/", trigger_task),
+
 
 urlpatterns = [
     path("", home),
@@ -48,7 +51,7 @@ urlpatterns = [
     path("api/auth/", include("accounts.urls")),
     path("api/", include(router.urls)),
     path("api/dashboard/", include("metering.urls_dashboard")),
-    #   path("api/test/", api_test),
-    #   path("api/trigger-task/", trigger_task),
+    path("api/forecast/", include("forecast.urls")),
+    path("api/public/", include("forecast.urls_public")),
     path("api/v1/", include("integrations.api_urls")),
 ]

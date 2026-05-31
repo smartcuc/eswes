@@ -132,7 +132,7 @@ class DeviceCommandAdmin(admin.ModelAdmin):
         "device",
         "command",
         "status",
-        "attempts",
+        #       "attempts",
         "ts_created",
         "ts_sent",
         "ts_ack",

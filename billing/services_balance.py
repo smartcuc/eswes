@@ -9,7 +9,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from metering.models import AggregatedReading, Tenant
-from billing.models import BalanceSlot
+from metering.models import BalanceSlot
 
 
 def _sum_kwh(qs):

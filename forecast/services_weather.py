@@ -3,19 +3,43 @@
 ##############################
 
 import requests
-import logging
 
-logger = logging.getLogger(__name__)
+DEFAULT_LAT = 50.9
+DEFAULT_LON = 6.97
 
 
-def get_weather_forecast(lat: float, lon: float):
+def resolve_forecast_coordinates(tenant):
     """
-    Holt Tenant-Level Forecast-Wetterdaten von Open-Meteo.
-    Standardisiert die Rückgabe auf:
-    - timestamps
-    - radiation
-    - cloud_cover
-    - temperature
+    Liefert Forecast-Koordinaten zurück.
+
+    Priorität:
+    1. tenant.latitude / tenant.longitude, falls vorhanden
+    2. Fallback-Koordinaten (DEFAULT_LAT / DEFAULT_LON)
+
+    Damit bleibt der Code stabil, auch wenn Tenant aktuell
+    keine Geo-Felder im Modell hat.
+    """
+    lat = getattr(tenant, "latitude", None)
+    lon = getattr(tenant, "longitude", None)
+
+    if lat is None or lon is None:
+        lat = DEFAULT_LAT
+        lon = DEFAULT_LON
+
+    return float(lat), float(lon)
+
+
+def get_weather_forecast(lat, lon):
+    """
+    Holt stündliche Wetterdaten von Open-Meteo.
+
+    Rückgabeformat:
+    {
+        "timestamps": [...],
+        "radiation": [...],
+        "temperature": [...],
+        "cloud_cover": [...],
+    }
     """
     url = "https://api.open-meteo.com/v1/forecast"
 
@@ -27,20 +51,15 @@ def get_weather_forecast(lat: float, lon: float):
         "timezone": "UTC",
     }
 
-    response = requests.get(url, params=params, timeout=10)
+    response = requests.get(url, params=params, timeout=15)
     response.raise_for_status()
 
     data = response.json()
     hourly = data["hourly"]
 
-    cloud_cover = hourly.get("cloud_cover")
-    if cloud_cover is None:
-        # Fallback, falls API in deiner Region / Version noch cloudcover liefert
-        cloud_cover = hourly.get("cloudcover", [])
-
     return {
-        "timestamps": hourly["time"],
+        "timestamps": hourly.get("time", []),
         "radiation": hourly.get("shortwave_radiation", []),
-        "cloud_cover": cloud_cover,
         "temperature": hourly.get("temperature_2m", []),
+        "cloud_cover": hourly.get("cloud_cover", []),
     }
