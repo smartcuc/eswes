@@ -7,14 +7,19 @@ from celery import shared_task
 from django.utils import timezone
 
 from billing.services_balance import compute_balance_range
+from billing.services_allocation import allocate_user_balance_range
 
 
 @shared_task
-def compute_balance_last_2h():
-    """
-    Rechnet Balance Slots der letzten 2 Stunden neu (Late Data tolerant).
-    """
+def compute_balance_last_24h():
     now = timezone.now()
-    start = now - timedelta(hours=2)
+    start = now - timedelta(hours=24)
     compute_balance_range(start, now)
-    return {"status": "ok"}
+    return {"status": "ok", "from": str(start), "to": str(now)}
+
+
+@shared_task
+def allocate_user_balance_last_24h():
+    now = timezone.now()
+    start = now - timedelta(hours=24)
+    return allocate_user_balance_range(start, now)

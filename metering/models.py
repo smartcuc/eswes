@@ -197,7 +197,10 @@ class BalanceSlot(models.Model):
         "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
 
-    meter = models.ForeignKey("metering.Meter", on_delete=models.CASCADE)
+    #    meter = models.ForeignKey("metering.Meter", on_delete=models.CASCADE)
+    meter = models.ForeignKey(
+        "metering.Meter", on_delete=models.CASCADE, null=True, blank=True
+    )
 
     period_start = models.DateTimeField()
 
@@ -207,7 +210,7 @@ class BalanceSlot(models.Model):
     grid_import_kwh = models.DecimalField(max_digits=14, decimal_places=3)
     grid_export_kwh = models.DecimalField(max_digits=14, decimal_places=3)
 
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "metering_balanceslot"  # ✅ GANZ WICHTIG!

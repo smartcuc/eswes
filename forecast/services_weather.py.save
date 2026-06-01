@@ -4,10 +4,9 @@
 
 import requests
 from collections import defaultdict
-from datetime import timezone as dt_timezone
-
 from django.conf import settings
 from django.utils import timezone
+from datetime import timezone as dt_timezone
 
 from forecast.models import TenantWeatherSnapshot
 
@@ -36,24 +35,13 @@ def resolve_forecast_coordinates(tenant):
 def get_location_group_key(tenant):
     """
     Gruppiert Tenants nach Standort.
-    Nutzung von gerundeten Koordinaten, damit gleiche/nahe Standorte
-    nur einen API-Call verursachen.
+    Da das Tenant-Modell aktuell lat/lon hat, nutzen wir diese als Schlüssel.
+
+    round(..., 2) = bewusst grob genug, damit identische/nahe Standorte
+    nur einen Weather-Call verursachen.
     """
     lat, lon = resolve_forecast_coordinates(tenant)
     return (round(lat, 2), round(lon, 2))
-
-
-def group_tenants_by_location(tenants):
-    """
-    Gruppiert Tenants nach Standort.
-    """
-    groups = defaultdict(list)
-
-    for tenant in tenants:
-        key = get_location_group_key(tenant)
-        groups[key].append(tenant)
-
-    return groups
 
 
 def get_weather_forecast(lat, lon, hours=48):
@@ -118,7 +106,6 @@ def store_weather_payload_for_tenant(tenant, payload):
                 "shortwave_radiation_wm2": rad,
             },
         )
-
         written += 1
 
     return written
@@ -133,7 +120,6 @@ def fetch_and_store_weather_for_group(tenants, hours=48):
     - tenants = Liste/Iterable von Tenant-Objekten
     """
     tenants = list(tenants)
-
     if not tenants:
         return {
             "status": "ok",
@@ -157,3 +143,16 @@ def fetch_and_store_weather_for_group(tenants, hours=48):
         "lon": lon,
         "written_total": total_written,
     }
+
+
+def group_tenants_by_location(tenants):
+    """
+    Gruppiert Tenants nach Standort.
+    """
+    groups = defaultdict(list)
+
+    for tenant in tenants:
+        key = get_location_group_key(tenant)
+        groups[key].append(tenant)
+
+    return groups

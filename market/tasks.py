@@ -20,7 +20,14 @@ def unix_to_dt(ts):
 def fetch_spot_prices():
 
     url = "https://api.energy-charts.info/price"
-    params = {"bzn": "DE-LU"}
+    start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timezone.timedelta(days=2)
+
+    params = {
+        "bzn": "DE-LU",
+        "start": int(start.timestamp()),
+        "end": int(end.timestamp()),
+    }
 
     response = requests.get(url, params=params, timeout=10)
     response.raise_for_status()

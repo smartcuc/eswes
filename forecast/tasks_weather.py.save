@@ -8,8 +8,6 @@ from django.utils import timezone
 from metering.models import Tenant
 from forecast.services_ml import train_tenant_model
 from forecast.services_store import save_all_forecasts_for_tenant
-
-# 🔥 NEU IMPORTIEREN
 from forecast.services_weather import (
     group_tenants_by_location,
     fetch_and_store_weather_for_group,
@@ -20,39 +18,47 @@ from forecast.services_weather import (
 def update_all_forecasts():
     """
     Zentrale Forecast-Pipeline:
-    - Weather
-    - ML
-    - Forecast
+    1. Wetter pro Location-Gruppe laden
+    2. Pro Tenant ML trainieren
+    3. Pro Tenant Forecast berechnen & speichern
     """
 
-    # ✅ STEP 2 → HIER REIN
     tenants = list(Tenant.objects.all())
 
     if not tenants:
-        return {"status": "no tenants"}
+        return {
+            "run_at": str(timezone.now()),
+            "results": [],
+            "message": "no tenants found",
+        }
 
+    # ✅ Tenants nach Location gruppieren
     location_groups = group_tenants_by_location(tenants)
 
     results = []
 
+    # ✅ pro Location nur EIN Weather Call
     for location_key, tenant_group in location_groups.items():
-
         try:
-            weather_result = fetch_and_store_weather_for_group(tenant_group, hours=48)
-
+            weather_result = fetch_and_store_weather_for_group(
+                tenant_group,
+                hours=48,
+            )
         except Exception as e:
+            # Fehler im Weather-Layer → alle Tenants der Gruppe markieren
             for tenant in tenant_group:
                 results.append(
                     {
                         "tenant_id": str(tenant.id),
                         "status": "error",
                         "stage": "weather",
+                        "location_key": str(location_key),
                         "error": str(e),
                     }
                 )
             continue
 
-        # ✅ zweiter try (Forecast)
+        # ✅ pro Tenant Forecast berechnen
         for tenant in tenant_group:
             try:
                 train_result = train_tenant_model(tenant)
@@ -64,6 +70,8 @@ def update_all_forecasts():
                         "status": "ok",
                         "location_key": str(location_key),
                         "weather_points": weather_result.get("count"),
+                        "weather_group_size": weather_result.get("tenant_count"),
+                        "training": train_result.get("status"),
                         "counts": forecast_result.get("counts"),
                     }
                 )
@@ -74,6 +82,7 @@ def update_all_forecasts():
                         "tenant_id": str(tenant.id),
                         "status": "error",
                         "stage": "forecast",
+                        "location_key": str(location_key),
                         "error": str(e),
                     }
                 )

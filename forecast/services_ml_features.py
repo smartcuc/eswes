@@ -1,4 +1,6 @@
+##################################
 # forecast/services_ml_features.py
+##################################
 
 import math
 import numpy as np
@@ -20,7 +22,7 @@ def _time_features(dt):
     return [hour_sin, hour_cos, weekday_sin, weekday_cos]
 
 
-def build_training_matrix(prod_rows):
+def build_training_matrix(prod_rows, weather_map=None):
     """
     Baut Trainingsdaten ausschließlich aus der Zeitreihe.
 

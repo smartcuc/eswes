@@ -326,6 +326,23 @@ MQTT_INGEST_ENABLED = os.getenv("MQTT_INGEST_ENABLED", "False") == "True"
 MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "eswes-mqtt")
 MQTT_PROFILE = os.getenv("MQTT_PROFILE", "default")
 
+##################
+# tibber token
+##################
+TIBBER_DEFAULT_TOKEN = os.getenv("TIBBER_TOKEN")
+TIBBER_HOME_ID = os.getenv("TIBBER_HOME_ID")
+
+
+##################
+# Weather Fallback
+##################
+DEFAULT_WEATHER_LAT = 50.9
+DEFAULT_WEATHER_LON = 6.9
+
+##################
+# Interval Abrechnung
+##################
+BILLING_SLOT_MINUTES = 15
 
 ##################
 # Sentry Config

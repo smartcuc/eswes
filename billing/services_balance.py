@@ -8,8 +8,8 @@ from datetime import timedelta
 from django.db.models import Sum
 from django.utils import timezone
 
-from metering.models import AggregatedReading, Tenant
-from metering.models import BalanceSlot
+from metering.models import AggregatedReading, Meter, BalanceSlot
+from metering.services_slots import floor_to_slot, slot_minutes
 
 
 def _sum_kwh(qs):
@@ -17,16 +17,13 @@ def _sum_kwh(qs):
     return v if v is not None else Decimal("0")
 
 
-def compute_balance_for_slot(tenant: Tenant, slot_start):
+def compute_balance_for_meter_slot(meter, slot_start):
     """
-    slot_start muss exakt auf 15min gefloort sein.
-    Nutzt AggregatedReading(period_type='15min').
+    Berechnet Balance für genau EINEN Meter und Slot.
+    """
 
-    Verbrauch: obis 1.8.*
-    Erzeugung/Einspeisung: obis 2.8.*
-    """
     base = AggregatedReading.objects.filter(
-        tenant=tenant,
+        meter=meter,
         period_type="15min",
         period_start=slot_start,
     )
@@ -38,10 +35,13 @@ def compute_balance_for_slot(tenant: Tenant, slot_start):
     grid_import = max(consumption - generation, Decimal("0"))
     grid_export = max(generation - consumption, Decimal("0"))
 
+    # ✅ Tenant sauber über Meter ableiten
+    tenant = meter.tenant
+
     obj, _ = BalanceSlot.objects.update_or_create(
+        meter=meter,
         tenant=tenant,
         period_start=slot_start,
-        period_type="15min",
         defaults={
             "consumption_kwh": consumption,
             "generation_kwh": generation,
@@ -50,25 +50,28 @@ def compute_balance_for_slot(tenant: Tenant, slot_start):
             "grid_export_kwh": grid_export,
         },
     )
+
     return obj
 
 
-def floor_to_15min(dt):
-    minute = (dt.minute // 15) * 15
-    return dt.replace(minute=minute, second=0, microsecond=0)
+def floor_to_billing_slot(dt):
+    return floor_to_slot(dt, slot_minutes())
 
 
 def compute_balance_range(start, end):
     """
-    Berechnet Balance für alle Tenants für Slots im Zeitraum [start, end).
+    Berechnet Balance für ALLE Meter über Zeitraum.
     """
-    start = floor_to_15min(start)
-    end = floor_to_15min(end)
 
-    tenants = Tenant.objects.all()
+    start = floor_to_billing_slot(start)
+    end = floor_to_billing_slot(end)
+
+    meters = Meter.objects.all()
 
     slot = start
+    step = timedelta(minutes=slot_minutes())
+
     while slot < end:
-        for t in tenants:
-            compute_balance_for_slot(t, slot)
-        slot += timedelta(minutes=15)
+        for meter in meters:
+            compute_balance_for_meter_slot(meter, slot)
+        slot += step

@@ -17,10 +17,12 @@ from decimal import Decimal
 from datetime import datetime
 
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from integrations.models import InboundWebhookEvent
-from metering.models import Meter, IntervalReading, MeterRegister
+from integrations.services_tibber import upsert_tibber_interval_readings
+from metering.models import Meter, IntervalReading, MeterRegister, Tenant
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -172,3 +174,40 @@ def process_inbound_webhook_event(self, event_id: str):
                 )
             except Exception:
                 logger.exception("realtime.push.failed")
+
+
+@shared_task
+def sync_tibber_last_24h():
+    """
+    Sync Tibber consumption for ALL user-based meters
+    """
+
+    results = []
+
+    # ✅ Alle Meter mit owner_user holen
+    meters = Meter.objects.filter(owner_user__isnull=False).select_related("owner_user")
+
+    if not meters.exists():
+        return {"status": "no_meters"}
+
+    for meter in meters:
+        user = meter.owner_user
+
+        try:
+            result = upsert_tibber_interval_readings(
+                meter=meter,
+                home_id=settings.TIBBER_HOME_ID,
+                user=user,
+                hours=24,
+            )
+
+            results.append({"meter_id": str(meter.id), "result": result})
+
+        except Exception as e:
+            results.append({"meter_id": str(meter.id), "error": str(e)})
+
+    return {
+        "status": "ok",
+        "meters_processed": len(results),
+        "results": results,
+    }

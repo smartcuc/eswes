@@ -107,7 +107,7 @@ def build_hybrid_series(ml_preds, phys_preds, weight_ml=0.6, use_dynamic_weight=
     Wenn use_dynamic_weight=True:
         -> weight_ml wird abhängig von radiation_wm2 berechnet
     """
-
+    
     ml_preds = ml_preds or []
     phys_preds = phys_preds or []
 

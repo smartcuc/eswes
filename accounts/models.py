@@ -2,7 +2,6 @@
 # accounts/models.py
 ####################
 
-
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -18,6 +17,10 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True)
     is_verified = models.BooleanField(default=False)
+
+    # ✅ Tibber Integration
+    tibber_token = models.CharField(max_length=255, blank=True, null=True)
+    tibber_home_id = models.CharField(max_length=255, blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -72,7 +75,6 @@ class UserSettings(models.Model):
         max_length=20, choices=DASHBOARD_MODE, default="simple"
     )
 
-    # UX-Hinweis: nicht als Berechtigung verwenden
     USAGE_MODE = [
         ("standalone", "Standalone"),
         ("tenant", "Tenant"),
@@ -80,31 +82,6 @@ class UserSettings(models.Model):
     ]
     usage_mode = models.CharField(
         max_length=20, choices=USAGE_MODE, default="standalone"
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-class UserSettings(models.Model):
-    user = models.OneToOneField("User", on_delete=models.CASCADE)
-
-    usage_mode = models.CharField(
-        max_length=20,
-        choices=[
-            ("standalone", "Standalone"),
-            ("tenant", "Tenant"),
-            ("hybrid", "Hybrid"),
-        ],
-        default="standalone",
-    )
-
-    dashboard_mode = models.CharField(
-        max_length=20,
-        choices=[
-            ("simple", "Simple"),
-            ("advanced", "Advanced"),
-        ],
-        default="simple",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
