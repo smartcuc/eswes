@@ -22,7 +22,7 @@ class DirtySlot(models.Model):
 
 
 class UserBalanceSlot(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
 
     user_id = models.UUIDField()
     meter_id = models.UUIDField()
@@ -30,14 +30,15 @@ class UserBalanceSlot(models.Model):
 
     period_start = models.DateTimeField()
 
-    consumption_kwh = models.FloatField(default=0)
-    generation_kwh = models.FloatField(default=0)
-    self_consumption_kwh = models.FloatField(default=0)
-    grid_import_kwh = models.FloatField(default=0)
-    grid_export_kwh = models.FloatField(default=0)
+    consumption_kwh = models.FloatField()
+    generation_kwh = models.FloatField()
+
+    self_consumption_kwh = models.FloatField()
+    grid_import_kwh = models.FloatField()
+    grid_export_kwh = models.FloatField()
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "billing_userbalanceslot"
-        managed = False  # ✅ wichtig wegen Timescale
+        managed = False

@@ -2,8 +2,6 @@
 # billing/services_dirty.py
 ###########################
 
-from billing.services_balance import compute_balance_for_slots
-from billing.services_allocation import allocate_user_balance_for_slots
 from django.db import connection
 
 SQL_BALANCE = """
@@ -105,8 +103,7 @@ JOIN billing_usermeterassignment a
  AND a.is_active = true
 
 WHERE (bs.meter_id, bs.period_start) IN (
-    SELECT meter_id, period_start
-    FROM billing_dirtyslot
+    SELECT meter_id, period_start FROM billing_dirtyslot
 )
 
 AND (
@@ -124,7 +121,7 @@ DO UPDATE SET
 """
 
 
-SQL_DELETE_DIRTY = """
+SQL_DELETE = """
 DELETE FROM billing_dirtyslot
 WHERE (meter_id, period_start) IN (
     SELECT meter_id, period_start
@@ -139,4 +136,4 @@ def process_all(limit=5000):
     with connection.cursor() as cursor:
         cursor.execute(SQL_BALANCE, [limit])
         cursor.execute(SQL_USER_BALANCE)
-        cursor.execute(SQL_DELETE_DIRTY, [limit])
+        cursor.execute(SQL_DELETE, [limit])
