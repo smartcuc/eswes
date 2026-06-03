@@ -7,7 +7,7 @@ from django.db import models
 
 
 class DirtySlot(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
 
     meter_id = models.UUIDField()
     period_start = models.DateTimeField()

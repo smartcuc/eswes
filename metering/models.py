@@ -2,7 +2,6 @@
 # metering/models.py
 ########################
 
-
 import uuid
 from django.db import models
 from django.utils import timezone
@@ -168,6 +167,9 @@ class IntervalReading(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = "metering_intervalreading"
+        managed = False
+        constraints = []
         unique_together = ("meter", "ts_start", "obis_code")
         indexes = [
             models.Index(fields=["tenant", "ts_start"]),
@@ -201,6 +203,9 @@ class AggregatedReading(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = "metering_aggregatedreading"
+        managed = False  # ✅ WICHTIG
+        constraints = []  # ✅ keine unique_together
         unique_together = ("meter", "obis_code", "period_start", "period_type")
         indexes = [
             models.Index(fields=["tenant", "period_type", "period_start"]),
@@ -232,3 +237,4 @@ class BalanceSlot(models.Model):
 
     class Meta:
         db_table = "metering_balanceslot"  # ✅ GANZ WICHTIG!
+        managed = False

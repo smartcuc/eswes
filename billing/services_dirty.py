@@ -59,6 +59,10 @@ JOIN dirty d
 
 GROUP BY ar.meter_id, ar.period_start
 
+HAVING
+    SUM(CASE WHEN obis_code = '1.8.0' THEN value ELSE 0 END) > 0
+ OR SUM(CASE WHEN obis_code = '2.8.0' THEN value ELSE 0 END) > 0
+
 ON CONFLICT (meter_id, period_start)
 DO UPDATE SET
     consumption_kwh = EXCLUDED.consumption_kwh,
