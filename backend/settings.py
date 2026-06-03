@@ -208,13 +208,20 @@ CELERY_BEAT_SCHEDULE = {
         "task": "metering.tasks.aggregate_15min",
         "schedule": 300.0,
     },
-    "compute-balance": {
-        "task": "billing.tasks.compute_balance_last_24h",
-        "schedule": 300.0,
+    # 🚀 PRIMARY (event-driven)
+    "dirty-slots": {
+        "task": "billing.tasks.compute_dirty_slots_task",
+        "schedule": 60.0,  # jede Minute
     },
-    "allocate-user-balance": {
-        "task": "billing.tasks.allocate_user_balance_last_24h",
-        "schedule": 300.0,
+    # 🔁 FALLBACK
+    "balance-rolling": {
+        "task": "billing.tasks.compute_balance_rolling",
+        "schedule": 900.0,  # alle 15 Minuten
+    },
+    # 🧹 SAFETY
+    "balance-backfill": {
+        "task": "billing.tasks.compute_balance_backfill",
+        "schedule": 3600.0,
     },
 }
 
@@ -228,7 +235,7 @@ CELERY_BEAT_SCHEDULE.update(
         },
         # Balance regelmäßig nachziehen
         "compute-balance-every-5min": {
-            "task": "billing.tasks.compute_balance_last_2h",
+            "task": "billing.tasks.compute_balance_last_24h",
             "schedule": 300.0,
         },
         # Optionale rollups

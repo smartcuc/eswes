@@ -2,76 +2,85 @@
 # billing/services_balance.py
 #############################
 
-from decimal import Decimal
-from datetime import timedelta
+from django.db import connection
+from django.db import connection
 
-from django.db.models import Sum
-from django.utils import timezone
+SQL = """
+WITH dirty AS (
+    SELECT meter_id, period_start
+    FROM billing_dirtyslot
+    ORDER BY period_start
+    LIMIT %s
+)
 
-from metering.models import AggregatedReading, Meter, BalanceSlot
-from metering.services_slots import floor_to_slot, slot_minutes
+INSERT INTO metering_balanceslot (
+    id,
+    meter_id,
+    period_start,
+    consumption_kwh,
+    generation_kwh,
+    self_consumption_kwh,
+    grid_import_kwh,
+    grid_export_kwh,
+    created_at
+)
+SELECT
+    gen_random_uuid(),
+    ar.meter_id,
+    ar.period_start,
+
+    SUM(CASE WHEN obis_code = '1.8.0' THEN value ELSE 0 END),
+    SUM(CASE WHEN obis_code = '2.8.0' THEN value ELSE 0 END),
+
+    LEAST(
+        SUM(CASE WHEN obis_code = '1.8.0' THEN value ELSE 0 END),
+        SUM(CASE WHEN obis_code = '2.8.0' THEN value ELSE 0 END)
+    ),
+
+    GREATEST(
+        SUM(CASE WHEN obis_code = '1.8.0' THEN value ELSE 0 END)
+        - SUM(CASE WHEN obis_code = '2.8.0' THEN value ELSE 0 END),
+        0
+    ),
+
+    GREATEST(
+        SUM(CASE WHEN obis_code = '2.8.0' THEN value ELSE 0 END)
+        - SUM(CASE WHEN obis_code = '1.8.0' THEN value ELSE 0 END),
+        0
+    ),
+
+    now()
+
+FROM metering_aggregatedreading ar
+JOIN dirty d
+  ON d.meter_id = ar.meter_id
+ AND d.period_start = ar.period_start
+
+GROUP BY ar.meter_id, ar.period_start
+
+ON CONFLICT (meter_id, period_start)
+DO UPDATE SET
+    consumption_kwh = EXCLUDED.consumption_kwh,
+    generation_kwh = EXCLUDED.generation_kwh,
+    self_consumption_kwh = EXCLUDED.self_consumption_kwh,
+    grid_import_kwh = EXCLUDED.grid_import_kwh,
+    grid_export_kwh = EXCLUDED.grid_export_kwh;
+"""
 
 
-def _sum_kwh(qs):
-    v = qs.aggregate(total=Sum("value"))["total"]
-    return v if v is not None else Decimal("0")
+def process_dirty(limit=5000):
+    with connection.cursor() as cursor:
+        cursor.execute(SQL, [limit])
 
-
-def compute_balance_for_meter_slot(meter, slot_start):
-    """
-    Berechnet Balance für genau EINEN Meter und Slot.
-    """
-
-    base = AggregatedReading.objects.filter(
-        meter=meter,
-        period_type="15min",
-        period_start=slot_start,
-    )
-
-    consumption = _sum_kwh(base.filter(obis_code__startswith="1.8"))
-    generation = _sum_kwh(base.filter(obis_code__startswith="2.8"))
-
-    self_consumption = min(consumption, generation)
-    grid_import = max(consumption - generation, Decimal("0"))
-    grid_export = max(generation - consumption, Decimal("0"))
-
-    # ✅ Tenant sauber über Meter ableiten
-    tenant = meter.tenant
-
-    obj, _ = BalanceSlot.objects.update_or_create(
-        meter=meter,
-        tenant=tenant,
-        period_start=slot_start,
-        defaults={
-            "consumption_kwh": consumption,
-            "generation_kwh": generation,
-            "self_consumption_kwh": self_consumption,
-            "grid_import_kwh": grid_import,
-            "grid_export_kwh": grid_export,
-        },
-    )
-
-    return obj
-
-
-def floor_to_billing_slot(dt):
-    return floor_to_slot(dt, slot_minutes())
-
-
-def compute_balance_range(start, end):
-    """
-    Berechnet Balance für ALLE Meter über Zeitraum.
-    """
-
-    start = floor_to_billing_slot(start)
-    end = floor_to_billing_slot(end)
-
-    meters = Meter.objects.all()
-
-    slot = start
-    step = timedelta(minutes=slot_minutes())
-
-    while slot < end:
-        for meter in meters:
-            compute_balance_for_meter_slot(meter, slot)
-        slot += step
+        cursor.execute(
+            """
+        DELETE FROM billing_dirtyslot
+        WHERE (meter_id, period_start) IN (
+            SELECT meter_id, period_start
+            FROM billing_dirtyslot
+            ORDER BY period_start
+            LIMIT %s
+        )
+        """,
+            [limit],
+        )

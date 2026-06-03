@@ -174,3 +174,35 @@ class UserBalanceSlot(models.Model):
 
     def __str__(self):
         return f"{self.user} / {self.meter} @ {self.period_start}"
+
+
+class DirtySlot(models.Model):
+    meter = models.ForeignKey("metering.Meter", on_delete=models.CASCADE)
+    period_start = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("meter", "period_start")
+        indexes = [
+            models.Index(fields=["period_start"]),
+        ]
+
+
+class DirtySlot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    meter = models.ForeignKey(
+        "metering.Meter", on_delete=models.CASCADE, db_column="meter_id"
+    )
+
+    period_start = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "billing_dirtyslot"
+        unique_together = ("meter", "period_start")
+        indexes = [
+            models.Index(fields=["period_start"]),
+        ]

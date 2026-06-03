@@ -1,6 +1,6 @@
-#
+#####################
 # billing/services.py
-#
+#####################
 
 
 def calculate_energy_balance(tenant, ts_start):
