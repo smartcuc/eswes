@@ -2,8 +2,18 @@
 # metering/admin.py
 ########################
 
-
 from django.contrib import admin
+from django.utils import timezone
+from django.utils.html import format_html
+from django.db.models import (
+    OuterRef,
+    Subquery,
+    DateTimeField,
+    ExpressionWrapper,
+    DurationField,
+)
+from django.db.models.functions import Now
+
 from .models import (
     Tenant,
     Member,
@@ -13,6 +23,10 @@ from .models import (
     IntervalReading,
     AggregatedReading,
 )
+
+# ✅ --------------------------------
+# Tenant / Member (unverändert)
+# ✅ --------------------------------
 
 
 @admin.register(Tenant)
@@ -36,8 +50,27 @@ class MemberEnergyProfileAdmin(admin.ModelAdmin):
     raw_id_fields = ("member",)
 
 
+# ✅ --------------------------------
+# 🔥 METER ADMIN (MIT DEBUG + OPTIMIZED)
+# ✅ --------------------------------
+
+
 @admin.register(Meter)
 class MeterAdmin(admin.ModelAdmin):
+
+    fields = (
+        "serial_number",
+        "tenant",
+        "owner_user",
+        "owner_member",
+        "meter_type",
+        "integration_type",
+        "tibber_home_id",
+        "last_tibber_sync",
+    )
+
+    readonly_fields = ("last_tibber_sync",)
+
     list_display = (
         "id",
         "serial_number",
@@ -45,10 +78,88 @@ class MeterAdmin(admin.ModelAdmin):
         "owner_user",
         "owner_member",
         "meter_type",
+        # ✅ Debug
+        "integration_type",
+        "last_reading",
+        "delay_minutes",
+        "status_colored",
     )
-    list_filter = ("meter_type", "tenant")
-    search_fields = ("serial_number",)
+
+    list_filter = (
+        "meter_type",
+        "tenant",
+        "integration_type",
+    )
+
+    search_fields = ("serial_number", "tibber_home_id")
+
     raw_id_fields = ("tenant", "owner_user", "owner_member")
+
+    ordering = ("serial_number",)
+
+    # ✅ ---------------------------
+    # 🔥 Mini-Optimierung (Subquery)
+    # ✅ ---------------------------
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        latest_reading = (
+            IntervalReading.objects.filter(meter=OuterRef("pk"))
+            .order_by("-ts_start")
+            .values("ts_start")[:1]
+        )
+
+        qs = qs.annotate(
+            last_reading_ts=Subquery(
+                latest_reading,
+                output_field=DateTimeField(),
+            )
+        )
+
+        return qs
+
+    # ✅ ---------------------------
+    # 📊 Debug Fields
+    # ✅ ---------------------------
+
+    def last_reading(self, obj):
+        return obj.last_reading_ts
+
+    last_reading.short_description = "Last Reading"
+
+    def delay_minutes(self, obj):
+        if not obj.last_reading_ts:
+            return None
+
+        delta = timezone.now() - obj.last_reading_ts
+        return int(delta.total_seconds() / 60)
+
+    delay_minutes.short_description = "Delay (min)"
+
+    # ✅ ---------------------------
+    # 🎨 Schöner Status (colored)
+    # ✅ ---------------------------
+
+    def status_colored(self, obj):
+        if not obj.last_reading_ts:
+            return format_html("<span style='color:{};'>{}</span>", "gray", "no_data")
+
+        delay = self.delay_minutes(obj)
+
+        if delay < 60:
+            return format_html("<b style='color:{};'>{}</b>", "green", "ok")
+        elif delay < 180:
+            return format_html("<b style='color:{};'>{}</b>", "orange", "delayed")
+        else:
+            return format_html("<b style='color:{};'>{}</b>", "red", "stale")
+
+    status_colored.allow_tags = True
+
+
+# ✅ --------------------------------
+# Rest (unverändert)
+# ✅ --------------------------------
 
 
 @admin.register(MeterRegister)

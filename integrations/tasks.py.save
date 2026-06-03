@@ -1,30 +1,36 @@
 ##########################
 # integrations/tasks.py
 ##########################
+import logging
 
+logger = logging.getLogger(__name__)
+
+"""
+Async Verarbeitung von Inbound Webhook Events.
+
+- Idempotent: verarbeitet jeden Event nur 1x (processed_at)
+- Robust: einzelne Reading-Fehler werden gesammelt
+- Audit: schreibt Status + error_message zurück
+"""
 import logging
 from decimal import Decimal
 from datetime import datetime
 
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from integrations.models import InboundWebhookEvent
-from integrations.services_tibber import (
-    upsert_tibber_interval_readings,
-)
-from metering.models import Meter, IntervalReading, MeterRegister
-from metering.obis import OBIS_MAP
+from integrations.services_tibber import upsert_tibber_interval_readings
+from metering.models import Meter, IntervalReading, MeterRegister, Tenant
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+# 🔥 NEU: OBIS Mapping
+from metering.obis import OBIS_MAP
+
 logger = logging.getLogger(__name__)
-
-
-############################################################
-# 🔵 1. WEBHOOK PROCESSING (unverändert – nur leicht cleaner)
-############################################################
 
 
 @shared_task(bind=True, max_retries=5)
@@ -46,52 +52,59 @@ def process_inbound_webhook_event(self, event_id: str):
 
         for r in payload.get("readings", []):
 
-            # ✅ 1. METER
+            # ✅ 1. METER MAPPING
             serial = r["meter_serial"]
 
             meter, _ = Meter.objects.get_or_create(
-                serial_number=serial,
-                defaults={"tenant": tenant},
+                serial_number=serial, defaults={"tenant": tenant}
             )
 
-            # ✅ 2. ZEIT
+            if meter.tenant_id != tenant.id:
+                logger.warning("Meter tenant mismatch")
+
+            # ✅ 2. ZEITEN
             ts = datetime.fromisoformat(r["ts_start"].replace("Z", "+00:00"))
             received_at = timezone.now()
 
             # ✅ 3. OBIS
             obis = r.get("obis", "1.8.0")
+
             obis_meta = OBIS_MAP.get(obis, {})
             unit = r.get("unit", obis_meta.get("unit", "kWh"))
 
             # ✅ 4. VALUE
             value = Decimal(str(r["value_kwh"]))
 
-            # ✅ 5. LATE LOGIC
+            # ✅ 5. LATE DATA LOGIC
             delay = (received_at - ts).total_seconds()
-            is_late = delay > 60
+            is_late = delay > 60  # ⚠️ anpassbar
 
-            # ✅ 6. DUPLICATES
+            # ✅ 6. DUPLICATE DETECTION
             existing = IntervalReading.objects.filter(
-                meter=meter,
-                ts_start=ts,
-                obis_code=obis,
+                meter=meter, ts_start=ts, obis_code=obis
             ).first()
 
             if existing:
                 if existing.value == value:
+                    # echtes Duplicate → überspringen
+                    logger.info("duplicate detected")
                     continue
                 else:
+                    # Korrektur → Update
+                    logger.info("value correction detected")
+
                     existing.value = value
                     existing.received_at = received_at
                     existing.is_late = is_late
                     existing.ingestion_delay_seconds = int(delay)
                     existing.save()
+
                     continue
 
-            # ✅ 7. REGISTER
+            # ✅ 7. OPTIONAL: REGISTER
             MeterRegister.objects.get_or_create(meter=meter, obis_code=obis)
 
-            # ✅ 8. SAVE
+            # ✅ 8. SPEICHERN
             IntervalReading.objects.create(
                 tenant=tenant,
                 meter=meter,
@@ -115,6 +128,8 @@ def process_inbound_webhook_event(self, event_id: str):
         evt.processed_at = timezone.now()
         evt.save(update_fields=["status", "error_message", "processed_at"])
 
+        logger.info("event.processing.succeeded")
+
         return {"status": "ok", "written": written}
 
     except Exception as e:
@@ -134,6 +149,7 @@ def process_inbound_webhook_event(self, event_id: str):
         return {"status": "error"}
 
     finally:
+        # ✅ REALTIME PUSH
         if final_status:
             try:
                 channel_layer = get_channel_layer()
@@ -160,97 +176,35 @@ def process_inbound_webhook_event(self, event_id: str):
                 logger.exception("realtime.push.failed")
 
 
-############################################################
-# 🔵 2. TIBBER SYNC (FINAL VERSION ✅)
-############################################################
-
-
-def get_hours_to_fetch(meter):
-    """
-    Dynamisches Fetch-Fenster:
-    - kein Startwert → 72h
-    - sonst delta + buffer
-    """
-
-    last = IntervalReading.objects.filter(meter=meter).order_by("-ts_start").first()
-
-    if not last:
-        return 72
-
-    now = timezone.now()
-    delta = now - last.ts_start
-
-    hours = int(delta.total_seconds() / 3600) + 2  # buffer
-
-    return min(max(hours, 2), 72)
-
-
 @shared_task
-def sync_tibber():
+def sync_tibber_last_24h():
     """
-    ✅ Stable Tibber Sync:
-    - nur Meter mit tibber_home_id
-    - dynamisches Zeitfenster
-    - robust gegen Fehler
+    Sync Tibber consumption for ALL user-based meters
     """
 
     results = []
 
-    meters = (
-        Meter.objects.filter(integration_type="tibber")
-        .exclude(tibber_home_id__isnull=True)
-        .exclude(tibber_home_id="")
-    )
+    # ✅ Alle Meter mit owner_user holen
+    meters = Meter.objects.filter(owner_user__isnull=False).select_related("owner_user")
 
     if not meters.exists():
-        return {"status": "no_tibber_meters"}
+        return {"status": "no_meters"}
 
     for meter in meters:
-        user = getattr(meter, "owner_user", None)
+        user = meter.owner_user
 
-        # ✅ HARTE VALIDIERUNG
-        if not user:
-            logger.warning(f"Skipping meter {meter.id} → missing owner_user")
-            continue
-
-        if not meter.tibber_home_id:
-            logger.warning(f"Skipping meter {meter.id} → missing tibber_home_id")
-            continue
         try:
-            hours = get_hours_to_fetch(meter)
-
             result = upsert_tibber_interval_readings(
                 meter=meter,
-                home_id=meter.tibber_home_id,
+                home_id=settings.TIBBER_HOME_ID,
                 user=user,
-                hours=hours,
+                hours=24,
             )
 
-            written = result.get("written", 0)
-
-            # ✅ optional tracking
-            if written > 0:
-                meter.last_tibber_sync = timezone.now()
-                meter.save(update_fields=["last_tibber_sync"])
-
-            results.append(
-                {
-                    "meter_id": str(meter.id),
-                    "hours": hours,
-                    "written": written,
-                }
-            )
+            results.append({"meter_id": str(meter.id), "result": result})
 
         except Exception as e:
-            logger.exception(
-                f"tibber.sync.failed meter={meter.id} user={getattr(user, 'id', 'none')}"
-            )
-            results.append(
-                {
-                    "meter_id": str(meter.id),
-                    "error": str(e),
-                }
-            )
+            results.append({"meter_id": str(meter.id), "error": str(e)})
 
     return {
         "status": "ok",

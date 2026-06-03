@@ -200,7 +200,24 @@ CELERY_BEAT_SCHEDULE = {
         "task": "metering.tasks.aggregate_yearly",
         "schedule": 31536000.0,
     },
+    "tibber-sync": {
+        "task": "integrations.tasks.sync_tibber",
+        "schedule": 300.0,  # alle 5 Minuten
+    },
+    "aggregate-15min": {
+        "task": "metering.tasks.aggregate_15min",
+        "schedule": 300.0,
+    },
+    "compute-balance": {
+        "task": "billing.tasks.compute_balance_last_24h",
+        "schedule": 300.0,
+    },
+    "allocate-user-balance": {
+        "task": "billing.tasks.allocate_user_balance_last_24h",
+        "schedule": 300.0,
+    },
 }
+
 
 CELERY_BEAT_SCHEDULE.update(
     {

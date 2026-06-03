@@ -93,10 +93,28 @@ class Meter(models.Model):
     installed_at = models.DateTimeField(null=True, blank=True)
     removed_at = models.DateTimeField(null=True, blank=True)
 
+    # ✅ 🔥 NEU: Integration Typ
+    integration_type = models.CharField(
+        max_length=32,
+        choices=[
+            ("tibber", "Tibber"),
+            ("manual", "Manual"),
+            ("none", "None"),
+        ],
+        default="none",
+    )
+
+    # ✅ 🔥 NEU: Tibber Mapping
+    tibber_home_id = models.CharField(max_length=64, null=True, blank=True)
+
+    # ✅ 🔥 OPTIONAL: Monitoring
+    last_tibber_sync = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         indexes = [
             models.Index(fields=["tenant", "serial_number"]),
             models.Index(fields=["tenant"]),
+            models.Index(fields=["integration_type"]),  # ✅ sinnvoll
         ]
         constraints = owner_xor_constraints("meter")
 

@@ -31,6 +31,7 @@ from rest_framework.routers import DefaultRouter
 
 from metering.api import MeterViewSet, IntervalReadingViewSet, AggregatedReadingViewSet
 from .views import api_test, trigger_task
+from billing.api.views import consumption_view
 
 router = DefaultRouter()
 router.register(r"meters", MeterViewSet, basename="meter")
@@ -53,5 +54,7 @@ urlpatterns = [
     path("api/dashboard/", include("metering.urls_dashboard")),
     path("api/forecast/", include("forecast.urls")),
     path("api/public/", include("forecast.urls_public")),
+    path("public/billing/", include("billing.api.urls_public")),
     path("api/v1/", include("integrations.api_urls")),
+    path("api/consumption/", consumption_view),
 ]

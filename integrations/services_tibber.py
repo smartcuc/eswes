@@ -1,9 +1,6 @@
 #################################
 # integrations/services_tibber.py
 #################################
-#################################
-# integrations/services_tibber.py
-#################################
 
 import requests
 from django.conf import settings
@@ -12,6 +9,32 @@ from django.utils.dateparse import parse_datetime
 from metering.models import IntervalReading
 
 TIBBER_API_URL = "https://api.tibber.com/v1-beta/gql"
+
+
+##----temp-------
+def get_tibber_home(token):
+    query = """
+    {
+      viewer {
+        homes {
+          id
+          appNickname
+        }
+      }
+    }
+    """
+
+    resp = requests.post(
+        TIBBER_API_URL,
+        json={"query": query},
+        headers=tibber_headers(token),
+    )
+
+    data = resp.json()
+    return data
+
+
+###################################
 
 
 def tibber_headers(token):

@@ -15,4 +15,4 @@ IntervalReading → AggregatedReading → BalanceSlot → UserBalanceSlot
 ## Principle
 
 - Meter-first design
-- Slot-based time model
+- Slot-based time modelS
