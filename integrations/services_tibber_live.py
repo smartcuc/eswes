@@ -11,6 +11,7 @@ import requests
 from django.utils.dateparse import parse_datetime
 
 from integrations.live_state import LIVE_STATE
+from integrations.live_energy_pipeline import process_live_measurement
 
 GRAPHQL_HTTP_URL = "https://api.tibber.com/v1-beta/gql"
 
@@ -66,6 +67,7 @@ async def tibber_live_stream_multi(token, meters):
               liveMeasurement(homeId: "{meter.tibber_home_id}") {{
                 timestamp
                 power
+                accumulatedConsumption
               }}
             }}
             """
@@ -90,6 +92,15 @@ async def tibber_live_stream_multi(token, meters):
             meter = meters[int(sub_id)]
 
             measurement = data["payload"]["data"]["liveMeasurement"]
+
+            from integrations.live_energy_pipeline import (
+                process_live_measurement,
+                flush_ready_slots,
+            )
+
+            # ✅ Pipeline (IMMER AKTIV)
+            process_live_measurement(str(meter.id), measurement)
+            await flush_ready_slots()
 
             ts = parse_datetime(measurement["timestamp"])
             power = measurement["power"] or 0

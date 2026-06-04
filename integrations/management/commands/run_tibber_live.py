@@ -14,8 +14,8 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
 
         meters = list(
-            Meter.objects.select_related("owner_user").exclude(
-                integration_type__isnull=True
+            Meter.objects.select_related("owner_user").filter(
+                data_resolution="quarter_hourly"
             )
         )
 

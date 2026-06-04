@@ -71,56 +71,6 @@ DO UPDATE SET
 """
 
 
-SQL_USER_BALANCE = """
-INSERT INTO billing_userbalanceslot (
-    id,
-    period_start,
-    consumption_kwh,
-    generation_kwh,
-    self_consumption_kwh,
-    grid_import_kwh,
-    grid_export_kwh,
-    created_at,
-    meter_id,
-    tenant_id,
-    user_id
-)
-SELECT
-    gen_random_uuid(),
-    bs.period_start,
-    bs.consumption_kwh,
-    bs.generation_kwh,
-    bs.self_consumption_kwh,
-    bs.grid_import_kwh,
-    bs.grid_export_kwh,
-    now(),
-    bs.meter_id,
-    bs.tenant_id,
-    a.user_id
-FROM metering_balanceslot bs
-JOIN billing_usermeterassignment a
-  ON a.meter_id = bs.meter_id
- AND a.is_active = true
-
-WHERE (bs.meter_id, bs.period_start) IN (
-    SELECT meter_id, period_start FROM billing_dirtyslot
-)
-
-AND (
-    bs.consumption_kwh > 0
-    OR bs.generation_kwh > 0
-)
-
-ON CONFLICT (user_id, meter_id, period_start)
-DO UPDATE SET
-    consumption_kwh = EXCLUDED.consumption_kwh,
-    generation_kwh = EXCLUDED.generation_kwh,
-    self_consumption_kwh = EXCLUDED.self_consumption_kwh,
-    grid_import_kwh = EXCLUDED.grid_import_kwh,
-    grid_export_kwh = EXCLUDED.grid_export_kwh;
-"""
-
-
 SQL_DELETE = """
 DELETE FROM billing_dirtyslot
 WHERE (meter_id, period_start) IN (
@@ -135,5 +85,4 @@ WHERE (meter_id, period_start) IN (
 def process_all(limit=5000):
     with connection.cursor() as cursor:
         cursor.execute(SQL_BALANCE, [limit])
-        cursor.execute(SQL_USER_BALANCE)
         cursor.execute(SQL_DELETE, [limit])

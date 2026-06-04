@@ -2,258 +2,129 @@
 # integrations/tasks.py
 ##########################
 
-import logging
-from decimal import Decimal
-from datetime import datetime
+from celery import shared_task
+from django.db import connection
+
+from metering.models import Meter
+from integrations.services_tibber import upsert_tibber_interval_readings
+
+
+def insert_interval_reading(data):
+    sql = """
+    INSERT INTO metering_intervalreading (
+        id,
+        meter_id,
+        ts_start,
+        obis_code,
+        value,
+        unit,
+        source,
+        created_at,
+        received_at,
+        is_late,
+        is_duplicate
+    )
+    VALUES (
+        gen_random_uuid(),
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        now(),
+        now(),
+        false,
+        false
+    )
+    ON CONFLICT DO NOTHING;
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            sql,
+            [
+                data["meter_id"],
+                data["ts_start"],
+                data["obis_code"],
+                data["value"],
+                data.get("unit", "kWh"),
+                data.get("source", "api"),
+            ],
+        )
+
 
 from celery import shared_task
-from django.utils import timezone
-
-from integrations.models import InboundWebhookEvent
-from integrations.services_tibber import (
-    upsert_tibber_interval_readings,
-)
-from metering.models import Meter, IntervalReading, MeterRegister
-from metering.obis import OBIS_MAP
-
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-
-logger = logging.getLogger(__name__)
-
-
-############################################################
-# 🔵 1. WEBHOOK PROCESSING (unverändert – nur leicht cleaner)
-############################################################
-
-
-@shared_task(bind=True, max_retries=5)
-def process_inbound_webhook_event(self, event_id: str):
-
-    evt = InboundWebhookEvent.objects.select_related("tenant").get(id=event_id)
-
-    if evt.processed_at:
-        logger.info("event.already_processed")
-        return {"status": "already_processed"}
-
-    written = 0
-    final_status = None
-    final_error = ""
-
-    try:
-        payload = evt.payload or {}
-        tenant = evt.tenant
-
-        for r in payload.get("readings", []):
-
-            # ✅ 1. METER
-            serial = r["meter_serial"]
-
-            meter, _ = Meter.objects.get_or_create(
-                serial_number=serial,
-                defaults={"tenant": tenant},
-            )
-
-            # ✅ 2. ZEIT
-            ts = datetime.fromisoformat(r["ts_start"].replace("Z", "+00:00"))
-            received_at = timezone.now()
-
-            # ✅ 3. OBIS
-            obis = r.get("obis", "1.8.0")
-            obis_meta = OBIS_MAP.get(obis, {})
-            unit = r.get("unit", obis_meta.get("unit", "kWh"))
-
-            # ✅ 4. VALUE
-            value = Decimal(str(r["value_kwh"]))
-
-            # ✅ 5. LATE LOGIC
-            delay = (received_at - ts).total_seconds()
-            is_late = delay > 60
-
-            # ✅ 6. DUPLICATES
-            existing = IntervalReading.objects.filter(
-                meter=meter,
-                ts_start=ts,
-                obis_code=obis,
-            ).first()
-
-            if existing:
-                if existing.value == value:
-                    continue
-                else:
-                    existing.value = value
-                    existing.received_at = received_at
-                    existing.is_late = is_late
-                    existing.ingestion_delay_seconds = int(delay)
-                    existing.save()
-                    continue
-
-            # ✅ 7. REGISTER
-            MeterRegister.objects.get_or_create(meter=meter, obis_code=obis)
-
-            # ✅ 8. SAVE
-            IntervalReading.objects.create(
-                tenant=tenant,
-                meter=meter,
-                ts_start=ts,
-                received_at=received_at,
-                obis_code=obis,
-                value=value,
-                unit=unit,
-                is_late=is_late,
-                is_duplicate=False,
-                ingestion_delay_seconds=int(delay),
-            )
-
-            written += 1
-
-        # ✅ SUCCESS
-        final_status = InboundWebhookEvent.Status.OK
-
-        evt.status = final_status
-        evt.error_message = ""
-        evt.processed_at = timezone.now()
-        evt.save(update_fields=["status", "error_message", "processed_at"])
-
-        return {"status": "ok", "written": written}
-
-    except Exception as e:
-        logger.exception("event.processing.failed")
-
-        if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=2**self.request.retries)
-
-        final_status = InboundWebhookEvent.Status.ERROR
-        final_error = str(e)
-
-        evt.status = final_status
-        evt.error_message = final_error[:2000]
-        evt.processed_at = timezone.now()
-        evt.save(update_fields=["status", "error_message", "processed_at"])
-
-        return {"status": "error"}
-
-    finally:
-        if final_status:
-            try:
-                channel_layer = get_channel_layer()
-
-                async_to_sync(channel_layer.group_send)(
-                    "events",
-                    {
-                        "type": "send_event",
-                        "data": {
-                            "event_id": str(evt.id),
-                            "tenant_id": str(evt.tenant_id),
-                            "status": final_status,
-                            "written": written,
-                            "error_message": final_error,
-                            "processed_at": (
-                                evt.processed_at.isoformat()
-                                if evt.processed_at
-                                else None
-                            ),
-                        },
-                    },
-                )
-            except Exception:
-                logger.exception("realtime.push.failed")
-
-
-############################################################
-# 🔵 2. TIBBER SYNC (FINAL VERSION ✅)
-############################################################
-
-
-def get_hours_to_fetch(meter):
-    """
-    Dynamisches Fetch-Fenster:
-    - kein Startwert → 72h
-    - sonst delta + buffer
-    """
-
-    last = IntervalReading.objects.filter(meter=meter).order_by("-ts_start").first()
-
-    if not last:
-        return 72
-
-    now = timezone.now()
-    delta = now - last.ts_start
-
-    hours = int(delta.total_seconds() / 3600) + 2  # buffer
-
-    return min(max(hours, 2), 72)
+from metering.models import Meter
+from integrations.services_tibber import upsert_tibber_interval_readings
 
 
 @shared_task
 def sync_tibber():
-    """
-    ✅ Stable Tibber Sync:
-    - nur Meter mit tibber_home_id
-    - dynamisches Zeitfenster
-    - robust gegen Fehler
-    """
+    print("INFO: Tibber Sync aktuell deaktiviert – Live Pipeline aktiv")
+    return 0
 
-    results = []
 
-    meters = (
-        Meter.objects.filter(integration_type="tibber")
-        .exclude(tibber_home_id__isnull=True)
-        .exclude(tibber_home_id="")
-    )
+"""     print("🔥 SYNC RUNNING")
 
-    if not meters.exists():
-        return {"status": "no_tibber_meters"}
+    from metering.models import Meter
+    from integrations.services_tibber import upsert_tibber_interval_readings
+
+    meters = Meter.objects.all()
+
+    total = 0
+
+    # ✅ NUR Tibber Meter (optional wenn du später andere Quellen hast)
+    # if meter.integration_type != "tibber":
+    #     continue
 
     for meter in meters:
-        user = getattr(meter, "owner_user", None)
+        #     # ✅ NUR Tibber Meter
+        #     if meter.integration_type != "tibber":
+        #         continue
 
-        # ✅ HARTE VALIDIERUNG
-        if not user:
-            logger.warning(f"Skipping meter {meter.id} → missing owner_user")
+        #     # ✅ NUR wenn Pulse vorhanden
+        #     if not getattr(meter, "has_tibber_pulse", False):
+        #         print("SKIP: no Tibber Pulse")
+        #         continue
+
+        # ✅ EINZIGE WAHRHEIT: data_resolution
+        if meter.data_resolution != "quarter_hourly":
+            print("SKIP: keine 15min Daten")
             continue
 
+        # ✅ MUSS vorhanden sein
         if not meter.tibber_home_id:
-            logger.warning(f"Skipping meter {meter.id} → missing tibber_home_id")
+            print("SKIP: no home_id")
             continue
-        try:
-            hours = get_hours_to_fetch(meter)
 
-            result = upsert_tibber_interval_readings(
-                meter=meter,
-                home_id=meter.tibber_home_id,
-                user=user,
-                hours=hours,
-            )
+        print("SYNC meter:", meter.id)
 
-            written = result.get("written", 0)
+        result = upsert_tibber_interval_readings(
+            meter=meter,
+            home_id=meter.tibber_home_id,
+            user=meter.owner_user,
+            hours=24,
+        )
 
-            # ✅ optional tracking
-            if written > 0:
-                meter.last_tibber_sync = timezone.now()
-                meter.save(update_fields=["last_tibber_sync"])
+        print("RESULT:", result)
 
-            results.append(
-                {
-                    "meter_id": str(meter.id),
-                    "hours": hours,
-                    "written": written,
-                }
-            )
+        total += result.get("written", 0)
 
-        except Exception as e:
-            logger.exception(
-                f"tibber.sync.failed meter={meter.id} user={getattr(user, 'id', 'none')}"
-            )
-            results.append(
-                {
-                    "meter_id": str(meter.id),
-                    "error": str(e),
-                }
-            )
+    print("✅ TOTAL WRITTEN:", total)
 
-    return {
-        "status": "ok",
-        "meters_processed": len(results),
-        "results": results,
-    }
+    return total
+ """
+
+
+@shared_task
+def flush_live_slots_task():
+    from integrations.live_energy_pipeline import flush_ready_slots
+
+    flush_ready_slots()
+
+
+@shared_task
+def process_inbound_webhook_event(payload):
+    insert_interval_reading(payload)
+    return "ok"

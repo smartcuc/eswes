@@ -62,7 +62,7 @@ def fetch_tibber_consumption(home_id, token, hours=24):
     {{
       viewer {{
         home(id: "{home_id}") {{
-          consumption(resolution: HOURLY, last: {hours}) {{
+          consumption(resolution: QUARTER_HOURLY, last: {hours * 4})
             nodes {{
               from
               to
@@ -94,18 +94,7 @@ def fetch_tibber_consumption(home_id, token, hours=24):
 
 
 def upsert_tibber_interval_readings(meter, home_id, user=None, hours=24, tenant=None):
-    """
-    User-basierter Standard:
-    - meter: Pflicht
-    - user: optional für user-spezifischen Token
-    - tenant: optional; falls nicht gesetzt, wird meter.tenant verwendet (kann None sein)
-    """
     token = get_tibber_token(user)
-
-    if not token:
-        raise ValueError("No Tibber token available")
-
-    effective_tenant = tenant if tenant is not None else getattr(meter, "tenant", None)
 
     nodes = fetch_tibber_consumption(
         home_id=home_id,
@@ -113,36 +102,62 @@ def upsert_tibber_interval_readings(meter, home_id, user=None, hours=24, tenant=
         hours=hours,
     )
 
+    effective_tenant = tenant if tenant is not None else meter.tenant_id
+
+    from django.db import connection
+
+    sql = """
+    INSERT INTO metering_intervalreading (
+        id,
+        meter_id,
+        ts_start,
+        obis_code,
+        value,
+        unit,
+        source,
+        created_at,
+        received_at,
+        is_late,
+        is_duplicate
+    )
+    VALUES (
+        gen_random_uuid(),
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        now(),
+        now(),
+        false,
+        false
+    )
+    ON CONFLICT DO NOTHING;
+    """
+
     written = 0
-    skipped = 0
 
     for node in nodes:
         consumption = node.get("consumption")
         if consumption is None:
-            skipped += 1
             continue
 
         ts_start = parse_datetime(node["from"])
-        ts_end = parse_datetime(node["to"])
 
-        IntervalReading.objects.update_or_create(
-            meter=meter,
-            ts_start=ts_start,
-            obis_code="1.8.0",
-            defaults={
-                "tenant": effective_tenant,
-                "ts_end": ts_end,
-                "value": consumption,
-                "unit": "kWh",
-                "source": "TIBBER",
-            },
-        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                sql,
+                [
+                    str(meter.id),
+                    ts_start,
+                    "1.8.0",
+                    consumption,
+                    "kWh",
+                    "tibber",
+                ],
+            )
 
         written += 1
 
-    return {
-        "status": "ok",
-        "written": written,
-        "skipped": skipped,
-        "total": len(nodes),
-    }
+    return {"status": "ok", "written": written}

@@ -1,0 +1,96 @@
+######################################
+# integrations/live_energy_pipeline.py
+######################################
+
+from datetime import datetime, timedelta
+from collections import defaultdict
+from django.utils.dateparse import parse_datetime
+
+from integrations.tasks import insert_interval_reading
+
+# ✅ Speicher für letzten Zählerstand
+METER_STATE = {}
+
+# ✅ 15min Buffer
+SLOT_BUFFER = defaultdict(float)
+
+
+# ✅ Helper: auf 15 Minuten runden
+def floor_to_15min(ts: datetime):
+    minutes = (ts.minute // 15) * 15
+    return ts.replace(minute=minutes, second=0, microsecond=0)
+
+
+# ✅ Hauptfunktion
+def process_live_measurement(meter_id, measurement):
+
+    ts = parse_datetime(measurement["timestamp"])
+    consumption = measurement["accumulatedConsumption"]
+
+    if consumption is None:
+        return
+
+    state = METER_STATE.get(meter_id)
+
+    # ✅ erster Wert → nur merken
+    if not state:
+        METER_STATE[meter_id] = {
+            "last_consumption": consumption,
+            "last_timestamp": ts,
+        }
+        return
+
+    last = state["last_consumption"]
+
+    delta = consumption - last
+
+    # ✅ Schutz
+    if delta < 0:
+        print(f"⚠️ negative delta for {meter_id}")
+        METER_STATE[meter_id]["last_consumption"] = consumption
+        return
+
+    # ✅ Slot bestimmen
+    slot = floor_to_15min(ts)
+
+    SLOT_BUFFER[(meter_id, slot)] += float(delta)
+
+    # ✅ State updaten
+    state["last_consumption"] = consumption
+    state["last_timestamp"] = ts
+
+    # ✅ optional debug
+    print(f"⚡ delta {delta:.4f} kWh → slot {slot}")
+
+
+# ✅ Flush Funktion
+def flush_ready_slots():
+
+    now = datetime.utcnow()
+
+    to_delete = []
+
+    for (meter_id, slot), value in SLOT_BUFFER.items():
+
+        # ✅ Slot vollständig? (älter als 15 min)
+        if now - slot < timedelta(minutes=15):
+            continue
+
+        insert_interval_reading(
+            {
+                "meter_id": meter_id,
+                "ts_start": slot,
+                "obis_code": "1.8.0",
+                "value": round(value, 6),
+                "unit": "kWh",
+                "source": "tibber_live",
+            }
+        )
+
+        print(f"✅ FLUSH {meter_id} {slot} → {value:.4f} kWh")
+
+        to_delete.append((meter_id, slot))
+
+    # ✅ Buffer löschen
+    for key in to_delete:
+        del SLOT_BUFFER[key]

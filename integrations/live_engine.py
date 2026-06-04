@@ -15,13 +15,17 @@ async def run_live_engine(meters):
     tibber_groups = defaultdict(list)
 
     for meter in meters:
-        if meter.integration_type == "tibber":
-            user = meter.owner_user
 
-            if not user or not user.tibber_token:
-                continue
+        # ✅ EINZIGE WAHRHEIT
+        if meter.data_resolution != "quarter_hourly":
+            continue
 
-            tibber_groups[user.tibber_token].append(meter)
+        user = meter.owner_user
+
+        if not user or not user.tibber_token:
+            continue
+
+        tibber_groups[user.tibber_token].append(meter)
 
     for token, group_meters in tibber_groups.items():
 
