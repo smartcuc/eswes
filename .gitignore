@@ -3,10 +3,12 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
 
 # Virtual Environment
 venv/
 .env
+.env.*
 
 # Django
 *.log
@@ -14,12 +16,11 @@ db.sqlite3
 staticfiles/
 media/
 
-# Bytecode
-*.py[cod]
-
-# Celery (wichtig bei dir!)
-celerybeat-schedule*
+# Celery
+celerybeat-schedule
+celerybeat-schedule-*
 celery*.db
+*.wal
 
 # OS
 .DS_Store
@@ -36,10 +37,6 @@ Thumbs.db
 # Migrations cache
 */migrations/__pycache__/
 
-# ML Models (falls gespeichert)
+# ML Models
 ml_models/
 *.joblib
-
-# Secrets
-.env.*
-".env" 
