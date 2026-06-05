@@ -5,6 +5,10 @@
 from decimal import Decimal
 import requests
 
+from django.utils.dateparse import parse_datetime
+from django.utils import timezone
+
+
 from forecast.models import TenantWeatherSnapshot
 
 
@@ -24,12 +28,7 @@ def fetch_historical_weather(lat, lon, start_date, end_date):
 
     data = response.json()["hourly"]
 
-    return {
-        "time": data["time"],
-        "temperature_2m": data.get("temperature_2m", []),
-        "cloud_cover": data.get("cloud_cover", []),
-        "shortwave_radiation": data.get("shortwave_radiation", []),
-    }
+    return data
 
 
 def store_historical_weather_for_tenant(tenant, start_date, end_date):
@@ -46,14 +45,35 @@ def store_historical_weather_for_tenant(tenant, start_date, end_date):
         end_date,
     )
 
-    saved = 0
+    times = payload.get("time", [])
+    temps = payload.get("temperature_2m", [])
+    clouds = payload.get("cloud_cover", [])
+    radiation = payload.get("shortwave_radiation", [])
 
-    for ts, temp, cloud, sw in zip(
-        payload["time"],
-        payload["temperature_2m"],
-        payload["cloud_cover"],
-        payload["shortwave_radiation"],
-    ):
+    total = len(times)
+
+    saved = 0
+    skipped = 0
+    missing_values = 0
+
+    for i in range(total):
+
+        ts = parse_datetime(times[i])
+
+        temp = temps[i] if i < len(temps) else None
+        cloud = clouds[i] if i < len(clouds) else None
+        sw = radiation[i] if i < len(radiation) else None
+
+        if ts is None:
+            skipped += 1
+            continue
+
+        if timezone.is_naive(ts):
+            ts = timezone.make_aware(ts, timezone.UTC)
+
+        if temp is None or cloud is None or sw is None:
+            missing_values += 1
+
         _, created = TenantWeatherSnapshot.objects.update_or_create(
             tenant=tenant,
             ts=ts,
@@ -63,6 +83,7 @@ def store_historical_weather_for_tenant(tenant, start_date, end_date):
                 "shortwave_radiation_wm2": Decimal(str(sw)) if sw is not None else None,
             },
         )
+
         if created:
             saved += 1
 
@@ -70,5 +91,7 @@ def store_historical_weather_for_tenant(tenant, start_date, end_date):
         "tenant_id": str(tenant.id),
         "status": "ok",
         "saved": saved,
-        "total": len(payload["time"]),
+        "total": total,
+        "skipped": skipped,
+        "missing_values": missing_values,
     }

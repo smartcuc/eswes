@@ -15,7 +15,7 @@ class BankAccount(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
@@ -47,7 +47,7 @@ class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
@@ -131,7 +131,7 @@ class UserBalanceSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant",
+        "tenants.Tenant",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

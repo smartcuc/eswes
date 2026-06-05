@@ -33,7 +33,7 @@ class Member(models.Model):
     user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    tenant = models.ForeignKey("metering.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
 
     ROLE_CHOICES = [("admin", "Admin"), ("manager", "Manager"), ("viewer", "Viewer")]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="viewer")
@@ -77,7 +77,7 @@ class Meter(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
@@ -146,7 +146,7 @@ class IntervalReading(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     meter = models.ForeignKey(Meter, on_delete=models.CASCADE)
 
@@ -185,7 +185,7 @@ class AggregatedReading(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     meter = models.ForeignKey(Meter, on_delete=models.CASCADE)
 
@@ -212,7 +212,7 @@ class BalanceSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "metering.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
 
     #    meter = models.ForeignKey("metering.Meter", on_delete=models.CASCADE)

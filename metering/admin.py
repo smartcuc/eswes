@@ -14,6 +14,8 @@ from django.db.models import (
 )
 from django.db.models.functions import Now
 
+from metering.models import IntervalReading
+
 from .models import (
     Tenant,
     Member,

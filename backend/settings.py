@@ -17,6 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
+from celery.schedules import crontab
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -69,6 +70,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "core",
     "integrations",  # ✅ DAS IST WICHTIG
+    "tenants",
     "metering",
     "channels",
     "forecast",
@@ -202,7 +204,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "tibber-sync": {
         "task": "integrations.tasks.sync_tibber",
-        "schedule": 300.0,  # alle 5 Minuten
+        "schedule": 1800.0,  # ✅ alle 30 Minuten
     },
     "aggregate-15min": {
         "task": "metering.tasks.aggregate_15min",
@@ -240,17 +242,15 @@ CELERY_BEAT_SCHEDULE.update(
             "task": "metering.tasks.aggregate_daily",
             "schedule": 86400.0,
         },
-        "fetch-spot-prices": {
-            "task": "market.tasks.fetch_spot_prices",
-            "schedule": 3600.0,  # jede Stunde
+        "fetch-spot-prices-daily": {
+            "task": "market.tasks.fetch_spot_prices_retry",
+            "schedule": crontab(hour=13, minute=1),
         },
     }
 )
 
 
 # REDIS
-
-import os
 
 ASGI_APPLICATION = "backend.asgi.application"
 
@@ -263,6 +263,12 @@ CHANNEL_LAYERS = {
     },
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL"),
+    }
+}
 
 # backend/settings.py (unten ergänzen)
 

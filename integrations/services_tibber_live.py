@@ -7,10 +7,16 @@ import json
 import random
 import websockets
 import requests
+import logging
 
 from django.utils.dateparse import parse_datetime
+from django.core.cache import cache
 
 from integrations.live_state import LIVE_STATE
+
+logger = logging.getLogger("integrations")
+
+LAST_EVENT_TS = {}
 
 GRAPHQL_HTTP_URL = "https://api.tibber.com/v1-beta/gql"
 
@@ -92,7 +98,21 @@ async def tibber_live_stream_multi(token, meters):
             measurement = data["payload"]["data"]["liveMeasurement"]
 
             ts = parse_datetime(measurement["timestamp"])
+
+            cache.set(f"energy:last_event:{meter.id}", ts.isoformat(), timeout=None)
+
+            # ✅ NEU: Meter IDs speichern
+            meter_ids = cache.get("energy:meters") or []
+
+            if str(meter.id) not in meter_ids:
+                meter_ids.append(str(meter.id))
+                cache.set("energy:meters", meter_ids, timeout=None)
+
+            LAST_EVENT_TS[str(meter.id)] = ts
+
             power = measurement["power"] or 0
+
+            cache.set(f"energy:last_power:{meter.id}", power, timeout=None)
 
             LIVE_STATE[str(meter.id)] = {
                 "provider": "tibber",
@@ -101,7 +121,7 @@ async def tibber_live_stream_multi(token, meters):
             }
 
             short_id = str(meter.id).split("-")[0]
-            print(f"⚡ {short_id} → {power} W")
+            logger.debug(f"⚡ {short_id} → {power} W")
 
 
 # ✅ Reconnect + Backoff
