@@ -53,6 +53,7 @@ urlpatterns = [
     path("api/dashboard/", include("metering.urls_dashboard")),
     path("api/forecast/", include("forecast.urls")),
     path("api/public/", include("forecast.urls_public")),
+    path("api/", include("content.urls_public")),
     path("api/", include("integrations.urls")),
     path("api/", include(router.urls)),
     path("public/billing/", include("billing.api.urls_public")),

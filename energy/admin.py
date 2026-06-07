@@ -25,13 +25,13 @@ class LocationAdmin(admin.ModelAdmin):
         "name",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "city",
         "postal_code",
     )
     list_filter = ("tenant", "city", "country")
     search_fields = ("name", "street", "city", "postal_code")
-    raw_id_fields = ("tenant", "owner_user", "owner_member")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership")
 
 
 @admin.register(EnergyAsset)
@@ -42,13 +42,13 @@ class EnergyAssetAdmin(admin.ModelAdmin):
         "asset_type",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "installed_power_kw",
         "installed_at",
     )
     list_filter = ("asset_type", "tenant")
     search_fields = ("name",)
-    raw_id_fields = ("tenant", "owner_user", "owner_member", "location")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership", "location")
 
 
 @admin.register(EnergyAssetPV)
@@ -101,12 +101,12 @@ class DeviceAdmin(admin.ModelAdmin):
         "controllable",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "created_at",
     )
     list_filter = ("device_type", "controllable", "tenant")
     search_fields = ("name",)
-    raw_id_fields = ("tenant", "owner_user", "owner_member", "location", "asset")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership", "location", "asset")
 
 
 @admin.register(SmartEnergySettings)
@@ -115,14 +115,14 @@ class SmartEnergySettingsAdmin(admin.ModelAdmin):
         "id",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "optimization_mode",
         "allow_direct_control",
         "optimize_ev",
         "optimize_battery",
     )
     list_filter = ("optimization_mode", "allow_direct_control")
-    raw_id_fields = ("tenant", "owner_user", "owner_member")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership")
 
 
 @admin.register(DeviceCommand)

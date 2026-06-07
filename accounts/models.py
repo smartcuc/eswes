@@ -85,3 +85,33 @@ class UserSettings(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TenantMembership(models.Model):
+
+    ROLE_ADMIN = "admin"
+    ROLE_EDITOR = "editor"
+    ROLE_VIEWER = "viewer"
+
+    ROLE_CHOICES = [
+        (ROLE_ADMIN, "Admin"),
+        (ROLE_EDITOR, "Editor"),
+        (ROLE_VIEWER, "Viewer"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+
+    tenant = models.ForeignKey(
+        "core.Tenant", on_delete=models.CASCADE, related_name="memberships"
+    )
+
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "tenant")
+
+    def __str__(self):
+        return f"{self.user.email} → {self.tenant} ({self.role})"

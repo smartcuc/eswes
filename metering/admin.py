@@ -33,8 +33,8 @@ from .models import (
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
-    list_display = ("id", "name")
-    search_fields = ("name",)
+    list_display = ("name", "slug", "latitude", "longitude")
+    fields = ("name", "slug", "latitude", "longitude")
 
 
 @admin.register(Member)
@@ -64,7 +64,7 @@ class MeterAdmin(admin.ModelAdmin):
         "serial_number",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "meter_type",
         "integration_type",
         "tibber_home_id",
@@ -78,7 +78,7 @@ class MeterAdmin(admin.ModelAdmin):
         "serial_number",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "meter_type",
         # ✅ Debug
         "integration_type",
@@ -95,7 +95,7 @@ class MeterAdmin(admin.ModelAdmin):
 
     search_fields = ("serial_number", "tibber_home_id")
 
-    raw_id_fields = ("tenant", "owner_user", "owner_member")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership")
 
     ordering = ("serial_number",)
 
@@ -201,4 +201,4 @@ class AggregatedReadingAdmin(admin.ModelAdmin):
     )
     list_filter = ("tenant", "period_type", "obis_code")
     search_fields = ("meter__serial_number", "obis_code")
-    raw_id_fields = ("tenant", "meter", "member")
+    raw_id_fields = ("tenant", "meter", "membership")

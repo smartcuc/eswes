@@ -3,7 +3,7 @@
 #####################
 
 from rest_framework.permissions import BasePermission
-from core.tenant import resolve_member
+from core.tenant import resolve_membership
 
 
 class HasTenantContext(BasePermission):
@@ -13,7 +13,7 @@ class HasTenantContext(BasePermission):
     """
 
     def has_permission(self, request, view):
-        member = resolve_member(request)
+        member = resolve_membership(request)
         request.member = member
         request.tenant = member.tenant
         return True

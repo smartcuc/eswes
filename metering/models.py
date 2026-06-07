@@ -2,22 +2,31 @@
 # metering/models.py
 ########################
 
-
 import uuid
 from django.db import models
 from django.utils import timezone
 from django.db.models import Q
+from django.utils.text import slugify
 from core.ownership import owner_xor_constraints
+
+from django.utils.text import slugify
 
 
 class Tenant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
 
+    slug = models.SlugField(unique=True)
+
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
 
     is_public = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -33,7 +42,7 @@ class Member(models.Model):
     user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("core.Tenant", on_delete=models.CASCADE)
 
     ROLE_CHOICES = [("admin", "Admin"), ("manager", "Manager"), ("viewer", "Viewer")]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="viewer")
@@ -77,15 +86,17 @@ class Meter(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
-
     serial_number = models.CharField(max_length=100, unique=True, null=True, blank=True)
     meter_type = models.CharField(max_length=50, default="electricity")
     manufacturer = models.CharField(max_length=100, blank=True)
@@ -146,7 +157,7 @@ class IntervalReading(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     meter = models.ForeignKey(Meter, on_delete=models.CASCADE)
 
@@ -185,12 +196,15 @@ class AggregatedReading(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     meter = models.ForeignKey(Meter, on_delete=models.CASCADE)
 
-    member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     obis_code = models.CharField(max_length=20)
@@ -212,7 +226,7 @@ class BalanceSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
 
     #    meter = models.ForeignKey("metering.Meter", on_delete=models.CASCADE)

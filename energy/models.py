@@ -13,17 +13,16 @@ from django.db.models import Q
 def owner_xor_constraints(prefix: str):
     """
     Liefert drei Constraints:
-    1) XOR owner_user/owner_member
+    1) XOR owner_user / owner_membership
     2) owner_user -> tenant NULL
-    3) owner_member -> tenant NOT NULL
-    prefix muss pro Modell eindeutig sein (z.B. 'energyasset', 'device').
+    3) owner_membership -> tenant NOT NULL
     """
     return [
         models.CheckConstraint(
             name=f"{prefix}_owner_xor",
             condition=(
-                (Q(owner_user__isnull=False) & Q(owner_member__isnull=True))
-                | (Q(owner_user__isnull=True) & Q(owner_member__isnull=False))
+                (Q(owner_user__isnull=False) & Q(owner_membership__isnull=True))
+                | (Q(owner_user__isnull=True) & Q(owner_membership__isnull=False))
             ),
         ),
         models.CheckConstraint(
@@ -31,8 +30,8 @@ def owner_xor_constraints(prefix: str):
             condition=(Q(owner_user__isnull=True) | Q(tenant__isnull=True)),
         ),
         models.CheckConstraint(
-            name=f"{prefix}_member_requires_tenant",
-            condition=(Q(owner_member__isnull=True) | Q(tenant__isnull=False)),
+            name=f"{prefix}_membership_requires_tenant",
+            condition=(Q(owner_membership__isnull=True) | Q(tenant__isnull=False)),
         ),
     ]
 
@@ -44,13 +43,16 @@ class Location(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     name = models.CharField(max_length=255, blank=True)
@@ -83,13 +85,16 @@ class EnergyAsset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     location = models.ForeignKey(
@@ -116,7 +121,7 @@ class EnergyAsset(models.Model):
         indexes = [
             models.Index(fields=["tenant", "asset_type"]),
             models.Index(fields=["owner_user", "asset_type"]),
-            models.Index(fields=["owner_member", "asset_type"]),
+            models.Index(fields=["owner_membership", "asset_type"]),
         ]
         constraints = owner_xor_constraints("energyasset")
 
@@ -244,13 +249,16 @@ class Device(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     # optional Zuordnung zu Standort / Asset
@@ -292,7 +300,7 @@ class Device(models.Model):
         indexes = [
             models.Index(fields=["tenant", "device_type"]),
             models.Index(fields=["owner_user", "device_type"]),
-            models.Index(fields=["owner_member", "device_type"]),
+            models.Index(fields=["owner_membership", "device_type"]),
         ]
         constraints = owner_xor_constraints("device")
 
@@ -307,13 +315,16 @@ class SmartEnergySettings(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     MODE = [

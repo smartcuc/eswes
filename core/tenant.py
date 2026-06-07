@@ -9,7 +9,7 @@ from metering.models import Member
 TENANT_HEADER = "X-Tenant-ID"
 
 
-def resolve_member(request):
+def resolve_membership(request):
     """
     Tenant automatisch erkennen:
     1) X-Tenant-ID Header

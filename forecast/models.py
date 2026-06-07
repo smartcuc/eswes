@@ -10,7 +10,7 @@ from tenants.models import Tenant
 class SolarForecast(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("core.Tenant", on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     forecast_kwh = models.DecimalField(max_digits=12, decimal_places=3)
 

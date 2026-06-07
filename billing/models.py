@@ -15,13 +15,16 @@ class BankAccount(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     iban = models.CharField(max_length=34)
@@ -47,13 +50,16 @@ class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant", on_delete=models.CASCADE, null=True, blank=True
+        "core.Tenant", on_delete=models.CASCADE, null=True, blank=True
     )
     owner_user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, null=True, blank=True
     )
-    owner_member = models.ForeignKey(
-        "metering.Member", on_delete=models.CASCADE, null=True, blank=True
+    owner_membership = models.ForeignKey(
+        "accounts.TenantMembership",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     CONTRACT_TYPE = [
@@ -131,7 +137,7 @@ class UserBalanceSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(
-        "tenants.Tenant",
+        "core.Tenant",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

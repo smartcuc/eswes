@@ -1,0 +1,4 @@
+Auflistung der Ordnerpfade
+Volumeseriennummer : 000000D8 1EE6:D920
+C:.
++---__pycache__

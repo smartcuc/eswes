@@ -68,9 +68,12 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "rest_framework",  # ✅ hinzufügen
     "rest_framework_simplejwt",
+    "corsheaders",
     "core",
     "integrations",  # ✅ DAS IST WICHTIG
     "tenants",
+    "content",
+    "design",
     "metering",
     "channels",
     "forecast",
@@ -81,6 +84,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "core.middleware.RequestIdMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -366,6 +371,11 @@ DEFAULT_WEATHER_LON = 6.9
 # Interval Abrechnung
 ##################
 BILLING_SLOT_MINUTES = 15
+
+##################
+# CORS App
+##################
+CORS_ALLOW_ALL_ORIGINS = True
 
 ##################
 # Sentry Config

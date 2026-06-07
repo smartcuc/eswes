@@ -15,13 +15,13 @@ class BankAccountAdmin(admin.ModelAdmin):
         "iban",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
         "is_active",
         "created_at",
     )
     list_filter = ("is_active", "tenant")
     search_fields = ("account_holder", "iban", "bic")
-    raw_id_fields = ("tenant", "owner_user", "owner_member")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership")
 
 
 @admin.register(Contract)
@@ -34,8 +34,8 @@ class ContractAdmin(admin.ModelAdmin):
         "end_date",
         "tenant",
         "owner_user",
-        "owner_member",
+        "owner_membership",
     )
     list_filter = ("contract_type", "tenant")
     search_fields = ("supplier_name",)
-    raw_id_fields = ("tenant", "owner_user", "owner_member")
+    raw_id_fields = ("tenant", "owner_user", "owner_membership")
