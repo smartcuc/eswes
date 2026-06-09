@@ -39,6 +39,8 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
+FRONTEND_URL = "http://localhost:5173"
+
 HTTPS = os.getenv("HTTPS", "False") == "True"
 
 SECURE_SSL_REDIRECT = HTTPS
@@ -53,6 +55,19 @@ if HTTPS:
     SECURE_HSTS_PRELOAD = True
 else:
     SECURE_HSTS_SECONDS = 0
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "mail.sharegy.cloud"
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False   # ❗ wichtig
+
+EMAIL_HOST_USER = "invite@sharegy.cloud"
+EMAIL_HOST_PASSWORD = "Gnomes11!Gnomes"
+
+DEFAULT_FROM_EMAIL = "Sharegy <invite@sharegy.cloud>"
 
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 

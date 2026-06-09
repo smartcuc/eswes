@@ -46,16 +46,25 @@ def home(request):
     #   path("api/trigger-task/", trigger_task),
 
 
+
 urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
+
+    # ✅ API AUTH / CORE zuerst
     path("api/auth/", include("accounts.urls")),
+    path("api/", include("accounts.api.urls")),   # 🔥 NACH OBEN
+
+    # ✅ spezifische APIs
     path("api/dashboard/", include("metering.urls_dashboard")),
     path("api/forecast/", include("forecast.urls")),
     path("api/public/", include("forecast.urls_public")),
-    path("api/", include("content.urls_public")),
+
+    # ✅ danach alles generische
     path("api/", include("integrations.urls")),
+    path("api/", include("content.urls_public")),
     path("api/", include(router.urls)),
+
     path("public/billing/", include("billing.api.urls_public")),
     path("api/v1/", include("integrations.api_urls")),
     path("api/consumption/", consumption_view),

@@ -3,6 +3,7 @@
 ######################
 
 from django.urls import path
+
 from integrations.views_live import live_power
 from .views_monitoring import EnergyHealthView
 

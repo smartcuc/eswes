@@ -5,6 +5,7 @@
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
 
 
 class User(AbstractUser):
@@ -69,7 +70,8 @@ class UserSettings(models.Model):
     """
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="settings")
-
+   
+    # --- Dashboard ---
     DASHBOARD_MODE = [("simple", "Simple"), ("advanced", "Advanced")]
     dashboard_mode = models.CharField(
         max_length=20, choices=DASHBOARD_MODE, default="simple"
@@ -84,7 +86,30 @@ class UserSettings(models.Model):
         max_length=20, choices=USAGE_MODE, default="standalone"
     )
 
+     # --- Onboarding ---
+    ONBOARDING_STEPS = [
+        ("welcome", "Welcome"),
+        ("profile", "Profil"),
+        ("meter", "Meter"),
+        ("energy", "Energy"),
+        ("billing", "Billing"),
+        ("done", "Done"),
+    ]
+
+    onboarding_step = models.CharField(
+        max_length=20,
+        choices=ONBOARDING_STEPS,
+        default="welcome"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+    
+    # ✅ HELPER Onboarding
+    @property
+    def is_onboarding_done(self):
+        return self.onboarding_step == "done"
+
 
 
 class TenantMembership(models.Model):
@@ -115,3 +140,70 @@ class TenantMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.email} → {self.tenant} ({self.role})"
+
+
+class TenantInvite(models.Model):
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
+    tenant = models.ForeignKey("core.Tenant", on_delete=models.CASCADE)
+    
+    role = models.CharField(
+        max_length=20,
+        choices=TenantMembership.ROLE_CHOICES,
+        default="viewer"
+    )
+
+    max_uses = models.IntegerField(default=1)
+    used_count = models.IntegerField(default=0)
+
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.tenant} invite ({self.role})"
+    
+class AuditLog(models.Model):
+
+    ACTION_CHOICES = [
+        ("invite_created", "Invite Created"),
+        ("member_removed", "Member Removed"),
+        ("role_updated", "Role Updated"),
+        ("invite_deactivated", "Invite Deactivated"),
+    ]
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+    tenant = models.ForeignKey(
+        "core.Tenant",
+        on_delete=models.CASCADE
+    )
+
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+
+    target_user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="target_logs"
+    )
+
+    metadata = models.JSONField(blank=True, default=dict)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.action} by {self.user} in {self.tenant}"
+    
+
+class MagicLoginToken(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False) 

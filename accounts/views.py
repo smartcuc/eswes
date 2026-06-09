@@ -8,10 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenRefreshView
-
-from metering.models import Member
+from accounts.models import TenantMembership
 
 from .serializers import TokenByEmailSerializer
 
@@ -33,7 +30,10 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
 
-        memberships = Member.objects.filter(user=user)
+        memberships = TenantMembership.objects.filter(
+            user=user,
+            is_active=True
+        ).select_related("tenant")
 
         tenants = []
         for m in memberships:
@@ -45,7 +45,11 @@ class MeView(APIView):
                 }
             )
 
-        return Response({"id": str(user.id), "email": user.email, "tenants": tenants})
+        return Response({
+            "id": str(user.id),
+            "email": user.email,
+            "tenants": tenants
+        })
 
 
 class LogoutView(APIView):
@@ -62,4 +66,3 @@ class LogoutView(APIView):
         return Response({"status": "ok"})
 
 
-from metering.models import Member

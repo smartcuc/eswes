@@ -3,6 +3,9 @@
 */
 
 import SankeyDemo from "./SankeyDemo";
+import EnergyFlow from "./components/EnergyFlow";
+import UserEnergyPanel from "./components/UserEnergyPanel";
+
 
 export default function BlockRenderer({ block, theme }) {
 
@@ -92,7 +95,11 @@ export default function BlockRenderer({ block, theme }) {
                 </div>
             );
 
+        case "energy_flow":
+            return <EnergyFlow data={block.content} />;
 
+        case "user_energy":
+            return <UserEnergyPanel />
 
         /* =========================================================
            DEFAULT (falls unbekannter Block)

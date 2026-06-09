@@ -12,8 +12,16 @@ export default defineConfig({
     tailwindcss()],
   server: {
     proxy: {
-      "/api": "http://127.0.0.1:8000",
-      "/ws": { target: "ws://127.0.0.1:8000", ws: true },
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/ws": {
+        target: "ws://127.0.0.1:8000",
+        ws: true,
+      },
     },
   },
+
 });
