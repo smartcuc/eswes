@@ -2,41 +2,25 @@
 # core/permissions_roles.py
 ###########################
 
-
-from rest_framework.permissions import BasePermission, SAFE_METHODS
-
+from rest_framework.permissions import BasePermission
 
 class RolePermission(BasePermission):
-    """
-    Role-based Permission für Tenant-Kontext.
-
-    viewer  → nur GET
-    manager → GET + POST + PUT
-    admin   → alles
-    """
+    REQUIRED_ROLES = {
+        "POST": ["admin", "owner"],
+        "PUT": ["admin", "owner"],
+        "PATCH": ["admin", "owner"],
+        "DELETE": ["owner"],
+    }
 
     def has_permission(self, request, view):
-        member = getattr(request, "member", None)
+        membership = getattr(request, "member", None)
 
-        if not member:
+        if not membership:
             return False
 
-        role = member.role
+        allowed_roles = self.REQUIRED_ROLES.get(request.method)
 
-        # ✅ BONUS: Admin Override (HIER!)
-        if role == "admin":
-            return True
+        if not allowed_roles:
+            return True  # GET/SAFE
 
-        # ✅ READ erlaubt für viewer/manager
-        if request.method in SAFE_METHODS:
-            return role in ["viewer", "manager"]
-
-        # ✅ WRITE für manager (admin ist schon oben erlaubt)
-        if request.method in ["POST", "PUT", "PATCH"]:
-            return role == "manager"
-
-        # ✅ DELETE bleibt für alle außer admin verboten
-        if request.method == "DELETE":
-            return False
-
-        return False
+        return membership.role in allowed_roles

@@ -2,26 +2,15 @@
 # metering/dashboard_api.py
 ###########################
 
-from datetime import timedelta
-from decimal import Decimal
-
-from django.db.models import Sum, Min, Max
-from django.utils import timezone
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from metering.models import (
-    BalanceSlot,
-)  # dein Django-Model mit db_table="metering_balanceslot"
+from metering.services import scope_filter
 from metering.serializers_dashboard import DashboardSummarySerializer
 from metering.serializers_dashboard_timeseries import (
     DashboardTimeseriesResponseSerializer,
 )
-
-# Import dein Model (anpassen falls es in anderer App liegt)
-from metering.models import Meter  # owner_user / tenant erwartet
 
 # BalanceSlot ist in deiner DB als metering_balanceslot; Model muss existieren:
 # from billing.models import BalanceSlot  # <- falls BalanceSlot bei dir in billing liegt
@@ -30,42 +19,40 @@ from metering.models import Meter  # owner_user / tenant erwartet
 from metering.models import BalanceSlot
 
 
-class MyDashboardView(APIView):
-    """
-    GET /api/dashboard/me/?hours=24[&tenant=<uuid>]
-    - Standalone: filtert über Meter.owner_user == request.user
-    - Tenant (optional): filtert über Meter.tenant_id == tenant
-    Quelle: BalanceSlot (Business Layer)
-    """
+from core.permissions import HasTenantContext
 
-    permission_classes = [IsAuthenticated]
+
+class MyDashboardView(APIView):
+    permission_classes = [IsAuthenticated, HasTenantContext]
 
     def get(self, request):
-        hours = int(request.query_params.get("hours", "24"))
-        hours = max(1, min(hours, 24 * 90))  # 1h .. 90 Tage
+        from datetime import timedelta
+        from decimal import Decimal
+        from django.db.models import Sum, Min, Max
+        from django.utils import timezone
 
-        tenant_id = request.query_params.get("tenant")  # optional
+        hours = int(request.query_params.get("hours", "24"))
+        hours = max(1, min(hours, 24 * 90))
+
         since = timezone.now() - timedelta(hours=hours)
 
-        qs = BalanceSlot.objects.filter(period_start__gte=since)
+        # =========================
+        # ✅ BASE QUERY
+        # =========================
 
-        tenant_id = request.query_params.get("tenant")
+        qs = BalanceSlot.objects.filter(
+            period_start__gte=since
+        )
 
-        if tenant_id:
-            qs = qs.filter(meter__tenant_id=tenant_id)
+        # =========================
+        # ✅ SCOPE FILTER (DER FIX)
+        # =========================
 
-        elif request.user.is_authenticated:
-            qs = qs.filter(meter__owner_user=request.user)
+        qs = scope_filter(qs, request)
 
-        #        qs = BalanceSlot.objects.filter(period_start__gte=since)
-        #
-        #        # Standalone: alle Meter des Users
-        #        # Tenant: alle Meter im Tenant
-        #        if tenant_id:
-        #            qs = qs.filter(meter__tenant_id=tenant_id)
-        #        else:
-        #            qs = qs.filter(meter__owner_user=request.user)
-        #
+        # =========================
+        # ✅ AGGREGATION
+        # =========================
 
         agg = qs.aggregate(
             consumption_kwh=Sum("consumption_kwh"),
@@ -77,7 +64,6 @@ class MyDashboardView(APIView):
             period_start_to=Max("period_start"),
         )
 
-        # Nulls -> 0
         def z(x):
             return x if x is not None else Decimal("0.000")
 
@@ -92,56 +78,59 @@ class MyDashboardView(APIView):
             "rows": qs.count(),
         }
 
-        data = DashboardSummarySerializer(payload).data
-        return Response(data)
+        return Response(DashboardSummarySerializer(payload).data)
 
 
 class MyDashboardTimeseriesView(APIView):
-    """
-    GET /api/dashboard/me/timeseries/?hours=24
-    Optional:
-      - &tenant=<TENANT_UUID>
-      - oder &from=...&to=...
-    Gibt eine Zeitreihe zurück (chart-ready).
-    """
-
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasTenantContext]
 
     def get(self, request):
-        # --- Zeitfenster bestimmen ---
+        from datetime import timedelta
+        from decimal import Decimal
+        from django.utils import timezone
+        from django.db.models import Sum
+
         hours = request.query_params.get("hours")
         from_q = request.query_params.get("from")
         to_q = request.query_params.get("to")
 
+        # =========================
+        # ✅ ZEITFENSTER
+        # =========================
+
         if from_q and to_q:
-            # ISO8601 parsing über Django helper
             from_ts = timezone.datetime.fromisoformat(from_q.replace("Z", "+00:00"))
             to_ts = timezone.datetime.fromisoformat(to_q.replace("Z", "+00:00"))
+
             if timezone.is_naive(from_ts):
                 from_ts = timezone.make_aware(from_ts, timezone=timezone.utc)
             if timezone.is_naive(to_ts):
                 to_ts = timezone.make_aware(to_ts, timezone=timezone.utc)
         else:
             h = int(hours or "24")
-            h = max(1, min(h, 24 * 90))  # 1h .. 90 Tage
+            h = max(1, min(h, 24 * 90))
             to_ts = timezone.now()
             from_ts = to_ts - timedelta(hours=h)
 
-        tenant_id = request.query_params.get("tenant")
+        # =========================
+        # ✅ BASE QUERY
+        # =========================
 
-        # --- Base Query ---
         qs = BalanceSlot.objects.filter(
-            period_start__gte=from_ts, period_start__lte=to_ts
+            period_start__gte=from_ts,
+            period_start__lte=to_ts,
         )
 
-        # Tenant vs Standalone
-        if tenant_id:
-            qs = qs.filter(meter__tenant_id=tenant_id)
-        else:
-            qs = qs.filter(meter__owner_user=request.user)
+        # =========================
+        # ✅ SCOPE FILTER (HIER WAR DER BUG!)
+        # =========================
 
-        # --- Zeitreihe aggregieren über alle Meter des Users/Tenants ---
-        # Group by period_start und summiere die KPIs
+        qs = scope_filter(qs, request)
+
+        # =========================
+        # ✅ AGGREGATION
+        # =========================
+
         points = (
             qs.values("period_start")
             .annotate(
@@ -154,29 +143,28 @@ class MyDashboardTimeseriesView(APIView):
             .order_by("period_start")
         )
 
-        # None -> 0
         def z(v):
             return v if v is not None else Decimal("0.000")
 
-        series = []
-        for p in points:
-            series.append(
-                {
-                    "period_start": p["period_start"],
-                    "consumption_kwh": z(p["consumption_kwh"]),
-                    "generation_kwh": z(p["generation_kwh"]),
-                    "self_consumption_kwh": z(p["self_consumption_kwh"]),
-                    "grid_import_kwh": z(p["grid_import_kwh"]),
-                    "grid_export_kwh": z(p["grid_export_kwh"]),
-                }
-            )
+        series = [
+            {
+                "period_start": p["period_start"],
+                "consumption_kwh": z(p["consumption_kwh"]),
+                "generation_kwh": z(p["generation_kwh"]),
+                "self_consumption_kwh": z(p["self_consumption_kwh"]),
+                "grid_import_kwh": z(p["grid_import_kwh"]),
+                "grid_export_kwh": z(p["grid_export_kwh"]),
+            }
+            for p in points
+        ]
 
         payload = {
             "from": from_ts,
             "to": to_ts,
-            "step": "15min",  # aktuell: BalanceSlots sind 15-min Slots
+            "step": "15min",
             "rows": len(series),
             "series": series,
         }
 
         return Response(DashboardTimeseriesResponseSerializer(payload).data)
+    
