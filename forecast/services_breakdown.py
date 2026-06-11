@@ -2,7 +2,8 @@
 
 from collections import defaultdict
 from django.db.models import Sum
-from metering.models import AggregatedReading
+from core.models import AggregatedReading
+
 from forecast.models import SolarForecast
 
 

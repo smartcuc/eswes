@@ -3,7 +3,8 @@
 ###########################
 
 from celery import shared_task
-from metering.models import Tenant
+from core.models import Tenant
+
 from forecast.services_weather import (
     group_tenants_by_location,
     fetch_and_store_weather_for_group,

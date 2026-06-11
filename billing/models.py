@@ -100,7 +100,7 @@ class UserMeterAssignment(models.Model):
         related_name="meter_assignments",
     )
     meter = models.ForeignKey(
-        "metering.Meter",
+        "core.Meter",
         on_delete=models.CASCADE,
         related_name="billing_assignments",
     )
@@ -148,7 +148,7 @@ class UserBalanceSlot(models.Model):
         related_name="balance_slots",
     )
     meter = models.ForeignKey(
-        "metering.Meter",
+        "core.Meter",
         on_delete=models.CASCADE,
         related_name="user_balance_slots",
     )

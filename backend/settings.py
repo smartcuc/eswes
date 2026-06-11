@@ -30,11 +30,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-##SECRET_KEY = "9kaut)zx)0#o7sb2a2nndi&l_6i&%ffa1a11#q+d3qxju*=a1m"
+#SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-dev-key")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
@@ -56,16 +57,19 @@ if HTTPS:
 else:
     SECURE_HSTS_SECONDS = 0
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = (
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
 
 EMAIL_HOST = "mail.sharegy.cloud"
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False   # ❗ wichtig
 
-EMAIL_HOST_USER = "invite@sharegy.cloud"
-EMAIL_HOST_PASSWORD = "Gnomes11!Gnomes"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER ")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = "Sharegy <invite@sharegy.cloud>"
 
@@ -89,7 +93,6 @@ INSTALLED_APPS = [
     "tenants",
     "content",
     "design",
-    "metering",
     "channels",
     "forecast",
     "accounts",
@@ -104,7 +107,6 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "core.middleware.RequestIdMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -144,6 +146,9 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT"),
     }
 }
+
+DATABASES["default"]["CONN_MAX_AGE"] = 60
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -202,72 +207,41 @@ CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 270
 
 CELERY_BEAT_SCHEDULE = {
-    "aggregate-hourly": {
-        "task": "metering.tasks.aggregate_hourly",
-        "schedule": 3600.0,  # jede Stunde
-    },
-    "aggregate-daily": {
-        "task": "metering.tasks.aggregate_daily",
-        "schedule": 86400.0,
-    },
-    "aggregate-weekly": {
-        "task": "metering.tasks.aggregate_weekly",
-        "schedule": 604800.0,
-    },
-    "aggregate-monthly": {
-        "task": "metering.tasks.aggregate_monthly",
-        "schedule": 2592000.0,
-    },
-    "aggregate-yearly": {
-        "task": "metering.tasks.aggregate_yearly",
-        "schedule": 31536000.0,
-    },
-    "tibber-sync": {
-        "task": "integrations.tasks.sync_tibber",
-        "schedule": 1800.0,  # ✅ alle 30 Minuten
-    },
-    "aggregate-15min": {
-        "task": "metering.tasks.aggregate_15min",
-        "schedule": 300.0,
-    },
+    # Balance regelmäßig nachziehen
     "compute-balance": {
         "task": "billing.tasks.compute_balance_last_24h",
         "schedule": 300.0,
     },
+
     "allocate-user-balance": {
         "task": "billing.tasks.allocate_user_balance_last_24h",
-        "schedule": 300.0,
+        "schedule": 60.0,
+    },
+
+    # ✅ DB Aggregation triggern
+    "rollup-15min": {
+        "task": "core.tasks.rollup_15min",
+        "schedule": 60.0,
+    },
+
+    # ✅ Balance berechnen (dirty slots)
+    "process-dirty-balance": {
+        "task": "core.tasks.process_dirty_balance",
+        "schedule": 60.0,
+    },
+
+    # ✅ Tibber Daten holen
+    "tibber-sync": {
+        "task": "integrations.tasks.sync_tibber",
+        "schedule": 1800.0,
+    },
+
+    # ✅ Strompreise (separat ok)
+    "fetch-spot-prices-daily": {
+        "task": "market.tasks.fetch_spot_prices_retry",
+        "schedule": crontab(hour=13, minute=1),
     },
 }
-
-
-CELERY_BEAT_SCHEDULE.update(
-    {
-        # 15min Aggregation häufig laufen lassen, damit Late Data schnell korrigiert wird
-        "aggregate-15min-every-5min": {
-            "task": "metering.tasks.aggregate_15min",
-            "schedule": 300.0,  # alle 5 Minuten
-        },
-        # Balance regelmäßig nachziehen
-        "compute-balance-every-5min": {
-            "task": "billing.tasks.compute_balance_last_2h",
-            "schedule": 300.0,
-        },
-        # Optionale rollups
-        "aggregate-hourly": {
-            "task": "metering.tasks.aggregate_hourly",
-            "schedule": 3600.0,
-        },
-        "aggregate-daily": {
-            "task": "metering.tasks.aggregate_daily",
-            "schedule": 86400.0,
-        },
-        "fetch-spot-prices-daily": {
-            "task": "market.tasks.fetch_spot_prices_retry",
-            "schedule": crontab(hour=13, minute=1),
-        },
-    }
-)
 
 
 # REDIS
@@ -335,18 +309,25 @@ LOGGING = {
     },
     "loggers": {
         "django": {"level": "INFO", "handlers": ["stdout"], "propagate": False},
+            },
+        "core": {   # ✅ WICHTIG
+            "level": DJANGO_LOG_LEVEL,
+            "handlers": ["stdout"],
+            "propagate": False,
+        },
         "integrations": {
             "level": DJANGO_LOG_LEVEL,
             "handlers": ["stdout"],
             "propagate": False,
         },
-        "metering": {
-            "level": DJANGO_LOG_LEVEL,
-            "handlers": ["stdout"],
-            "propagate": False,
-        },
-    },
+
+#        "django.db.backends": {
+#            "handlers": ["stdout"],
+#            "level": "DEBUG",
+#        },
+
 }
+
 
 
 ##################
@@ -390,7 +371,16 @@ BILLING_SLOT_MINUTES = 15
 ##################
 # CORS App
 ##################
-CORS_ALLOW_ALL_ORIGINS = True
+#CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_CREDENTIALS = True
+
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+
+CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
+
 
 ##################
 # Sentry Config

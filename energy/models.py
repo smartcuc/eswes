@@ -217,7 +217,7 @@ class AssetMeter(models.Model):
         EnergyAsset, on_delete=models.CASCADE, related_name="meter_links"
     )
     meter = models.ForeignKey(
-        "metering.Meter", on_delete=models.CASCADE, related_name="asset_links"
+        "core.Meter", on_delete=models.CASCADE, related_name="asset_links"
     )
 
     RELATION_TYPE = [

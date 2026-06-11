@@ -8,8 +8,9 @@ from datetime import timedelta
 from django.db.models import Sum
 from django.utils import timezone
 
-from metering.models import AggregatedReading, Meter, BalanceSlot
-from metering.services_slots import floor_to_slot, slot_minutes
+from core.models import AggregatedReading, Meter, BalanceSlot
+
+from core.utils.slots import floor_to_slot, slot_minutes
 
 
 def _sum_kwh(qs):
@@ -24,9 +25,12 @@ def compute_balance_for_meter_slot(meter, slot_start):
 
     base = AggregatedReading.objects.filter(
         meter=meter,
-        period_type="15min",
         period_start=slot_start,
     )
+    
+    # fallback
+    if not base.exists():
+        return None
 
     consumption = _sum_kwh(base.filter(obis_code__startswith="1.8"))
     generation = _sum_kwh(base.filter(obis_code__startswith="2.8"))

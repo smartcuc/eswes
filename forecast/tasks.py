@@ -5,7 +5,8 @@
 from celery import shared_task
 from django.utils import timezone
 
-from metering.models import Tenant
+from core.models import Tenant
+
 from forecast.services_ml import train_tenant_model
 from forecast.services_store import save_all_forecasts_for_tenant
 

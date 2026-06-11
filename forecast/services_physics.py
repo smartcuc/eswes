@@ -16,7 +16,8 @@ def predict_next_24h_physics_for_tenant(tenant):
     - stabile fallback Prognose liefern
     """
 
-    from metering.models import AggregatedReading
+    from core.models import AggregatedReading
+
 
     # ✅ hole letzte Stundenwerte (falls vorhanden)
     rows = list(

@@ -2,10 +2,11 @@
 # accounts/serializers.py
 #########################
 
-
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
+from accounts.models import TenantMembership
+from tenants.models import Tenant
 
 User = get_user_model()
 
@@ -40,3 +41,32 @@ class TokenByEmailSerializer(serializers.Serializer):
                 "username": user.username,
             },
         }
+
+class TenantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tenant
+        fields = ["id", "name", "theme"]
+
+
+class MembershipSerializer(serializers.ModelSerializer):
+    tenant = TenantSerializer()  # ✅ HIER!
+
+    class Meta:
+        model = TenantMembership
+        fields = ["role", "tenant"]
+
+
+class UserMeSerializer(serializers.ModelSerializer):
+    memberships = MembershipSerializer(
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "email",
+            "username",
+            "memberships",
+        ]

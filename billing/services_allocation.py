@@ -6,8 +6,8 @@ from datetime import timedelta
 from django.db.models import Q
 
 from billing.models import UserMeterAssignment, UserBalanceSlot
-from metering.models import BalanceSlot
-from metering.services_slots import floor_to_slot, slot_minutes
+from core.models import BalanceSlot
+from core.utils.slots import floor_to_slot, slot_minutes
 
 
 def _active_assignment_map_for_slot(slot_start):

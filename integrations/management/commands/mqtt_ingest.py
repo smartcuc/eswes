@@ -15,7 +15,7 @@ import paho.mqtt.client as mqtt  # pip install paho-mqtt  【1-47859f】
 
 from integrations.models import InboundWebhookEvent
 from integrations.tasks import process_inbound_webhook_event
-from metering.models import Meter
+from core.models import Meter
 
 logger = logging.getLogger(__name__)
 

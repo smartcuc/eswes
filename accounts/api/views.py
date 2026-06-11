@@ -11,11 +11,12 @@ from datetime import timedelta
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.models import Tenant
+from accounts.serializers import UserMeSerializer
+from accounts.serializers import TokenByEmailSerializer
 from accounts.models import MagicLoginToken
 from accounts.models import (
     UserSettings,
@@ -28,19 +29,6 @@ User = get_user_model()
 
 class UserSettingsView(APIView):
     permission_classes = [IsAuthenticated]
-
-    # def get(self, request):
-    #     # ✅ FALLBACK für nicht eingeloggte User
-    #     if isinstance(request.user, AnonymousUser):
-    #         return Response({
-    #             "onboarding_step": "welcome",
-    #             "usage_mode": "standalone"
-    #         })
-
-    #     # ✅ normaler User
-    #     settings, _ = request.user.settings.__class__.objects.get_or_create(
-    #         user=request.user
-    #    )
 
     def get(self, request):
         settings, _ = UserSettings.objects.get_or_create(user=request.user)
@@ -374,3 +362,30 @@ class MagicLoginView(APIView):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         })
+    
+    
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserMeSerializer(request.user)
+        return Response(serializer.data)
+
+
+class TokenByEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = TokenByEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # ✅ optional: kein user object zurückgeben (API clean halten)
+        return Response(serializer.validated_data)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # ✅ später: refresh token blacklisten (optional)
+        return Response({"status": "ok"})

@@ -22,7 +22,8 @@ from django.utils import timezone
 
 from integrations.models import InboundWebhookEvent
 from integrations.services_tibber import upsert_tibber_interval_readings
-from metering.models import Meter, IntervalReading, MeterRegister, Tenant
+from metering.models import IntervalReading, MeterRegister, Tenant
+from core.models import Meter
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer

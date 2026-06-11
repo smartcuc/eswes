@@ -6,7 +6,9 @@ import requests
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
-from metering.models import IntervalReading
+
+from core.models import IntervalReading
+
 
 TIBBER_API_URL = "https://api.tibber.com/v1-beta/gql"
 

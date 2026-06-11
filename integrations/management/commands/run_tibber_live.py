@@ -5,7 +5,7 @@
 from django.core.management.base import BaseCommand
 import asyncio
 
-from metering.models import Meter
+from core.models import Meter
 from integrations.live_engine import run_live_engine
 
 

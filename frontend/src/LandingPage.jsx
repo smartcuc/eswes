@@ -156,7 +156,7 @@ export default function LandingPage() {
             </section >
 
             {/* HOW IT WORKS */}
-            <section section className="mt-16 bg-gray-100 py-16 px-6" >
+            <section className="mt-16 bg-gray-100 py-16 px-6" >
                 <div className="max-w-4xl mx-auto text-center">
 
                     <h3 className="text-xl font-semibold mb-8">
@@ -174,7 +174,7 @@ export default function LandingPage() {
             </section >
 
             {/* CTA */}
-            <section section className="mt-20 bg-black text-white py-20 text-center px-6" >
+            <section className="mt-20 bg-black text-white py-20 text-center px-6" >
                 <h3 className="text-2xl font-semibold mb-4">
                     Starte deine Energy Community
                 </h3>

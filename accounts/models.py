@@ -111,7 +111,6 @@ class UserSettings(models.Model):
         return self.onboarding_step == "done"
 
 
-
 class TenantMembership(models.Model):
 
     ROLE_ADMIN = "admin"
@@ -124,10 +123,17 @@ class TenantMembership(models.Model):
         (ROLE_VIEWER, "Viewer"),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    # ✅ FIX: related_name statt source
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="memberships"
+    )
 
     tenant = models.ForeignKey(
-        "core.Tenant", on_delete=models.CASCADE, related_name="memberships"
+        "core.Tenant",
+        on_delete=models.CASCADE,
+        related_name="memberships"
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)

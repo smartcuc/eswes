@@ -4,8 +4,7 @@
 
 from django.db.models import Sum
 
-from metering.models import AggregatedReading
-
+from core.models import AggregatedReading
 
 def get_tenant_hourly_actuals(tenant, start=None, end=None):
     """

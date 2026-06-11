@@ -1,7 +1,196 @@
-########################
+################################
 # core/admin.py
-########################
+################################
 
 from django.contrib import admin
+from django.utils import timezone
+from django.utils.html import format_html
+from django.db.models import OuterRef, Subquery, DateTimeField
 
-# Register your models here.
+from core.models import (
+    Meter,
+    IntervalReading,
+    AggregatedReading,
+    BalanceSlot,
+    MeterRegister,
+)
+
+
+# ============================================================
+# 🔥 METER ADMIN (DEBUG + PERFORMANCE)
+# ============================================================
+
+@admin.register(Meter)
+class MeterAdmin(admin.ModelAdmin):
+
+    fields = (
+        "serial_number",
+        "tenant",
+        "owner_user",
+        "owner_membership",
+        "meter_type",
+        "integration_type",
+        "tibber_home_id",
+        "last_tibber_sync",
+    )
+
+    readonly_fields = ("last_tibber_sync",)
+
+    list_display = (
+        "id",
+        "serial_number",
+        "tenant",
+        "owner_user",
+        "owner_membership",
+        "meter_type",
+        "integration_type",
+        "last_reading",
+        "delay_minutes",
+        "status_colored",
+    )
+
+    list_filter = (
+        "meter_type",
+        "tenant",
+        "integration_type",
+    )
+
+    search_fields = ("serial_number", "tibber_home_id")
+
+    raw_id_fields = ("tenant", "owner_user", "owner_membership")
+
+    ordering = ("serial_number",)
+
+    # ✅ Performance: latest reading als Subquery
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        latest_reading = (
+            IntervalReading.objects.filter(meter=OuterRef("pk"))
+            .order_by("-ts_start")
+            .values("ts_start")[:1]
+        )
+
+        return qs.annotate(
+            last_reading_ts=Subquery(
+                latest_reading,
+                output_field=DateTimeField(),
+            )
+        )
+
+    def last_reading(self, obj):
+        return obj.last_reading_ts
+    last_reading.short_description = "Last Reading"
+
+    def delay_minutes(self, obj):
+        if not obj.last_reading_ts:
+            return None
+
+        delta = timezone.now() - obj.last_reading_ts
+        return int(delta.total_seconds() / 60)
+    delay_minutes.short_description = "Delay (min)"
+
+    def status_colored(self, obj):
+        if not obj.last_reading_ts:
+            return format_html("<span style='color:gray;'>no_data</span>")
+
+        delay = self.delay_minutes(obj)
+
+        if delay < 60:
+            return format_html("<b style='color:green;'>ok</b>")
+        elif delay < 180:
+            return format_html("<b style='color:orange;'>delayed</b>")
+        else:
+            return format_html("<b style='color:red;'>stale</b>")
+
+
+# ============================================================
+# ✅ METER REGISTER
+# ============================================================
+
+@admin.register(MeterRegister)
+class MeterRegisterAdmin(admin.ModelAdmin):
+    list_display = ("id", "meter", "obis_code", "description")
+    search_fields = ("meter__serial_number", "obis_code")
+    raw_id_fields = ("meter",)
+
+
+# ============================================================
+# ✅ INTERVAL READING (RAW DATA)
+# ============================================================
+
+@admin.register(IntervalReading)
+class IntervalReadingAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tenant",
+        "meter",
+        "ts_start",
+        "obis_code",
+        "value",
+        "unit",
+        "source",
+    )
+    list_filter = ("tenant", "obis_code", "unit", "source")
+    search_fields = ("meter__serial_number", "obis_code")
+    raw_id_fields = ("tenant", "meter")
+    ordering = ("-ts_start",)
+
+
+# ============================================================
+# ✅ AGGREGATED READING (INTERMEDIATE)
+# ============================================================
+
+@admin.register(AggregatedReading)
+class AggregatedReadingAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tenant",
+        "meter",
+        "period_start",
+        "obis_code",
+        "value",
+    )
+    list_filter = ("tenant", "obis_code")
+    search_fields = ("meter__serial_number", "obis_code")
+    raw_id_fields = ("tenant", "meter")
+    ordering = ("-period_start",)
+
+
+# ============================================================
+# 💎 BALANCE SLOT (DEIN GOLD!)
+# ============================================================
+
+@admin.register(BalanceSlot)
+class BalanceSlotAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "period_start",
+        "meter",
+        "consumption_kwh",
+        "generation_kwh",
+        "self_consumption_kwh",
+        "grid_import_kwh",
+        "grid_export_kwh",
+    )
+
+    list_filter = (
+        "meter",
+    )
+
+    search_fields = (
+        "meter__serial_number",
+    )
+
+    raw_id_fields = ("meter", "tenant")
+
+    ordering = ("-period_start",)
+
+    date_hierarchy = "period_start"
+
+    # ✅ Optional: schnelle Übersicht
+    def has_add_permission(self, request):
+        return False  # Balance wird nur berechnet
+
+    def has_delete_permission(self, request, obj=None):
+        return False

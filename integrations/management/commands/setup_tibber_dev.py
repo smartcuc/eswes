@@ -4,7 +4,7 @@
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from metering.models import Meter
+from core.models import Meter
 import uuid
 import os
 

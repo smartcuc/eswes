@@ -1,9 +1,7 @@
-#
-#
-#
-
-
+#############################
 # integrations/mqtt_worker.py
+#############################
+
 import os
 import logging
 import paho.mqtt.client as mqtt  # 【5-050db1】
@@ -12,7 +10,7 @@ from django.db import close_old_connections
 
 from integrations.models import InboundWebhookEvent
 from integrations.tasks import process_inbound_webhook_event
-from metering.models import Meter
+from core.models import Meter
 from integrations.mqtt_normalizer import normalize_message
 
 logger = logging.getLogger(__name__)

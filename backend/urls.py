@@ -29,7 +29,13 @@ from django.http import HttpResponse
 
 from rest_framework.routers import DefaultRouter
 
-from metering.api import MeterViewSet, IntervalReadingViewSet, AggregatedReadingViewSet
+from core.api.viewsets import (
+    MeterViewSet,
+    IntervalReadingViewSet,
+    AggregatedReadingViewSet,
+    BalanceSlotViewSet,
+)
+
 from .views import api_test, trigger_task
 from billing.api.views import consumption_view
 
@@ -37,6 +43,7 @@ router = DefaultRouter()
 router.register(r"meters", MeterViewSet, basename="meter")
 router.register(r"readings", IntervalReadingViewSet, basename="reading")
 router.register(r"aggregates", AggregatedReadingViewSet, basename="aggregate")
+router.register(r"balances", BalanceSlotViewSet, basename="balance")
 
 
 def home(request):
@@ -45,18 +52,16 @@ def home(request):
     #   path("api/test/", api_test),
     #   path("api/trigger-task/", trigger_task),
 
-
-
 urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
 
     # ✅ API AUTH / CORE zuerst
-    path("api/auth/", include("accounts.urls")),
+    #path("api/auth/", include("accounts.urls")),
     path("api/", include("accounts.api.urls")),   # 🔥 NACH OBEN
 
     # ✅ spezifische APIs
-    path("api/dashboard/", include("metering.urls_dashboard")),
+    #path("api/dashboard/", include("metering.urls_dashboard")),
     path("api/forecast/", include("forecast.urls")),
     path("api/public/", include("forecast.urls_public")),
 

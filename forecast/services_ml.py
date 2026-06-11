@@ -11,7 +11,8 @@ from django.conf import settings
 from django.db.models import Sum
 from django.utils import timezone
 
-from metering.models import AggregatedReading
+from core.models import AggregatedReading
+
 from forecast.models import TenantWeatherSnapshot
 from forecast.services_ml_features import (
     build_training_matrix,

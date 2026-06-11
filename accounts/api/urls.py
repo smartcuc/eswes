@@ -14,6 +14,9 @@ from .views import UpdateMemberRoleView
 from .views import RemoveMemberView
 from .views import DeactivateInviteView
 from .views import RequestMagicLinkView, MagicLoginView
+from rest_framework_simplejwt.views import TokenRefreshView
+
+from .views import TokenByEmailView, MeView, LogoutView
 
 
 urlpatterns = [
@@ -61,3 +64,15 @@ urlpatterns += [
     path("request-magic-link/", RequestMagicLinkView.as_view()),
     path("magic-login/", MagicLoginView.as_view()),
 ]
+
+urlpatterns += [
+    # Login
+    path("auth/login/", TokenByEmailView.as_view()),
+    # Refresh
+    path("auth/refresh/", TokenRefreshView.as_view()),
+    # Logout
+    path("auth/logout/", LogoutView.as_view()),
+    # Current user
+    path("auth/me/", MeView.as_view()),
+]
+

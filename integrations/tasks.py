@@ -13,8 +13,11 @@ from integrations.models import InboundWebhookEvent
 from integrations.services_tibber import (
     upsert_tibber_interval_readings,
 )
-from metering.models import Meter, IntervalReading, MeterRegister
-from metering.obis import OBIS_MAP
+
+from core.models import IntervalReading, MeterRegister
+
+from core.models import Meter
+from core.constants.obis import OBIS_MAP
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer

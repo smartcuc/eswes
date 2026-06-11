@@ -5,7 +5,7 @@
 import asyncio
 from collections import defaultdict
 
-from metering.models import Meter
+from core.models import Meter
 from integrations.services_tibber_live import tibber_live_stream_forever
 
 

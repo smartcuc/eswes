@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from metering.models import Tenant
+from core.models import Tenant
 from forecast.models import SolarForecast
 
 VALID_SOURCES = {"ml", "physics", "hybrid"}

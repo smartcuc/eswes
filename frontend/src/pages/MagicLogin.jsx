@@ -20,7 +20,11 @@ export default function MagicLogin() {
                 localStorage.setItem("access", data.access);
                 localStorage.setItem("refresh", data.refresh);
 
-                window.location.reload();
+                window.location.href = "/";
+
+                // ✅ Force full reload AFTER storage
+                window.location.replace("/");
+
             } else {
                 alert(data.error || "Login fehlgeschlagen");
             }

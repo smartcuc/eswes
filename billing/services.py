@@ -5,7 +5,7 @@
 
 def calculate_energy_balance(tenant, ts_start):
 
-    from metering.models import AggregatedReading
+    from core.models import AggregatedReading
 
     readings = AggregatedReading.objects.filter(
         tenant=tenant, period_type="15min", period_start=ts_start

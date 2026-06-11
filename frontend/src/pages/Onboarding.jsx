@@ -47,16 +47,25 @@ export default function Onboarding() {
                     console.error("Invite failed");
                 });
         } else {
-            fetch("/api/settings/")
+            apiFetch("/api/settings/")
                 .then(res => res.json())
                 .then(data => {
-                    setStep(data.onboarding_step || "welcome");
+                    const s = data.onboarding_step || "welcome";
+                    console.log("ONBOARDING STEP:", s);
+                    setStep(s);
                 })
                 .catch(() => {
                     setStep("welcome");
                 });
         }
     }, []);
+
+    // ✅ 🔥 FIX: DONE redirect
+    useEffect(() => {
+        if (step === "done") {
+            window.location.href = "/"; // Dashboard
+        }
+    }, [step]);
 
     const steps = ["welcome", "profile", "meter", "energy", "billing", "done"];
     const progress = ((steps.indexOf(step) + 1) / steps.length) * 100;
@@ -80,11 +89,13 @@ export default function Onboarding() {
                 {step === "energy" && <Energy setStep={setStep} />}
                 {step === "billing" && <Billing setStep={setStep} />}
 
+                {/* ✅ FALLBACK FIX */}
+                {!step && <Welcome setStep={setStep} />}
+
             </div>
         </div>
     );
 }
-
 
 // ✅ Welcome
 function Welcome({ setStep }) {
