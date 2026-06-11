@@ -9,9 +9,13 @@ export default function WsTest() {
         setLast(msg);
     }, []);
 
-    // Direkt auf Daphne (am sichersten fürs Debugging)
+    // ✅ dynamisch – funktioniert lokal UND in Produktion
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const host = window.location.host;
+    const wsUrl = `${protocol}://${host}/ws/events/`;
+
     const { connected } = useEventStream({
-        url: "ws://127.0.0.1:8000/ws/events/",
+        url: wsUrl,
         onMessage
     });
 
@@ -19,7 +23,16 @@ export default function WsTest() {
         <div style={{ padding: 16, fontFamily: "system-ui" }}>
             <h3>WS Test</h3>
             <div>Status: {connected ? "🟢 verbunden" : "🟠 reconnect..."}</div>
-            <pre style={{ marginTop: 12, background: "#111", color: "#0f0", padding: 12, borderRadius: 8 }}>
+
+            <pre
+                style={{
+                    marginTop: 12,
+                    background: "#111",
+                    color: "#0f0",
+                    padding: 12,
+                    borderRadius: 8
+                }}
+            >
                 {last ? JSON.stringify(last, null, 2) : "Noch kein Event empfangen"}
             </pre>
         </div>

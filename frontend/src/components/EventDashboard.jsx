@@ -27,12 +27,17 @@ export default function EventDashboard() {
         });
     }, []);
 
-    // ✅ WebSocket (direkt zu Daphne)
+
+    // ✅ dynamischer WebSocket (HTTP → WS / HTTPS → WSS)
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${wsProtocol}://${window.location.host}/ws/events/`;
+
     const { connected } = useEventStream({
-        url: "ws://127.0.0.1:8000/ws/events/",
+        url: wsUrl,
         onMessage: onWsMessage,
         enabled: true,
     });
+
 
     // ✅ KPIs (useMemo damit es nicht bei jedem Render teuer wird)
     const kpis = useMemo(() => {
@@ -42,12 +47,14 @@ export default function EventDashboard() {
         return { total, ok, error };
     }, [events]);
 
-    // ✅ Replay
+
+    // ✅ API CALL FIX
     const replayEvent = useCallback((id) => {
-        fetch(`http://127.0.0.1:8000/api/v1/events/${id}/replay/`, {
+        fetch(`/api/v1/events/${id}/replay/`, {
             method: "POST",
         }).catch(console.error);
     }, []);
+
 
     return (
         <div style={{ padding: 20 }}>

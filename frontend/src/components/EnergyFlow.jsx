@@ -11,11 +11,15 @@ export default function EnergyFlow({ data }) {
     useEffect(() => {
         if (!data?.endpoint) return;
 
-        fetch(`http://localhost:8000${data.endpoint}`)
-            .then(res => res.json())
+        fetch(data.endpoint)   // ✅ KEIN localhost mehr
+            .then(res => {
+                if (!res.ok) throw new Error("API error");
+                return res.json();
+            })
             .then(setFlowData)
-            .catch(err => console.error(err));
-    }, [data]);
+            .catch(err => console.error("EnergyFlow error:", err));
+    }, [data])
+
 
     if (!flowData) {
         return (

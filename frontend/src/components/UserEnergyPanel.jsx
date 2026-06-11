@@ -8,11 +8,23 @@ export default function UserEnergyPanel() {
     const [power, setPower] = useState(0);
 
     useEffect(() => {
-        const socket = new WebSocket("ws://localhost:8000/ws/energy");
+        // ✅ automatisch richtig für http/https
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const host = window.location.host;
+
+        const socket = new WebSocket(`${protocol}://${host}/ws/energy`);
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             setPower(data.power);
+        };
+
+        socket.onerror = (err) => {
+            console.error("WS error:", err);
+        };
+
+        socket.onclose = () => {
+            console.log("WS closed");
         };
 
         return () => socket.close();
