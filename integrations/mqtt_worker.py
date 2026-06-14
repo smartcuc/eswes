@@ -3,92 +3,135 @@
 #############################
 
 import os
+import json
 import logging
-import paho.mqtt.client as mqtt  # 【5-050db1】
+
+import paho.mqtt.client as mqtt
 
 from django.db import close_old_connections
+from django.contrib.auth import get_user_model
 
-from integrations.models import InboundWebhookEvent
-from integrations.tasks import process_inbound_webhook_event
-from core.models import Meter
-from integrations.mqtt_normalizer import normalize_message
+from devices.models import Device, DeviceMetric
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 def start_mqtt_ingest_thread():
     """
     Startet MQTT Client + loop_start() in einem Hintergrundthread.
-    Muss in genau EINEM Worker laufen, sonst doppelte Ingestion.
     """
 
     broker = os.getenv("MQTT_HOST", "127.0.0.1")
     port = int(os.getenv("MQTT_PORT", "1883"))
     username = os.getenv("MQTT_USERNAME", "")
     password = os.getenv("MQTT_PASSWORD", "")
-    topic = os.getenv(
-        "MQTT_TOPIC", "device/+/realtime"
-    )  # Beispiel: device/{SN}/realtime 【3-9d97a7】
+    topic = os.getenv("MQTT_TOPIC", "user/+/device/+/realtime")
     qos = int(os.getenv("MQTT_QOS", "1"))
-    client_id = os.getenv("MQTT_CLIENT_ID", "eswes-celery-mqtt")
-    profile = os.getenv("MQTT_PROFILE", "generic")
+    client_id = os.getenv("MQTT_CLIENT_ID", "energy-mqtt")
 
     enabled = os.getenv("MQTT_INGEST_ENABLED", "False") == "True"
     if not enabled:
         logger.info("mqtt.ingest.disabled")
         return None
 
-    client = mqtt.Client(
-        client_id=client_id, reconnect_on_failure=True
-    )  # reconnect supported 【1-103c95】
+    client = mqtt.Client(client_id=client_id, reconnect_on_failure=True)
+
     if username:
         client.username_pw_set(username, password)
+
+    # ✅ CONNECT
 
     def on_connect(c, userdata, flags, rc, properties=None):
         if rc == 0:
             logger.info(
-                "mqtt.connected", extra={"broker": broker, "topic": topic, "qos": qos}
+                "mqtt.connected",
+                extra={"broker": broker, "topic": topic, "qos": qos},
             )
-            c.subscribe(
-                topic, qos=qos
-            )  # subscribe in on_connect → resubscribe on reconnect 【2-e2a0a1】【6-097c04】
+            c.subscribe(topic, qos=qos)
         else:
             logger.error("mqtt.connect.failed", extra={"rc": rc})
 
+    # ✅ MESSAGE HANDLING
+
     def on_message(c, userdata, msg):
-        # wichtig bei Threads: DB connections pflegen
         close_old_connections()
 
-        serial, payload = normalize_message(msg.topic, msg.payload, profile=profile)
-        if not serial or not payload:
-            logger.warning("mqtt.unparseable", extra={"topic": msg.topic})
+        # ✅ Parse JSON
+        try:
+            data = json.loads(msg.payload.decode("utf-8"))
+        except Exception:
+            logger.warning("mqtt.invalid_json", extra={"topic": msg.topic})
             return
 
-        meter = (
-            Meter.objects.filter(serial_number=serial).select_related("tenant").first()
+        # ✅ Topic prüfen -> user/{id}/device/{id}/realtime
+        parts = msg.topic.split("/")
+
+        if len(parts) < 5:
+            logger.warning("mqtt.invalid_topic", extra={"topic": msg.topic})
+            return
+
+        try:
+            user_id = int(parts[1])
+        except Exception:
+            logger.warning("mqtt.invalid_user", extra={"topic": msg.topic})
+            return
+
+        device_id = parts[3]
+
+        # ✅ User prüfen
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            logger.warning("mqtt.unknown_user", extra={"user_id": user_id})
+            return
+
+        # ✅ Device holen oder erstellen
+        device, created = Device.objects.get_or_create(
+            user=user,
+            identifier=device_id,
+            defaults={"name": device_id},
         )
-        if not meter or not meter.tenant:
+
+        if created:
+            logger.info(
+                "mqtt.device.discovered",
+                extra={"user_id": user_id, "device": device_id},
+            )
+
+        # ✅ Payload validieren
+        if "power" not in data:
             logger.warning(
-                "mqtt.unknown_meter", extra={"serial": serial, "topic": msg.topic}
+                "mqtt.missing_power",
+                extra={"device": device_id},
             )
             return
 
-        evt = InboundWebhookEvent.objects.create(
-            tenant=meter.tenant,
-            event_type="MQTT",
-            status=InboundWebhookEvent.Status.RECEIVED,
-            payload=payload,
+        power = data.get("power")
+
+        if not isinstance(power, (int, float)):
+            logger.warning(
+                "mqtt.invalid_power_type",
+                extra={"device": device_id, "value": power},
+            )
+            return
+
+        # ✅ speichern
+        DeviceMetric.objects.create(
+            device=device,
+            data=data,
         )
 
-        process_inbound_webhook_event.delay(str(evt.id))
-        logger.info(
-            "mqtt.event.created", extra={"event_id": str(evt.id), "serial": serial}
+        logger.debug(
+            "mqtt.metric.created",
+            extra={"device": device_id, "power": power},
         )
 
+    # ✅ Bind callbacks
     client.on_connect = on_connect
     client.on_message = on_message
 
     client.connect_async(broker, port, keepalive=60)
-    client.loop_start()  # Threaded loop, reconnect handled 【4-8b65b1】【1-103c95】
+    client.loop_start()
 
     return client

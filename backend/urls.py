@@ -56,16 +56,15 @@ urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
 
-    # ✅ API AUTH / CORE zuerst
-    #path("api/auth/", include("accounts.urls")),
-    path("api/", include("accounts.api.urls")),   # 🔥 NACH OBEN
+    # ✅ AUTH
+    path("api/", include("accounts.api.urls")),
 
-    # ✅ spezifische APIs
-    #path("api/dashboard/", include("metering.urls_dashboard")),
+    # ✅ Domain APIs
     path("api/forecast/", include("forecast.urls")),
     path("api/public/", include("forecast.urls_public")),
-
-    # ✅ danach alles generische
+    path("api/energy/", include("energy.api.urls")),  # ✅ NEU
+  
+    # ✅ Generic / legacy
     path("api/", include("integrations.urls")),
     path("api/", include("content.urls_public")),
     path("api/", include(router.urls)),

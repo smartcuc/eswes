@@ -1,7 +1,6 @@
-#############################
-# energy/services_commands.py
-#############################
-
+######################################
+# energy/services/services_commands.py
+######################################
 
 from energy.models import Device, DeviceCommand
 

@@ -42,11 +42,56 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 FRONTEND_URL = "http://localhost:5173"
 
+
+# ✅ Session gültig 14 Tage (Standard)
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 14 Tage
+
+# ✅ Browser schließen = bleibt eingeloggt
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# ✅ Cookie sicher (Production wichtig!)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = False
+# optional später:
+# SESSION_COOKIE_SECURE = True
+
+##################
+# CORS App
+##################
+#CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+]
+#if not DEBUG:
+#    CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+
+#CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = False
+
+#  DRF Auth
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "accounts.auth.CsrfExemptSessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",   # 💥 WICHTIG
+    ],
+}
+
+
 HTTPS = os.getenv("HTTPS", "False") == "True"
 
 SECURE_SSL_REDIRECT = HTTPS
-SESSION_COOKIE_SECURE = HTTPS
-CSRF_COOKIE_SECURE = HTTPS
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
@@ -57,18 +102,19 @@ if HTTPS:
 else:
     SECURE_HSTS_SECONDS = 0
 
-EMAIL_BACKEND = (
-    "django.core.mail.backends.console.EmailBackend"
-    if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend"
-)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+#EMAIL_BACKEND = (
+#    "django.core.mail.backends.console.EmailBackend"
+#    if DEBUG
+#    else "django.core.mail.backends.smtp.EmailBackend"
+#)
 
 EMAIL_HOST = "mail.sharegy.cloud"
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False   # ❗ wichtig
 
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER ")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = "Sharegy <invite@sharegy.cloud>"
@@ -93,6 +139,7 @@ INSTALLED_APPS = [
     "tenants",
     "content",
     "design",
+    "devices",
     "channels",
     "forecast",
     "accounts",
@@ -266,14 +313,6 @@ CACHES = {
 
 # backend/settings.py (unten ergänzen)
 
-#  DRF Auth
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
-}
-
 
 # Defenition of Logging
 DJANGO_LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
@@ -347,7 +386,7 @@ MQTT_AUTO_PROVISION = os.getenv("MQTT_AUTO_PROVISION", "False") == "True"
 
 # MQTT Flags
 MQTT_INGEST_ENABLED = os.getenv("MQTT_INGEST_ENABLED", "False") == "True"
-MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "eswes-mqtt")
+MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "sharegy-mqtt")
 MQTT_PROFILE = os.getenv("MQTT_PROFILE", "default")
 
 ##################
@@ -367,20 +406,6 @@ DEFAULT_WEATHER_LON = 6.9
 # Interval Abrechnung
 ##################
 BILLING_SLOT_MINUTES = 15
-
-##################
-# CORS App
-##################
-#CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
-
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOW_CREDENTIALS = True
-
-if not DEBUG:
-    CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
-
-CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
-
 
 ##################
 # Sentry Config

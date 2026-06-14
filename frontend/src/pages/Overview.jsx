@@ -2,38 +2,18 @@
 # src/pages/Overview.jsx
 */
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "../api";
-import OverviewLayout from "../components/overview/OverviewLayout";
+import { useUser } from "../hooks/useUser";
+import OverviewUser from "./OverviewUser";
+import OverviewTenant from "./OverviewTenant";
 
 export default function Overview() {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { user } = useUser();
 
-    useEffect(() => {
-        async function load() {
-            try {
-                const res = await apiFetch("/api/dashboard/me/");
+    const hasTenant = user?.memberships?.length > 0;
 
-                if (!res.ok) throw new Error("Dashboard failed");
+    if (hasTenant) {
+        return <OverviewTenant />;
+    }
 
-                const json = await res.json();
-
-                setData(json);
-            } catch (e) {
-                console.error("Overview load failed", e);
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        load();
-    }, []);
-
-    return (
-        <OverviewLayout
-            data={data}
-            loading={loading}
-        />
-    );
+    return <OverviewUser />;
 }

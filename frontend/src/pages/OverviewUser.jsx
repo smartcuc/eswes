@@ -2,104 +2,181 @@
 # src/pages/OverviewUser.jsx
 */
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "../api";
+import { useState, useEffect } from "react";
+import AppLayout from "../components/AppLayout";
+import OverviewLayout from "../components/overview/OverviewLayout";
+import EnergyFlow from "../components/EnergyFlow";
+import Card from "../components/ui/Card";
+
+// ✅ Komponenten
+import DeviceDiscoveryBanner from "../components/DeviceDiscoveryBanner";
+import DeviceSetupModal from "../components/DeviceSetupModal";
+
+// ✅ DEV SWITCH (wichtig!)
+const USE_FAKE = true;
 
 export default function OverviewUser() {
+
+    // ✅ STATE
     const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+
+    // ✅ DATA FETCH
 
     useEffect(() => {
-        async function load() {
-            try {
-                const res = await apiFetch("/api/dashboard/me/");
-                const json = await res.json();
 
-                setData(json);
-            } catch (e) {
-                console.error("Failed to load overview", e);
-            } finally {
-                setLoading(false);
-            }
-        }
+        const url = USE_FAKE
+            ? "/api/energy/fake-dashboard/"
+            : "/api/energy/dashboard/me/";
 
-        load();
+        const load = () => {
+            fetch(url)
+                .then((res) => res.json())
+                .then(setData)
+                .catch(() => setData(null));
+        };
+        load(); // sofort laden
+
+        const interval = setInterval(load, 2000); // alle 2s neu
+
+        return () => clearInterval(interval);
+
     }, []);
 
-    if (loading) {
-        return (
-            <div className="p-6">
-                <p>Lade Daten...</p>
-            </div>
-        );
-    }
 
-    if (!data) {
-        return (
-            <div className="p-6">
-                <h1 className="text-2xl font-bold mb-4">Übersicht</h1>
-                <p>Keine Daten vorhanden.</p>
-            </div>
-        );
-    }
+    // ✅ LOGIK
+    const hasFlow = !!data?.flow;
 
     return (
-        <div className="p-6 space-y-6">
+        <AppLayout>
 
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold">Übersicht</h1>
-                <p className="text-gray-500">
-                    Dein Energieverbrauch auf einen Blick
-                </p>
-            </div>
+            <OverviewLayout>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                <div className="bg-white shadow rounded-lg p-4">
-                    <p className="text-gray-500 text-sm">Verbrauch</p>
-                    <p className="text-xl font-semibold">
-                        {data.consumption_kwh} kWh
+                {/* ✅ HEADER */}
+                <div className="mb-10">
+                    <h1 className="text-2xl font-semibold">
+                        Dashboard
+                    </h1>
+                    <p className="text-gray-500">
+                        Dein persönlicher Energieüberblick
                     </p>
                 </div>
 
-                <div className="bg-white shadow rounded-lg p-4">
-                    <p className="text-gray-500 text-sm">Erzeugung</p>
-                    <p className="text-xl font-semibold">
-                        {data.generation_kwh} kWh
-                    </p>
-                </div>
+                {/* ✅ DEVICE BANNER */}
+                {data && (
+                    <DeviceDiscoveryBanner
+                        devices={data.devices}
+                        onOpen={() => setModalOpen(true)}
+                    />
+                )}
 
-                <div className="bg-white shadow rounded-lg p-4">
-                    <p className="text-gray-500 text-sm">Netzbezug</p>
-                    <p className="text-xl font-semibold">
-                        {data.grid_import_kwh} kWh
-                    </p>
-                </div>
+                {/* ✅ EMPTY STATE (nur initial / loading fallback) */}
+                {!data && (
+                    <>
+                        <Card>
+                            <div className="text-center">
 
-                <div className="bg-white shadow rounded-lg p-4">
-                    <p className="text-gray-500 text-sm">Einspeisung</p>
-                    <p className="text-xl font-semibold">
-                        {data.grid_export_kwh} kWh
-                    </p>
-                </div>
+                                <h2 className="text-lg font-medium mb-2">
+                                    Dashboard bereit
+                                </h2>
 
-            </div>
+                                <p className="text-gray-500 mb-4">
+                                    Aktuell sind noch keine Daten verfügbar.
+                                </p>
 
-            {/* CTA wenn keine Daten */}
-            {data.consumption_kwh === 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                    <p>
-                        Noch keine Daten verfügbar.
-                    </p>
+                                <p className="text-sm text-gray-400">
+                                    Vorschau unten.
+                                </p>
 
-                    <button className="mt-3 bg-indigo-600 text-white px-4 py-2 rounded">
-                        Zähler hinzufügen
-                    </button>
-                </div>
+                            </div>
+                        </Card>
+
+                        {/* PREVIEW */}
+                        <div className="mt-10">
+                            <Card>
+
+                                <h3 className="font-medium mb-2">
+                                    Energiefluss Vorschau
+                                </h3>
+
+                                <EnergyFlow />
+
+                            </Card>
+                        </div>
+                    </>
+                )}
+
+                {/* ✅ DATEN DA, ABER KEIN FLOW */}
+                {data && !hasFlow && (
+                    <Card className="mt-10">
+                        <div className="text-center">
+
+                            <h2 className="text-lg font-medium mb-2">
+                                Noch keine Energiedaten
+                            </h2>
+
+                            <p className="text-gray-500 mb-6">
+                                Starte mit Demo-Daten oder verbinde ein Gerät.
+                            </p>
+
+                            <div className="flex justify-center gap-4">
+
+                                {/* ✅ DEMO BUTTON */}
+                                <button
+                                    onClick={async () => {
+                                        if (USE_FAKE) {
+                                            window.location.reload();
+                                        } else {
+                                            await fetch("/api/energy/demo/start/", {
+                                                method: "POST",
+                                            });
+                                            window.location.reload();
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-indigo-500 text-white rounded"
+                                >
+                                    ✨ Demo starten
+                                </button>
+
+                                <button className="px-4 py-2 bg-yellow-100 rounded">
+                                    🔌 Gerät verbinden
+                                </button>
+
+                            </div>
+
+                        </div>
+                    </Card>
+                )}
+
+                {/* ✅ FLOW ANZEIGE */}
+                {data && hasFlow && (
+                    <div className="mt-10">
+                        <Card>
+
+                            <h3 className="font-medium mb-2">
+                                Dein Energiefluss
+                            </h3>
+
+                            <EnergyFlow data={data} />
+
+                        </Card>
+                    </div>
+                )}
+
+            </OverviewLayout>
+
+            {/* ✅ MODAL */}
+            {modalOpen && data && (
+                <DeviceSetupModal
+                    devices={data.devices?.unconfigured || []}
+                    onClose={() => setModalOpen(false)}
+                    onSaved={() => {
+                        setModalOpen(false);
+                        window.location.reload();
+                    }}
+                />
             )}
 
-        </div>
+        </AppLayout>
     );
 }

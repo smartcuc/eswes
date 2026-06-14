@@ -2,7 +2,6 @@
 # energy/admin.py
 #################
 
-
 from django.contrib import admin
 from .models import (
     Location,
@@ -11,11 +10,8 @@ from .models import (
     EnergyAssetBattery,
     EnergyAssetEV,
     AssetMeter,
-    Device,
     SmartEnergySettings,
 )
-
-from energy.models import DeviceCommand
 
 
 @admin.register(Location)
@@ -92,23 +88,6 @@ class AssetMeterAdmin(admin.ModelAdmin):
     raw_id_fields = ("asset", "meter")
 
 
-@admin.register(Device)
-class DeviceAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "name",
-        "device_type",
-        "controllable",
-        "tenant",
-        "owner_user",
-        "owner_membership",
-        "created_at",
-    )
-    list_filter = ("device_type", "controllable", "tenant")
-    search_fields = ("name",)
-    raw_id_fields = ("tenant", "owner_user", "owner_membership", "location", "asset")
-
-
 @admin.register(SmartEnergySettings)
 class SmartEnergySettingsAdmin(admin.ModelAdmin):
     list_display = (
@@ -124,18 +103,4 @@ class SmartEnergySettingsAdmin(admin.ModelAdmin):
     list_filter = ("optimization_mode", "allow_direct_control")
     raw_id_fields = ("tenant", "owner_user", "owner_membership")
 
-
-@admin.register(DeviceCommand)
-class DeviceCommandAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "device",
-        "command",
-        "status",
-        #       "attempts",
-        "ts_created",
-        "ts_sent",
-        "ts_ack",
-    )
-    list_filter = ("status", "command")
-    search_fields = ("device__name", "command", "dedup_key")
+    

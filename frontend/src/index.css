@@ -1,79 +1,54 @@
+/*
+# index.css
+*/
+
 @import "tailwindcss";
 
 
-@keyframes flow {
-    0% {
-        left: 0%;
+/* ---------------- FLOW LINE ANIMATION ---------------- */
+
+@keyframes flow-line {
+    from {
+        stroke-dashoffset: 0;
     }
 
-    100% {
-        left: 100%;
+    to {
+        stroke-dashoffset: -20;
     }
 }
 
 .animate-flow {
-    animation: flow 2s linear infinite;
+    animation: flow-line 1s linear infinite;
 }
 
-@keyframes move {
-    0% {
+
+/* ---------------- FLOW DOT ANIMATION ---------------- */
+
+@keyframes flow-move {
+    from {
         offset-distance: 0%;
     }
 
-    100% {
+    to {
         offset-distance: 100%;
     }
 }
 
 .flow-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: #f97316;
-    border-radius: 50%;
-    animation: move 2s linear infinite;
+    animation: flow-move 2s linear infinite;
 }
 
 
-/* FLOW LINES */
-.flow-line {
-    stroke: #f97316;
-    stroke-width: 2;
-    fill: none;
-    stroke-opacity: 0.4;
-}
+/* ---------------- GLOW ---------------- */
 
-.flow-line.pink {
-    stroke: #ec4899;
-}
-
-.flow-line.indigo {
-    stroke: #6366f1;
-}
-
-/* FLOW DOTS */
-.flow-dot {
-    fill: #f97316;
-    filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7));
-}
-
-/* GLOW EFFECTS */
-.glow-orange {
-    box-shadow: 0 0 20px rgba(249, 115, 22, 0.6);
-}
-
-.glow-indigo {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
-}
-
-
-/* FLOW GLOW */
 .flow-glow {
     filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7));
 }
 
-/* sanfte Fade Bewegung */
-@keyframes fade {
+
+/* ---------------- NODE SOFT PULSE ---------------- */
+
+@keyframes soft-pulse {
     0% {
         opacity: 0.3;
     }
@@ -88,14 +63,16 @@
 }
 
 .animate-soft {
-    animation: fade 2s infinite ease-in-out;
+    animation: soft-pulse 2s infinite ease-in-out;
 }
 
-/* FADE ANIMATION */
-@keyframes fade {
+
+/* ---------------- LABEL FADE ---------------- */
+
+@keyframes fade-in {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-6px);
     }
 
     to {
@@ -105,5 +82,5 @@
 }
 
 .animate-fade {
-    animation: fade 0.3s ease;
+    animation: fade-in 0.3s ease;
 }

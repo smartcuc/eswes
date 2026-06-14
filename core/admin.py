@@ -13,6 +13,7 @@ from core.models import (
     AggregatedReading,
     BalanceSlot,
     MeterRegister,
+    Tenant,  
 )
 
 
@@ -194,3 +195,13 @@ class BalanceSlotAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+# ============================================================
+# ✅TENANT ANLEGEN
+# ============================================================
+
+@admin.register(Tenant)
+class TenantAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "slug", "is_public")
+    search_fields = ("name", "slug")

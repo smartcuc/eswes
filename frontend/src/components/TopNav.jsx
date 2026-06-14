@@ -37,7 +37,7 @@ export default function TopNav({ user }) {
                 {user?.is_authenticated && (
                     <>
                         <Link
-                            to="/"
+                            to="/app"
                             className="text-gray-600"
                         >
                             Dashboard

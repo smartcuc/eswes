@@ -16,8 +16,14 @@ import Datenschutz from "./pages/Datenschutz";
 export default function AppRoutes() {
     return (
         <Routes>
-
             <Route path="/" element={<LandingPage />} />
+
+            <Route path="/login" element={<Login />} />
+            <Route path="/join" element={<Join />} />
+            <Route path="/magic-login" element={<MagicLogin />} />
+
+            <Route path="/impressum" element={<Impressum />} />
+            <Route path="/datenschutz" element={<Datenschutz />} />
 
             <Route
                 path="/tenant/:tenantSlug/:pageSlug"
@@ -33,12 +39,6 @@ export default function AppRoutes() {
                 path="/tenant/:tenantSlug/energy"
                 element={<EnergyPage />}
             />
-
-            <Route path="/impressum" element={<Impressum />} />
-            <Route path="/datenschutz" element={<Datenschutz />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/join" element={<Join />} />
-            <Route path="/magic-login" element={<MagicLogin />} />
         </Routes>
     );
 }

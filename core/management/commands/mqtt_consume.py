@@ -18,7 +18,7 @@ from django.utils.dateparse import parse_datetime
 from core.models import Meter, IntervalReading
 from core.utils.slots import slot_minutes  # ✅ FIX
 
-from energy.models import Device, DeviceMetric
+from devices.models import Device, DeviceMetric
 
 logger = logging.getLogger("core.mqtt")  # ✅ FIX
 

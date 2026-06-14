@@ -1,8 +1,7 @@
-#
-#
-#
-
+#################################
 # integrations/mqtt_normalizer.py
+#################################
+
 import json
 import re
 from datetime import datetime, timezone as dt_timezone

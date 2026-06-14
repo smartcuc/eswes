@@ -2,28 +2,17 @@
 # src/pages/LandingPage.jsx
 */
 
-import { useState, useEffect } from "react";
-import { useUser } from "./hooks/useUser";
-
+import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import EnergyFlow from "./components/EnergyFlow";
 import Footer from "./components/Footer";
 
-import Impressum from "./pages/Impressum";
-import Datenschutz from "./pages/Datenschutz";
-
-
 export default function LandingPage() {
-
-    const [showImpressum, setShowImpressum] = useState(false);
-    const [showDatenschutz, setShowDatenschutz] = useState(false);
-    const user = useUser();
-
+    const [user] = useState(null);
 
     useEffect(() => {
-        document.title = "Sharegy – Energie gemeinsam nutzen";
+        document.title = "Sharegy – Energie verstehen & teilen";
     }, []);
-
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -32,178 +21,141 @@ export default function LandingPage() {
             <Header user={user} />
 
             {/* HERO */}
-            <section className="bg-gradient-to-r from-orange-400 via-pink-500 to-indigo-600 text-white py-28 text-center px-6">
+            <section className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-28 text-center px-6">
                 <h1 className="text-5xl font-bold mb-6">
-                    Energie gemeinsam nutzen – lokal & transparent
+                    Verstehe deinen Strom. Teile ihn intelligent.
                 </h1>
 
                 <p className="max-w-2xl mx-auto text-lg opacity-90">
-                    Sharegy verbindet Haushalte, visualisiert Energieflüsse
-                    und ermöglicht faires Energy Sharing in deiner Community.
+                    Sharegy zeigt dir, wo deine Energie herkommt, wohin sie geht
+                    – und wie du sie optimal nutzt. Für dich allein oder in deiner Community.
                 </p>
 
                 <div className="mt-8 flex justify-center gap-4 flex-wrap">
-                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition">
-                        Demo ansehen
+                    <button className="bg-black/30 backdrop-blur px-6 py-3 rounded-lg hover:scale-105 transition">
+                        Dashboard ansehen
                     </button>
-
                     <button className="border border-white px-6 py-3 rounded-lg">
-                        Community starten
+                        Kostenlos starten
                     </button>
                 </div>
             </section>
 
-            {/* STATS */}
-            <section className="mt-12 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 px-6">
-                <div className="bg-white p-6 rounded-xl shadow text-center">
-                    <p className="text-2xl font-bold text-orange-500">12 kWh</p>
-                    <p className="text-gray-500 text-sm">heute geteilt</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow text-center">
-                    <p className="text-2xl font-bold text-indigo-500">8</p>
-                    <p className="text-gray-500 text-sm">Haushalte verbunden</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow text-center">
-                    <p className="text-2xl font-bold text-pink-500">92%</p>
-                    <p className="text-gray-500 text-sm">lokal genutzt</p>
-                </div>
-            </section>
-
-            {/* ENERGY FLOW (USP) */}
+            {/* EMS SECTION */}
             <section className="mt-16 px-6 text-center">
-                <h3 className="text-xl font-semibold mb-8 text-indigo-600">
-                    Sieh, wie Energie wirklich fließt
-                </h3>
+                <h2 className="text-2xl font-semibold mb-6 text-indigo-600">
+                    Dein persönliches Energiemanagement
+                </h2>
 
-                <p className="text-gray-500 max-w-xl mx-auto mb-6">
-                    Keine Tabellen. Keine Blackbox.
-                    Sharegy zeigt dir live, wie Strom zwischen Teilnehmern verteilt wird.
+                <p className="text-gray-500 max-w-xl mx-auto mb-10">
+                    Behalte Verbrauch, Produktion und Netzbezug jederzeit im Blick.
+                    Keine Tabellen – echte Transparenz.
                 </p>
 
-                <EnergyFlow
-                    data={{
-                        endpoint: "/api/v1/energy-flow/solar-gmbh/"
-                    }}
-                />
+                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                    <div className="bg-white p-6 rounded-xl shadow">
+                        <p className="text-lg font-medium">⚡ Live-Verbrauch</p>
+                        <p className="text-sm text-gray-500">Was läuft gerade?</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow">
+                        <p className="text-lg font-medium">☀️ Produktion</p>
+                        <p className="text-sm text-gray-500">Was erzeugt deine PV?</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow">
+                        <p className="text-lg font-medium">🏠 Netzbezug</p>
+                        <p className="text-sm text-gray-500">Was kostet dich Energie?</p>
+                    </div>
+                </div>
             </section>
 
-            {/* FEATURES */}
-            <section className="mt-16 px-6">
-                <div className="max-w-6xl mx-auto">
+            {/* ENERGY FLOW */}
+            <section className="mt-20 px-6 text-center">
+                <h3 className="text-xl font-semibold mb-6 text-indigo-600">
+                    Energie sichtbar machen
+                </h3>
 
-                    <h2 className="text-2xl font-semibold text-center mb-10">
-                        Alles für deine Energy Community
+                <p className="text-gray-500 max-w-xl mx-auto mb-8">
+                    Sieh live, wie Strom zwischen deinem Haushalt, deiner Batterie
+                    und dem Netz fließt.
+                </p>
+
+                <EnergyFlow />
+            </section>
+
+            {/* COMMUNITY */}
+            <section className="mt-20 bg-gray-100 py-16 px-6 text-center">
+                <div className="max-w-4xl mx-auto">
+                    <h2 className="text-2xl font-semibold mb-6">
+                        Teile Energie in deiner Community
                     </h2>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <p className="text-gray-600 mb-10">
+                        Verbinde Haushalte, nutze Überschüsse lokal
+                        und reduziere deine Stromkosten.
+                    </p>
 
-                        <div className="bg-white p-6 rounded-xl shadow transition transform hover:-translate-y-1 hover:shadow-lg">
-                            <h3 className="font-medium mb-2 text-indigo-600">
-                                🔋 Energiemanagement
-                            </h3>
-
-                            <p className="text-gray-500 text-sm">
-                                Live-Verbrauch, Produktion und Speicher – alles auf einen Blick.
-                            </p>
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-xl shadow">
+                            🤝 Direkt teilen
                         </div>
-
-                        <div className="bg-white p-6 rounded-xl shadow transition transform hover:-translate-y-1 hover:shadow-lg">
-                            <h3 className="font-medium mb-2 text-orange-500">
-                                🤝 Community Sharing
-                            </h3>
-                            <p className="text-gray-500 text-sm">
-                                Teile Energie direkt innerhalb deiner Nachbarschaft.
-                            </p>
+                        <div className="bg-white p-6 rounded-xl shadow">
+                            💶 Fair abrechnen
                         </div>
-
-                        <div className="bg-white p-6 rounded-xl shadow transition transform hover:-translate-y-1 hover:shadow-lg">
-                            <h3 className="font-medium mb-2 text-emerald-600">
-                                💶 Automatische Abrechnung
-                            </h3>
-                            <p className="text-gray-500 text-sm">
-                                Verbrauch und Kosten werden fair und transparent verteilt.
-                            </p>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-xl shadow transition transform hover:-translate-y-1 hover:shadow-lg">
-                            <h3 className="font-medium mb-2 text-indigo-600">
-                                📊 Messen & Verstehen
-                            </h3>
-                            <p className="text-gray-500 text-sm">
-                                Visualisierung statt Tabellen – verstehe deine Energie sofort.
-                            </p>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow transition transform hover:-translate-y-1 hover:shadow-lg">
-                            <h3 className="font-medium mb-2 text-orange-500">
-                                🌐 Plattform
-                            </h3>
-                            <p className="text-gray-500 text-sm">
-                                Multi-Tenant Architektur für beliebige Communities.
-                            </p>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow transition transform hover:-translate-y-1 hover:shadow-lg">
-                            <h3 className="font-medium mb-2 text-emerald-600">
-                                ⚡ Tarife & Netz
-                            </h3>
-                            <p className="text-gray-500 text-sm">
-                                Integration von Stromtarifen und Netzbezug.
-                            </p>
+                        <div className="bg-white p-6 rounded-xl shadow">
+                            ⚡ Lokale Optimierung
                         </div>
                     </div>
-                </div >
-            </section >
-
-            {/* HOW IT WORKS */}
-            <section className="mt-16 bg-gray-100 py-16 px-6" >
-                <div className="max-w-4xl mx-auto text-center">
-
-                    <h3 className="text-xl font-semibold mb-8">
-                        So funktioniert Energy Sharing
-                    </h3>
-
-                    <div className="space-y-3 text-gray-700 text-left max-w-xl mx-auto">
-                        <p>1. Energie wird lokal erzeugt oder verbraucht</p>
-                        <p>2. Sharegy verteilt Strom automatisch innerhalb der Community</p>
-                        <p>3. Überschüsse werden gespeichert oder ins Netz eingespeist</p>
-                        <p>4. Kosten und Erträge werden transparent verrechnet</p>
-                    </div>
-
                 </div>
-            </section >
+            </section>
 
-            {/* CTA */}
-            <section className="mt-20 bg-black text-white py-20 text-center px-6" >
-                <h3 className="text-2xl font-semibold mb-4">
-                    Starte deine Energy Community
+            {/* TRUST / VALUE */}
+            <section className="mt-20 px-6 text-center">
+                <h3 className="text-xl font-semibold mb-6">
+                    Warum Sharegy?
                 </h3>
 
-                <p className="text-gray-300 mb-6">
-                    Einfach. Transparent. Lokal.
+                <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
+                    <div>
+                        <h4 className="font-medium">Transparenz</h4>
+                        <p className="text-sm text-gray-500">
+                            Keine Blackbox. Du siehst jede Bewegung deiner Energie.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 className="font-medium">Automatisierung</h4>
+                        <p className="text-sm text-gray-500">
+                            Optimierung ohne Aufwand – Sharegy regelt das für dich.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 className="font-medium">Kosteneffizienz</h4>
+                        <p className="text-sm text-gray-500">
+                            Nutze mehr deiner eigenen Energie und spare Geld.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA */}
+            <section className="mt-24 bg-black text-white py-20 text-center px-6">
+                <h3 className="text-3xl font-semibold mb-4">
+                    Starte dein Energy Dashboard
+                </h3>
+
+                <p className="text-gray-400 mb-8">
+                    In 2 Minuten eingerichtet. Kein Risiko.
                 </p>
-                <button className="bg-orange-500 hover:bg-orange-600 transition transform hover:scale-105 text-white px-8 py-4 rounded-lg unded-lg text-lg font-medium">
-                    Jetzt starten
+
+                <button className="bg-orange-500 hover:bg-orange-600 transition transform hover:scale-105 px-8 py-4 rounded-lg text-lg font-medium">
+                    Jetzt kostenlos starten
                 </button>
-            </section >
+            </section>
 
-            <Footer
-                onOpenImpressum={() => setShowImpressum(true)}
-                onOpenDatenschutz={() => setShowDatenschutz(true)}
-            />
-            {
-                showImpressum && (
-                    <Impressum onClose={() => setShowImpressum(false)} />
-                )
-            }
-
-            {
-                showDatenschutz && (
-                    <Datenschutz onClose={() => setShowDatenschutz(false)} />
-                )
-            }
-
-        </div >
+            <Footer />
+        </div>
     );
 }
-

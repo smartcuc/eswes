@@ -3,15 +3,14 @@
 */
 
 export function apiFetch(url, options = {}) {
-    const token = localStorage.getItem("access");
-
     return fetch(url, {
         method: options.method || "GET",
         headers: {
             "Content-Type": "application/json",
             ...(options.headers || {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: options.body,
+
+        credentials: "include", // 💥 DAS IST DER KEY FIX
     });
 }

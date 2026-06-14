@@ -6,6 +6,8 @@ import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 
 class User(AbstractUser):
@@ -212,4 +214,24 @@ class MagicLoginToken(models.Model):
     token = models.UUIDField(default=uuid.uuid4, unique=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-    is_used = models.BooleanField(default=False) 
+    is_used = models.BooleanField(default=False)
+
+    # ✅ NEU: remember me
+    remember = models.BooleanField(default=False)
+
+    # ✅ NEU: Ablaufzeit
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        return self.expires_at < timezone.now()
+
+    def save(self, *args, **kwargs):
+        # ✅ automatisch Ablauf setzen (z. B. 10 Minuten)
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(minutes=10)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"MagicLink {self.user.email}"
+    

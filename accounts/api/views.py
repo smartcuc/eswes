@@ -4,7 +4,7 @@
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login, logout
 from django.core.mail import send_mail
 from django.utils import timezone
 from datetime import timedelta
@@ -12,11 +12,12 @@ from datetime import timedelta
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from core.models import Tenant
 from accounts.serializers import UserMeSerializer
-from accounts.serializers import TokenByEmailSerializer
 from accounts.models import MagicLoginToken
 from accounts.models import (
     UserSettings,
@@ -27,15 +28,19 @@ from accounts.models import (
 
 User = get_user_model()
 
+
+# ---------------- USER SETTINGS ---------------- #
+
+@method_decorator(csrf_exempt, name='dispatch')
 class UserSettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        settings, _ = UserSettings.objects.get_or_create(user=request.user)
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
 
         return Response({
-            "onboarding_step": settings.onboarding_step,
-            "usage_mode": settings.usage_mode,
+            "onboarding_step": settings_obj.onboarding_step,
+            "usage_mode": settings_obj.usage_mode,
         })
 
 
@@ -45,9 +50,9 @@ class UpdateOnboardingStepView(APIView):
     def post(self, request):
         step = request.data.get("step")
 
-        settings, _ = UserSettings.objects.get_or_create(user=request.user)
-        settings.onboarding_step = step
-        settings.save()
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+        settings_obj.onboarding_step = step
+        settings_obj.save()
 
         return Response({"status": "ok"})
 
@@ -84,12 +89,12 @@ class UserUsageModeView(APIView):
         if mode not in ["standalone", "tenant", "hybrid"]:
             return Response({"error": "invalid usage_mode"}, status=400)
 
-        settings, _ = UserSettings.objects.get_or_create(user=request.user)
-        settings.usage_mode = mode
-        settings.save()
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+        settings_obj.usage_mode = mode
+        settings_obj.save()
 
         return Response({"status": "saved"})
-    
+
 
 class UserLanguageView(APIView):
     permission_classes = [IsAuthenticated]
@@ -100,12 +105,14 @@ class UserLanguageView(APIView):
         if lang not in ["de", "en"]:
             return Response({"error": "invalid language"}, status=400)
 
-        settings = request.user.settings
-        settings.language = lang
-        settings.save()
+        settings_obj = request.user.settings
+        settings_obj.language = lang
+        settings_obj.save()
 
         return Response({"status": "saved"})
-    
+
+
+# ---------------- TENANT / INVITES ---------------- #
 
 class UseInviteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -136,7 +143,7 @@ class UseInviteView(APIView):
             "tenant": invite.tenant.name,
             "role": membership.role
         })
-    
+
 
 class CreateInviteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -168,7 +175,7 @@ class CreateInviteView(APIView):
             "token": str(invite.token)
         })
 
-   
+
 class MyTenantView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -209,7 +216,7 @@ class MyTenantView(APIView):
                 for i in invites
             ]
         })
-    
+
 
 class UpdateMemberRoleView(APIView):
     permission_classes = [IsAuthenticated]
@@ -242,8 +249,8 @@ class UpdateMemberRoleView(APIView):
         membership.save()
 
         return Response({"status": "updated"})
-    
-    
+
+
 class RemoveMemberView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -271,7 +278,7 @@ class RemoveMemberView(APIView):
         membership.save()
 
         return Response({"status": "removed"})
-    
+
 
 class DeactivateInviteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -297,27 +304,41 @@ class DeactivateInviteView(APIView):
         return Response({"status": "deactivated"})
 
 
+# ---------------- MAGIC LINK LOGIN ---------------- #
+
 class RequestMagicLinkView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         email = request.data.get("email")
+        remember = request.data.get("remember", False)
 
         if not email:
             return Response({"error": "email required"}, status=400)
 
-        user, _ = User.objects.get_or_create(email=email)
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "username": email
+            }
+        )
 
-        # ✅ Rate limit (optional aber gut)
+        if not user.username:
+            user.username = email
+            user.save()
+
+        # Rate limit
         last_token = MagicLoginToken.objects.filter(user=user).order_by("-created_at").first()
 
         if last_token and last_token.created_at > timezone.now() - timedelta(seconds=60):
             return Response({"error": "too many requests"}, status=429)
 
-        # ✅ alte Tokens löschen (optional aber sauber)
         MagicLoginToken.objects.filter(user=user, is_used=False).delete()
 
-        token = MagicLoginToken.objects.create(user=user)
+        token = MagicLoginToken.objects.create(
+            user=user,
+            remember=remember
+        )
 
         link = f"{settings.FRONTEND_URL}/magic-login?token={token.token}"
 
@@ -346,46 +367,51 @@ class MagicLoginView(APIView):
             is_used=False
         )
 
-        # ✅ Ablauf prüfen (falls du TTL eingebaut hast)
         if hasattr(magic, "is_expired") and magic.is_expired():
             return Response({"error": "link expired"}, status=400)
 
-        # ✅ Token invalidieren
         magic.is_used = True
         magic.save()
 
         user = magic.user
 
-        refresh = RefreshToken.for_user(user)
+        # ✅ SESSION LOGIN
+        login(request, user)
 
-        return Response({
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        })
-    
-    
+        # ✅ SESSION DAUER
+        if getattr(magic, "remember", False):
+            request.session.set_expiry(60 * 60 * 24 * 30)  # 30 Tage
+        else:
+            request.session.set_expiry(60 * 60 * 24)  # 1 Tag
+
+        return Response({"status": "logged_in"})
+
+
+# ---------------- AUTH ---------------- #
+
+@method_decorator(csrf_exempt, name='dispatch')
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        
+        print("AUTH CLASS:", type(request._authenticator))
+        print("USER:", request.user)
+
         serializer = UserMeSerializer(request.user)
         return Response(serializer.data)
 
 
-class TokenByEmailView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = TokenByEmailSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # ✅ optional: kein user object zurückgeben (API clean halten)
-        return Response(serializer.validated_data)
-
-
+@method_decorator(csrf_exempt, name='dispatch')
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # ✅ später: refresh token blacklisten (optional)
-        return Response({"status": "ok"})
+        from django.contrib.auth import logout
+
+        logout(request)
+        request.session.flush()   # 💥 extra safe
+        return Response({"status": "logged_out"})
+    
+
+
