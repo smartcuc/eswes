@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { defaultTheme } from "./theme/themes";
 
+import { UserProvider } from "./context/UserContext";
+import { SettingsProvider } from "./context/SettingsContext";
 import AppRoutes from "./AppRoutes";   // ✅ PUBLIC
 import PrivateApp from "./PrivateApp"; // ✅ PRIVATE
 import AdminApp from "./AdminApp";     // ✅ ADMIN
@@ -16,22 +18,26 @@ export default function App() {
 
   return (
     <ThemeProvider theme={defaultTheme}>
-      <BrowserRouter>
+      <UserProvider>   {/* 🔥 HIER */}
+        <SettingsProvider>
+          <BrowserRouter>
 
-        <Routes>
+            <Routes>
 
-          {/* 🔓 PUBLIC */}
-          <Route path="/*" element={<AppRoutes />} />
+              {/* 🔓 PUBLIC */}
+              <Route path="/*" element={<AppRoutes />} />
 
-          {/* 🔒 PRIVATE */}
-          <Route path="/app/*" element={<PrivateApp />} />
+              {/* 🔒 PRIVATE */}
+              <Route path="/app/*" element={<PrivateApp />} />
 
-          {/* 🔐 ADMIN */}
-          <Route path="/admin/*" element={<AdminApp />} />
+              {/* 🔐 ADMIN */}
+              <Route path="/admin/*" element={<AdminApp />} />
 
-        </Routes>
+            </Routes>
 
-      </BrowserRouter>
+          </BrowserRouter>
+        </SettingsProvider>
+      </UserProvider>
     </ThemeProvider>
   );
 }

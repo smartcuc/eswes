@@ -29,6 +29,7 @@ BACKEND_URL = os.getenv("BACKEND_URL")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
+
 if os.path.exists("/var/www/sharegy/shared/.env"):
     load_dotenv("/var/www/sharegy/shared/.env")  # ✅ Server
 else:

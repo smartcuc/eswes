@@ -87,20 +87,17 @@ class UserSettings(models.Model):
         max_length=20, choices=USAGE_MODE, default="standalone"
     )
 
-     # --- Onboarding ---
+    # --- Onboarding ---
     ONBOARDING_STEPS = [
         ("welcome", "Welcome"),
-        ("profile", "Profil"),
-        ("meter", "Meter"),
-        ("energy", "Energy"),
-        ("billing", "Billing"),
+        ("setup", "Setup"),
         ("done", "Done"),
     ]
 
     onboarding_step = models.CharField(
         max_length=20,
         choices=ONBOARDING_STEPS,
-        default="welcome"
+        default="welcome",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

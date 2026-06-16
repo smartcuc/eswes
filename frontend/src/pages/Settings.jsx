@@ -9,19 +9,24 @@ import Button from "../components/ui/Button";
 import { useUser } from "../hooks/useUser";
 
 export default function Settings() {
-    const { user, refreshUser } = useUser();
 
     async function changeLanguage(lang) {
+        const { user, setUser } = useUser();
+
         await fetch("/api/user-language/", {
             method: "POST",
+            credentials: "include",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("access")}`,
             },
             body: JSON.stringify({ language: lang }),
         });
 
-        refreshUser();
+        // ✅ sofort UI update (kein fetch nötig)
+        setUser(prev => ({
+            ...prev,
+            language: lang
+        }));
     }
 
     return (

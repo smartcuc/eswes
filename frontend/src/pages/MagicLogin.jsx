@@ -1,6 +1,7 @@
 /*
 # src/pages/MagicLogin.jsx
 */
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { trackEvent } from "../lib/track";
@@ -19,7 +20,7 @@ export default function MagicLogin() {
 
         async function run() {
             try {
-                // ✅ TRACK: login attempt
+                // ✅ TRACK
                 trackEvent("magic_login_attempt");
 
                 // ✅ STEP 1 — Login
@@ -31,43 +32,28 @@ export default function MagicLogin() {
                     throw new Error("Login failed");
                 }
 
-                // ✅ STEP 2 — Session wait (race-safe)
-                let meRes = await fetch("/api/auth/me/", {
-                    credentials: "include",
-                });
+                // ✅ STEP 2 — Session sicherstellen
+                let meRes;
 
-                if (!meRes.ok) {
-                    await new Promise((r) => setTimeout(r, 150));
-
+                for (let i = 0; i < 5; i++) {
                     meRes = await fetch("/api/auth/me/", {
                         credentials: "include",
                     });
 
-                    if (!meRes.ok) {
-                        throw new Error("Session not ready");
-                    }
+                    if (meRes.ok) break;
+
+                    await new Promise(r => setTimeout(r, 200));
                 }
 
-                // ✅ STEP 3 — Settings
-                const settingsRes = await fetch("/api/settings/", {
-                    credentials: "include",
-                });
-
-                if (!settingsRes.ok) {
-                    throw new Error("Settings fetch failed");
+                if (!meRes || !meRes.ok) {
+                    throw new Error("Session not ready");
                 }
-
-                const settings = await settingsRes.json();
 
                 // ✅ TRACK: success
                 trackEvent("magic_login_success");
 
-                // ✅ STEP 4 — Routing
-                if (settings.onboarding_step !== "done") {
-                    navigate("/app", { replace: true });
-                } else {
-                    navigate("/app/dashboard", { replace: true });
-                }
+                // ✅ STEP 3 — Routing (einfach!)
+                navigate("/app/dashboard", { replace: true });
 
             } catch (err) {
                 console.error("MagicLogin error:", err);

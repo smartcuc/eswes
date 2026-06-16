@@ -54,14 +54,24 @@ class UpdateOnboardingStepView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        step = request.data.get("step")
+        step = request.data.get("onboarding_step")
 
+        # ✅ Sicherheit: Wert MUSS vorhanden und gültig sein
+        if step not in ["welcome", "setup", "done"]:
+            return Response(
+                {"error": "invalid onboarding_step"},
+                status=400,
+            )
+
+        # ✅ Settings holen oder erzeugen
         settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+
+        # ✅ Step setzen
         settings_obj.onboarding_step = step
         settings_obj.save()
 
         return Response({"status": "ok"})
-
+    
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]

@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from "react";
 
 export function useUser() {
 
-    // ✅ Cache beim Start nutzen (Instant UI!)
+    // ✅ Cache für instant UI
     const cachedUser = sessionStorage.getItem("user");
 
     const [user, setUser] = useState(
@@ -14,8 +14,6 @@ export function useUser() {
     );
 
     const [loading, setLoading] = useState(!cachedUser);
-
-    // ✅ OPTIONAL 4: Sync Status
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const hasLoadedRef = useRef(false);
@@ -23,6 +21,7 @@ export function useUser() {
 
     async function loadUser() {
 
+        // ✅ verhindert doppelte calls
         if (hasLoadedRef.current) return;
         hasLoadedRef.current = true;
 
@@ -30,13 +29,12 @@ export function useUser() {
 
         try {
 
-            const [settingsRes, userRes] = await Promise.all([
-                fetch("/api/settings/", { credentials: "include" }),
-                fetch("/api/auth/me/", { credentials: "include" }),
-            ]);
+            const res = await fetch("/api/auth/me/", {
+                credentials: "include",
+            });
 
-            // ✅ NICHT eingeloggt
-            if (userRes.status === 401 || userRes.status === 403) {
+            // ✅ nicht eingeloggt
+            if (res.status === 401 || res.status === 403) {
                 console.warn("No active session");
 
                 setUser(null);
@@ -44,52 +42,27 @@ export function useUser() {
                 return;
             }
 
-            if (!settingsRes.ok || !userRes.ok) {
+            if (!res.ok) {
                 throw new Error("User load failed");
             }
 
-            const settings = await settingsRes.json();
-            const userData = await userRes.json();
+            const userData = await res.json();
 
             const newUser = {
                 ...userData,
-                onboarding_step: settings.onboarding_step,
-                usage_mode: settings.usage_mode,
                 memberships: userData.memberships || [],
                 is_authenticated: true,
             };
 
-            // ✅ Cache + State setzen
+            // ✅ state + cache
             setUser(newUser);
             sessionStorage.setItem("user", JSON.stringify(newUser));
 
             hasRetriedRef.current = false;
 
-            // ✅ 🔥 Background Sync (nach kurzer Zeit)
-            setTimeout(() => {
-                fetch("/api/settings/", { credentials: "include" })
-                    .then(res => res.ok ? res.json() : null)
-                    .then(settings => {
-                        if (!settings) return;
-
-                        setUser(prev => {
-                            if (!prev) return prev;
-
-                            const updated = {
-                                ...prev,
-                                onboarding_step: settings.onboarding_step,
-                                usage_mode: settings.usage_mode,
-                            };
-
-                            sessionStorage.setItem("user", JSON.stringify(updated));
-                            return updated;
-                        });
-                    })
-                    .catch(() => { });
-            }, 2000);
-
         } catch (err) {
 
+            // ✅ retry nur 1x
             if (!hasRetriedRef.current) {
                 console.warn("Retrying user load...", err);
 
@@ -98,7 +71,7 @@ export function useUser() {
 
                 setTimeout(() => {
                     loadUser();
-                }, 150);
+                }, 200);
 
                 return;
             }
@@ -114,28 +87,26 @@ export function useUser() {
         }
     }
 
-    // ✅ Initial Load
+    // ✅ initial load
     useEffect(() => {
         loadUser();
     }, []);
 
-    // ✅ 🔥 Auto Sync alle 30s
+    // ✅ alle 30s refresh (leichtgewichtig jetzt!)
     useEffect(() => {
-
         const interval = setInterval(() => {
             hasLoadedRef.current = false;
             loadUser();
         }, 30000);
 
         return () => clearInterval(interval);
-
     }, []);
 
     return {
         user,
         loading,
         isRefreshing,
-
+        setUser,
         refreshUser: () => {
             hasLoadedRef.current = false;
             hasRetriedRef.current = false;

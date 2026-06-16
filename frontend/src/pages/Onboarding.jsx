@@ -3,39 +3,54 @@
 */
 
 import { useEffect, useState } from "react";
+import { useSettings } from "../context/SettingsContext";
+import { useUser } from "../hooks/useUser";
 
-export default function Onboarding({ refreshUser, user }) {
+export default function Onboarding() {
+
+    const { settings, setSettings } = useSettings();
+    const { refreshUser } = useUser();
+
     const [started, setStarted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // ✅ Step aus Backend berücksichtigen
+    // ✅ STEP aus Settings bestimmen (Single Source of Truth)
     useEffect(() => {
-        if (user?.onboarding_step === "setup") {
+        if (settings?.onboarding_step === "setup") {
             setStarted(true);
         }
-    }, [user]);
+    }, [settings]);
 
     async function updateStep(nextStep) {
         setLoading(true);
         setError("");
 
         try {
-            const res = await fetch("/api/settings/update/", {
+            const res = await fetch("/api/onboarding-step/", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                credentials: "include", // ✅ CRITICAL
+                credentials: "include",
                 body: JSON.stringify({
                     onboarding_step: nextStep,
                 }),
             });
 
             if (!res.ok) {
+                const text = await res.text();
+                console.error("Onboarding API error:", res.status, text);
                 throw new Error("Update failed");
             }
 
+            // ✅ Optimistic UI update (kein extra fetch nötig)
+            setSettings(prev => ({
+                ...prev,
+                onboarding_step: nextStep
+            }));
+
+            // ✅ fertig → User neu laden (Routing entscheidet dann)
             if (nextStep === "done") {
                 await refreshUser();
             } else {
@@ -94,7 +109,6 @@ export default function Onboarding({ refreshUser, user }) {
 
                         <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 mb-6 text-center">
                             💡 Tipp: Du kannst jederzeit später eine Community erstellen
-                            oder dich mit anderen Nutzern vernetzen.
                         </div>
 
                         <button
@@ -114,7 +128,6 @@ export default function Onboarding({ refreshUser, user }) {
                 )}
 
             </div>
-
         </div>
     );
 }
