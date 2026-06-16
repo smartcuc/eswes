@@ -14,13 +14,6 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
 
-# ✅ ENV laden
-#load_dotenv(BASE_DIR / ".env")
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-# ✅ ENV laden
-load_dotenv(BASE_DIR / "backend" / ".env")
-
 # =============================
 # Core Settings
 # =============================
@@ -29,10 +22,19 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+BACKEND_URL = os.getenv("BACKEND_URL")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+if os.path.exists("/var/www/sharegy/shared/.env"):
+    load_dotenv("/var/www/sharegy/shared/.env")  # ✅ Server
+else:
+    load_dotenv(BASE_DIR / ".env")  # ✅ Lokal
+
+
 
 # =============================
 # Session / Security
@@ -56,15 +58,9 @@ CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False") == "True"
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173"
-).split(",")
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:5173"
-).split(",")
+CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
 
 
 # =============================
@@ -104,7 +100,7 @@ else:
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
-EMAIL_HOST = os.getenv("EMAIL_HOST", "mail.sharegy.cloud")
+EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))
 EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False
@@ -231,10 +227,10 @@ USE_TZ = True
 # =============================
 
 STATIC_URL = "/static/"
-STATIC_ROOT = os.getenv("STATIC_ROOT", "/var/www/eswes/static/")
+STATIC_ROOT = os.getenv("STATIC_ROOT")
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/var/www/eswes/media/")
+MEDIA_ROOT = os.getenv("MEDIA_ROOT")
 
 
 # =============================

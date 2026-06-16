@@ -28,10 +28,6 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CORS_ALLOW_CREDENTIALS = True
 
 
-BACKEND_BASE_URL = "http://localhost:8000"
-FRONTEND_BASE_URL = "http://localhost:5173"
-
-
 DEBUG = True
 
 TRACKING_ENABLED = not DEBUG

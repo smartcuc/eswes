@@ -341,7 +341,7 @@ class RequestMagicLinkView(APIView):
         )
 
         # ✅ BEST PRACTICE: LINK IMMER BACKEND
-        link = f"{settings.BACKEND_BASE_URL}/t/{token.token}"
+        link = f"{settings.FRONTEND_URL}/t/{token.token}"
 
         send_magic_link_email(user, link, token.token)
 
