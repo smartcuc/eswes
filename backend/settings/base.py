@@ -15,10 +15,11 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 
 # ✅ ENV laden
-load_dotenv()
+#load_dotenv(BASE_DIR / ".env")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+# ✅ ENV laden
+load_dotenv(BASE_DIR / "backend" / ".env")
 
 # =============================
 # Core Settings
@@ -31,7 +32,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5173")
 
 # =============================
 # Session / Security
@@ -128,17 +129,18 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "django_celery_beat",
-    "rest_framework",
+    "rest_framework",  # ✅ hinzufügen
+    "rest_framework_simplejwt",
     "corsheaders",
-
     "core",
-    "integrations",
+    "integrations",  # ✅ DAS IST WICHTIG
     "tenants",
     "content",
     "design",
     "devices",
+    "channels",
+    "forecast",
     "accounts",
     "billing",
     "market",
@@ -253,12 +255,48 @@ CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 270
 
 CELERY_BEAT_SCHEDULE = {
+    # Balance regelmäßig nachziehen
     "compute-balance": {
         "task": "billing.tasks.compute_balance_last_24h",
         "schedule": 300.0,
     },
-}
 
+    "allocate-user-balance": {
+        "task": "billing.tasks.allocate_user_balance_last_24h",
+        "schedule": 60.0,
+    },
+
+    # ✅ DB Aggregation triggern
+    "rollup-15min": {
+        "task": "core.tasks.rollup_15min",
+        "schedule": 60.0,
+    },
+
+    # ✅ Balance berechnen (dirty slots)
+    "process-dirty-balance": {
+        "task": "core.tasks.process_dirty_balance",
+        "schedule": 60.0,
+    },
+
+    # ✅ Tibber Daten holen
+    "tibber-sync": {
+        "task": "integrations.tasks.sync_tibber",
+        "schedule": 1800.0,
+    },
+
+    # ✅ Strompreise (separat ok)
+    "fetch-spot-prices-daily": {
+        "task": "market.tasks.fetch_spot_prices_retry",
+        "schedule": crontab(hour=13, minute=1),
+    },
+    
+    # ✅ MagicLogin CleanUp
+    "cleanup_tokens": {
+            "task": "accounts.tasks.cleanup_tokens",
+            "schedule": crontab(hour=3, minute=0),
+        },
+
+}
 
 # =============================
 # Redis / Cache / Channels

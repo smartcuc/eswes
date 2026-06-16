@@ -9,7 +9,6 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 
-
 class User(AbstractUser):
     """
     Identity Layer (global).
@@ -210,28 +209,42 @@ class AuditLog(models.Model):
     
 
 class MagicLoginToken(models.Model):
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    token = models.UUIDField(default=uuid.uuid4, unique=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
     is_used = models.BooleanField(default=False)
 
-    # ✅ NEU: remember me
+    # ✅ NEU (TRACKING)
+    opened_at = models.DateTimeField(null=True, blank=True)
+    last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+
     remember = models.BooleanField(default=False)
 
-    # ✅ NEU: Ablaufzeit
-    expires_at = models.DateTimeField()
+    # Tracking
+    clicked_at = models.DateTimeField(null=True, blank=True)
 
     def is_expired(self):
-        return self.expires_at < timezone.now()
-
-    def save(self, *args, **kwargs):
-        # ✅ automatisch Ablauf setzen (z. B. 10 Minuten)
-        if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=10)
-
-        super().save(*args, **kwargs)
+        return self.created_at < timezone.now() - timedelta(minutes=15)
 
     def __str__(self):
-        return f"MagicLink {self.user.email}"
-    
+        return f"{self.user} - {self.token}"
+
+
+class EventLog(models.Model):
+    user = models.ForeignKey(
+        "accounts.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    event = models.CharField(max_length=100)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.event} ({self.created_at})"

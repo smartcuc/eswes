@@ -2,18 +2,28 @@
 # src/components/ui/KPI.jsx
 */
 
-export default function KPI({ label, value }) {
+import Card from "./Card";
+
+export default function KPI({ label, value, unit = "", icon }) {
     return (
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 transition hover:shadow-md">
+        <Card className="flex items-center gap-4">
 
-            <p className="text-sm text-gray-500 mb-1">
-                {label}
-            </p>
+            {icon && (
+                <div className="text-xl">
+                    {icon}
+                </div>
+            )}
 
-            <p className="text-2xl font-bold">
-                {value ?? 0} kWh
-            </p>
+            <div>
+                <p className="text-sm text-gray-500">
+                    {label}
+                </p>
 
-        </div>
+                <p className="text-xl font-semibold">
+                    {value ?? 0} {unit}
+                </p>
+            </div>
+
+        </Card>
     );
 }

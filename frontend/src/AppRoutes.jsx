@@ -21,6 +21,7 @@ export default function AppRoutes() {
             <Route path="/login" element={<Login />} />
             <Route path="/join" element={<Join />} />
             <Route path="/magic-login" element={<MagicLogin />} />
+            <Route path="/auth/magic/:token" element={<MagicLogin />} />
 
             <Route path="/impressum" element={<Impressum />} />
             <Route path="/datenschutz" element={<Datenschutz />} />

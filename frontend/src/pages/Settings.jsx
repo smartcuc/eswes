@@ -3,7 +3,7 @@
 */
 
 import AppLayout from "../components/AppLayout";
-import OverviewLayout from "../components/overview/OverviewLayout";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { useUser } from "../hooks/useUser";
@@ -26,7 +26,7 @@ export default function Settings() {
 
     return (
         <AppLayout>
-            <OverviewLayout>
+            <DashboardLayout>
 
                 {/* HEADER */}
                 <div className="mb-10">
@@ -84,7 +84,7 @@ export default function Settings() {
                     </Card>
                 </div>
 
-            </OverviewLayout>
+            </DashboardLayout>
         </AppLayout>
     );
 }

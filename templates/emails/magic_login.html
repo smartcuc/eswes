@@ -1,0 +1,70 @@
+{% extends "emails/base.html" %}
+
+ color:#111;">{% block content %}
+  Willkommen zurück 👋
+</h2>
+
+<p style="color:#444; line-height:1.5;">
+  Hier ist dein persönlicher Login-Link für <strong>Sharegy</strong>.
+</p>
+
+<p style="color:#444; line-height:1.5;">
+  Öffne ihn einfach, um dich sicher einzuloggen:
+</p>
+
+<!-- ✅ CTA BUTTON (email-safe table) -->
+<table align="center" role="presentation" cellspacing="0" cellpadding="0" style="margin:30px auto;">
+  <tr>
+    <td align="center">
+      <a href="{{ magic_link }}"
+         style="
+          display:inline-block;
+          padding:14px 24px;
+          border-radius:10px;
+          text-decoration:none;
+          font-weight:600;
+          color:#ffffff;
+          background: linear-gradient(90deg,#6366f1,#9333ea);
+          box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+         ">
+        🔐 Sicher einloggen
+      </a>
+    </td>
+  </tr>
+</table>
+
+<!-- ✅ URL sichtbar (TRUST BOOST!) -->
+<p style="font-size:0.85em; color:#888; word-break:break-all; text-align:center;">
+  {{ magic_link }}
+</p>
+
+<!-- ✅ FALLBACK -->
+<p style="font-size:0.9em;color:#666; margin-top:20px;">
+  Falls der Button nicht funktioniert, kannst du den Link oben direkt öffnen.
+</p>
+
+<!-- ✅ SECURITY -->
+<p style="font-size:0.9em;color:#888;margin-top:20px;">
+  ⏳ Dieser Login-Link ist nur <strong>15 Minuten</strong> gültig  
+  und kann nur einmal verwendet werden.
+</p>
+
+<p style="font-size:0.9em;color:#888;">
+  🔒 Falls du diese Anfrage nicht gestartet hast, kannst du diese E-Mail ignorieren.
+</p>
+
+<!-- ✅ BRAND FOOTER -->
+<p style="font-size:0.8em;color:#bbb;margin-top:28px;">
+  Sharegy · Energie verstehen & teilen
+</p>
+
+<!-- ✅ TRACKING PIXEL -->
+<img src="{{ tracking_base_url }}/email/open/{{ token }}"
+     width="1"
+     height="1"
+     style="display:none;" />
+
+{% endblock %}
+
+
+

@@ -2,11 +2,10 @@
 # src/components/ui/Button.jsx
 */
 
-import { useTheme } from "../../theme/ThemeContext";
+import { useTheme, defaultTheme } from "../../theme/ThemeContext";
 
 export default function Button({ children, onClick, variant = "primary" }) {
-    const theme = useTheme();
-
+    const theme = useTheme() || defaultTheme; // ✅ FIX
     const variants = {
         primary: "text-white",
         secondary: "border text-gray-700",

@@ -36,18 +36,35 @@ export const defaultTheme = {
 
 
 // ✅ PROVIDER
-export function ThemeProvider({ theme, children }) {
+export function ThemeProvider({ theme = {}, children }) {
     return (
-        <ThemeContext.Provider value={theme || defaultTheme}>
+        <ThemeContext.Provider value={theme}>
             {children}
         </ThemeContext.Provider>
     );
 }
 
-// ✅ HOOK
 
+// ✅ HOOK
 export function useTheme() {
     const context = useContext(ThemeContext);
-    return context || defaultTheme;   // ✅ FALLBACK
+
+    // ✅ SAFE MERGE (entscheidend!)
+    return {
+        ...defaultTheme,
+        ...context,
+        colors: {
+            ...defaultTheme.colors,
+            ...context?.colors,
+        },
+        radius: {
+            ...defaultTheme.radius,
+            ...context?.radius,
+        },
+        spacing: {
+            ...defaultTheme.spacing,
+            ...context?.spacing,
+        },
+    };
 }
 

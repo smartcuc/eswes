@@ -38,6 +38,7 @@ from core.api.viewsets import (
 
 from .views import api_test, trigger_task
 from billing.api.views import consumption_view
+from accounts.api.views import track_magic_click, track_open, track_email_open
 
 router = DefaultRouter()
 router.register(r"meters", MeterViewSet, basename="meter")
@@ -56,16 +57,24 @@ urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
 
-    # ✅ AUTH
-    path("api/", include("accounts.api.urls")),
+    # ✅ GLOBAL TRACKING ROUTES
+    path("t/<uuid:token>/", track_magic_click),
+    path("email/open/<uuid:token>/", track_open),
+    path("email/open/<uuid:token>/", track_email_open),
 
-    # ✅ Domain APIs
-    path("api/forecast/", include("forecast.urls")),
-    path("api/public/", include("forecast.urls_public")),
-    path("api/energy/", include("energy.api.urls")),  # ✅ NEU
+    # ✅ API zentrales include
+    path("api/", include([
+        path("", include("accounts.api.urls")),
+        path("", include("integrations.urls")),
+        path("", include("content.urls_public")),
+        path("energy/", include("energy.api.urls")),
+        path("forecast/", include("forecast.urls")),
+        path("api/public/", include("forecast.urls_public")),
+    ])),
   
     # ✅ Generic / legacy
     path("api/", include("integrations.urls")),
+    path("api/", include("accounts.api.urls")),
     path("api/", include("content.urls_public")),
     path("api/", include(router.urls)),
 

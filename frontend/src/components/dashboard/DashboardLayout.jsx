@@ -1,10 +1,10 @@
 /*
-# components/overview/OverviewLayout.jsx
+# src/components/dashboard/DashboardLayout.jsx
 */
 
 import { useTheme } from "../../theme/ThemeContext";
 
-export default function OverviewLayout({ children }) {
+export default function DashboardLayout({ children }) {
     const theme = useTheme();
 
     return (

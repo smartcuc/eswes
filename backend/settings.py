@@ -288,6 +288,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "market.tasks.fetch_spot_prices_retry",
         "schedule": crontab(hour=13, minute=1),
     },
+    # ✅ MagicLogin CleanUp
+    "cleanup_tokens": {
+            "task": "accounts.tasks.cleanup_tokens",
+            "schedule": crontab(hour=3, minute=0),
+        },
+
 }
 
 

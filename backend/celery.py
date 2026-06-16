@@ -1,27 +1,29 @@
-#####################
+####################
 # backend/celery.py
 #####################
 
 import os
-import logging
-
+from pathlib import Path
+from dotenv import load_dotenv
 from celery import Celery, bootsteps
 from celery.schedules import crontab
 
-logger = logging.getLogger(__name__)
+# ✅ .env sauber laden
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
-"""
-Celery App Initialisierung.
-
-- Lädt Django settings via DJANGO_SETTINGS_MODULE
-- Konfiguriert Celery über Django settings (CELERY_*)
-- Auto-discover: findet tasks.py in INSTALLED_APPS
-"""
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
+# ✅ Settings automatisch holen
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    os.getenv("DJANGO_SETTINGS_MODULE", "backend.settings.base")
+)
 
 app = Celery("backend")
+
+# ✅ Celery nimmt deine Django settings (CELERY_*)
 app.config_from_object("django.conf:settings", namespace="CELERY")
+
+# ✅ findet automatisch tasks.py in Apps
 app.autodiscover_tasks()
 
 

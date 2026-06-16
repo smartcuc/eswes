@@ -7,6 +7,9 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from .models import User, UserProfile, UserSettings
 from django.db import models
+from django.db.models import Count
+
+from accounts.models import MagicLoginToken
 
 
 @admin.register(User)
@@ -49,3 +52,23 @@ class UserProfileAdmin(admin.ModelAdmin):
 class UserSettingsAdmin(admin.ModelAdmin):
     list_display = ("user", "dashboard_mode", "usage_mode", "created_at")
     list_filter = ("dashboard_mode", "usage_mode")
+
+
+@admin.register(MagicLoginToken)
+class MagicLoginTokenAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "clicked_at", "used_at")
+
+    def changelist_view(self, request, extra_context=None):
+        total = MagicLoginToken.objects.count()
+        clicked = MagicLoginToken.objects.filter(clicked_at__isnull=False).count()
+        used = MagicLoginToken.objects.filter(used_at__isnull=False).count()
+
+        extra_context = extra_context or {}
+        extra_context["metrics"] = {
+            "total": total,
+            "clicked": clicked,
+            "used": used,
+        }
+
+        return super().changelist_view(request, extra_context=extra_context)
+    

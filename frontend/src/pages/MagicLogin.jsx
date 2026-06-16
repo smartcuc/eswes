@@ -1,41 +1,43 @@
 /*
 # src/pages/MagicLogin.jsx
 */
-
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { trackEvent } from "../lib/track";
 
 export default function MagicLogin() {
-
     const navigate = useNavigate();
+    const { token } = useParams();
+
+    const [status, setStatus] = useState("loading");
 
     useEffect(() => {
+        if (!token) {
+            navigate("/login", { replace: true });
+            return;
+        }
 
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get("token");
-
-        async function login() {
-            if (!token) {
-                navigate("/login");
-                return;
-            }
-
+        async function run() {
             try {
-                const res = await fetch(`/api/magic-login/?token=${token}`, {
+                // ✅ TRACK: login attempt
+                trackEvent("magic_login_attempt");
+
+                // ✅ STEP 1 — Login
+                const loginRes = await fetch(`/api/magic-login/?token=${token}`, {
                     credentials: "include",
                 });
 
-                if (!res.ok) {
+                if (!loginRes.ok) {
                     throw new Error("Login failed");
                 }
 
-                // ✅ Session sicherstellen
+                // ✅ STEP 2 — Session wait (race-safe)
                 let meRes = await fetch("/api/auth/me/", {
                     credentials: "include",
                 });
 
                 if (!meRes.ok) {
-                    await new Promise(r => setTimeout(r, 100));
+                    await new Promise((r) => setTimeout(r, 150));
 
                     meRes = await fetch("/api/auth/me/", {
                         credentials: "include",
@@ -46,48 +48,63 @@ export default function MagicLogin() {
                     }
                 }
 
-                // ✅ Settings laden
+                // ✅ STEP 3 — Settings
                 const settingsRes = await fetch("/api/settings/", {
                     credentials: "include",
                 });
 
                 if (!settingsRes.ok) {
-                    throw new Error("Settings failed");
+                    throw new Error("Settings fetch failed");
                 }
 
-                // ✅ Daten kombinieren
                 const settings = await settingsRes.json();
-                const userData = await meRes.json();
 
-                const newUser = {
-                    ...userData,
-                    onboarding_step: settings.onboarding_step,
-                    usage_mode: settings.usage_mode,
-                    memberships: userData.memberships || [],
-                    is_authenticated: true,
-                };
+                // ✅ TRACK: success
+                trackEvent("magic_login_success");
 
-                // ✅ 🔥 PRE-CACHE
-                sessionStorage.setItem("user", JSON.stringify(newUser));
-
-                // ✅ URL bereinigen
-                window.history.replaceState({}, "", "/");
-
-                navigate("/app");
+                // ✅ STEP 4 — Routing
+                if (settings.onboarding_step !== "done") {
+                    navigate("/app", { replace: true });
+                } else {
+                    navigate("/app/dashboard", { replace: true });
+                }
 
             } catch (err) {
-                console.error(err);
-                navigate("/login");
+                console.error("MagicLogin error:", err);
+
+                setStatus("error");
+
+                trackEvent("magic_login_failed");
+
+                setTimeout(() => {
+                    navigate("/login", { replace: true });
+                }, 1500);
             }
         }
 
-        login();
-
-    }, [navigate]);
+        run();
+    }, [token, navigate]);
 
     return (
-        <div className="p-6 text-center">
-            <h2 className="text-xl">Logging you in...</h2>
+        <div className="flex items-center justify-center h-screen">
+
+            {status === "loading" && (
+                <div className="text-center">
+                    <div className="text-lg font-medium mb-2">
+                        Logging you in...
+                    </div>
+                    <div className="text-gray-400 text-sm">
+                        Please wait a moment
+                    </div>
+                </div>
+            )}
+
+            {status === "error" && (
+                <div className="text-center text-red-500">
+                    Login failed – redirecting...
+                </div>
+            )}
+
         </div>
     );
 }

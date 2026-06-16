@@ -13,7 +13,9 @@ from .views import MyTenantView
 from .views import UpdateMemberRoleView
 from .views import RemoveMemberView
 from .views import DeactivateInviteView
-from .views import RequestMagicLinkView, MagicLoginView
+from .views import RequestMagicLinkView, MagicLoginView, MagicLinkStatsView, LiveLoginsView, TenantStatsView
+from .views import DashboardStatsView
+from .views import TrackEventView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import MeView, LogoutView
@@ -63,6 +65,11 @@ path("deactivate-invite/", DeactivateInviteView.as_view()),
 urlpatterns += [
     path("request-magic-link/", RequestMagicLinkView.as_view()),
     path("magic-login/", MagicLoginView.as_view()),
+    path("stats/magic-links/", MagicLinkStatsView.as_view()),
+    path("stats/live-logins/", LiveLoginsView.as_view()),
+    path("stats/tenants/", TenantStatsView.as_view()),
+    path("stats/dashboard/", DashboardStatsView.as_view()),
+    path("track/", TrackEventView.as_view()),
 ]
 
 urlpatterns += [

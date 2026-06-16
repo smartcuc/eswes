@@ -5,9 +5,11 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model, login, logout
-from django.core.mail import send_mail
+
 from django.utils import timezone
 from datetime import timedelta
+from django.shortcuts import redirect
+from django.http import HttpResponse
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -18,13 +20,17 @@ from django.utils.decorators import method_decorator
 
 from core.models import Tenant
 from accounts.serializers import UserMeSerializer
-from accounts.models import MagicLoginToken
+from accounts.models import MagicLoginToken, EventLog
 from accounts.models import (
     UserSettings,
     UserProfile,
     TenantInvite,
     TenantMembership,
 )
+
+from accounts.services.email_service import send_magic_link_email
+from django.db.models import Count, Q
+
 
 User = get_user_model()
 
@@ -316,38 +322,28 @@ class RequestMagicLinkView(APIView):
         if not email:
             return Response({"error": "email required"}, status=400)
 
-        user, created = User.objects.get_or_create(
+        user, _ = User.objects.get_or_create(
             email=email,
-            defaults={
-                "username": email
-            }
+            defaults={"username": email}
         )
-
-        if not user.username:
-            user.username = email
-            user.save()
 
         # Rate limit
         last_token = MagicLoginToken.objects.filter(user=user).order_by("-created_at").first()
 
-        if last_token and last_token.created_at > timezone.now() - timedelta(seconds=60):
+        if last_token and last_token.created_at > timezone.now() - timedelta(seconds=30):
             return Response({"error": "too many requests"}, status=429)
 
         MagicLoginToken.objects.filter(user=user, is_used=False).delete()
 
         token = MagicLoginToken.objects.create(
             user=user,
-            remember=remember
+            remember=remember,
         )
 
-        link = f"{settings.FRONTEND_URL}/magic-login?token={token.token}"
+        # ✅ BEST PRACTICE: LINK IMMER BACKEND
+        link = f"{settings.BACKEND_BASE_URL}/t/{token.token}"
 
-        send_mail(
-            subject="Dein Login-Link",
-            message=f"Klicke hier zum Login:\n\n{link}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-        )
+        send_magic_link_email(user, link, token.token)
 
         return Response({"status": "sent"})
 
@@ -361,30 +357,37 @@ class MagicLoginView(APIView):
         if not token:
             return Response({"error": "missing token"}, status=400)
 
-        magic = get_object_or_404(
-            MagicLoginToken,
-            token=token,
-            is_used=False
-        )
+        magic = get_object_or_404(MagicLoginToken, token=token)
 
-        if hasattr(magic, "is_expired") and magic.is_expired():
-            return Response({"error": "link expired"}, status=400)
+        if magic.is_expired():
+            return Response({"error": "expired"}, status=400)
 
-        magic.is_used = True
-        magic.save()
-
+        # ✅ WICHTIG: idempotent (mehrfach erlaubt!)
         user = magic.user
-
-        # ✅ SESSION LOGIN
         login(request, user)
 
-        # ✅ SESSION DAUER
-        if getattr(magic, "remember", False):
-            request.session.set_expiry(60 * 60 * 24 * 30)  # 30 Tage
-        else:
-            request.session.set_expiry(60 * 60 * 24)  # 1 Tag
+        # ✅ LOGIN TRACKING (NEU)
+        magic.last_login_at = timezone.now()
+        
+        magic.last_login_ip = request.META.get("REMOTE_ADDR")
+        magic.user_agent = request.headers.get("User-Agent", "")
 
-        return Response({"status": "logged_in"})
+        # nur speichern wenn neu oder leer (optional)
+        magic.save()
+
+        # ✅ Token nur einmal markieren
+        if not magic.is_used:
+            magic.is_used = True
+            magic.used_at = timezone.now()
+            magic.save()
+
+        # ✅ Session Dauer
+        if magic.remember:
+            request.session.set_expiry(60 * 60 * 24 * 30)
+        else:
+            request.session.set_expiry(60 * 60 * 24)
+
+        return Response({"status": "ok"})
 
 
 # ---------------- AUTH ---------------- #
@@ -414,4 +417,134 @@ class LogoutView(APIView):
         return Response({"status": "logged_out"})
     
 
+def track_magic_click(request, token):
+    obj = MagicLoginToken.objects.filter(token=token).first()
 
+    if obj and not obj.clicked_at:
+        obj.clicked_at = timezone.now()
+        obj.save()
+
+    return redirect(f"{settings.FRONTEND_BASE_URL}/auth/magic/{token}")
+
+
+
+def track_open(request, token):
+    token_obj = MagicLoginToken.objects.filter(token=token).first()
+
+    if token_obj:
+        token_obj.opened_at = timezone.now()
+        token_obj.save()
+
+    return HttpResponse("", content_type="image/png")
+
+
+def track_email_open(request, token):
+    obj = MagicLoginToken.objects.filter(token=token).first()
+
+    if obj and not obj.opened_at:
+        obj.opened_at = timezone.now()
+        obj.save()
+
+    # ✅ UNSICHTBARER PIXEL
+    return HttpResponse(
+        b"",
+        content_type="image/png"
+    )
+
+class MagicLinkStatsView(APIView):
+    def get(self, request):
+        total = MagicLoginToken.objects.count()
+        opened = MagicLoginToken.objects.filter(opened_at__isnull=False).count()
+        clicked = MagicLoginToken.objects.filter(clicked_at__isnull=False).count()
+        used = MagicLoginToken.objects.filter(used_at__isnull=False).count()
+
+        return Response({
+            "total": total,
+            "opened": opened,
+            "clicked": clicked,
+            "used": used,
+            "open_rate": opened / total if total else 0,
+            "click_rate": clicked / total if total else 0,
+            "conversion_rate": used / total if total else 0,
+        })
+
+
+class LiveLoginsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        recent = MagicLoginToken.objects.filter(
+            used_at__isnull=False
+        ).order_by("-used_at")[:10]
+
+        data = [
+            {
+                "email": token.user.email,
+                "login_time": token.used_at,
+            }
+            for token in recent
+        ]
+
+        return Response(data)
+
+
+class TenantStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        stats = MagicLoginToken.objects.values(
+            "user__memberships__tenant__name"
+        ).annotate(
+            total=Count("id"),
+            used=Count("id", filter=Q(used_at__isnull=False))
+        )
+
+        return Response(list(stats))
+
+
+class DashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tokens = MagicLoginToken.objects.all()
+
+        total = tokens.count()
+        opened = tokens.exclude(clicked_at=None).count()
+        clicked = opened
+        used = tokens.filter(is_used=True).count()
+
+        # letzte Logins (einfach)
+        recent = tokens.filter(is_used=True).order_by("-used_at")[:10]
+
+        live_logins = [
+            {
+                "user": t.user.email,
+                "timestamp": t.used_at.strftime("%Y-%m-%d %H:%M"),
+            }
+            for t in recent
+        ]
+
+        return Response({
+            "funnel": {
+                "total": total,
+                "opened": opened,
+                "clicked": clicked,
+                "used": used,
+            },
+            "live_logins": live_logins
+        })
+    
+
+class TrackEventView(APIView):
+    def post(self, request):
+        event = request.data.get("event")
+        metadata = request.data.get("metadata", {})
+
+        EventLog.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            event=event,
+            metadata=metadata
+        )
+
+        return Response({"status": "ok"})
+    

@@ -2,160 +2,167 @@
 # src/components/EnergyFlow.jsx
 */
 
-export default function EnergyFlow({ data }) {
+import { useEffect, useState } from "react";
 
-    if (!data || !data.flow) {
-        return <div className="text-gray-400">Keine Energiedaten</div>;
+export default function EnergyFlow({ mode = "demo", endpoint = null }) {
+
+    const [flowData, setFlowData] = useState(null);
+    const [hoverText, setHoverText] = useState(null);
+
+    useEffect(() => {
+
+        // ✅ DEMO MODE (Landing)
+        if (mode === "demo") {
+            setFlowData(getDemoFlow());
+            return;
+        }
+
+        // ✅ LIVE MODE (Dashboard)
+        if (mode === "live" && endpoint) {
+            fetch(endpoint)
+                .then(res => res.json())
+                .then(setFlowData)
+                .catch(() => setFlowData(getDemoFlow()));
+        }
+
+    }, [mode, endpoint]);
+
+    if (!flowData) {
+        return <div className="text-gray-400 text-center py-10">Lade Energiefluss...</div>;
     }
 
-    const { flow } = data;
-
-    const nodes = {
-        pv: { x: 100, y: 20, icon: "☀️" },
-        house: { x: 100, y: 110, icon: "🏠" },
-        battery: { x: 60, y: 180, icon: "🔋" },
-        grid: { x: 140, y: 180, icon: "⚡" },
-    };
-
-    const flows = [
-        {
-            id: "pv_to_load",
-            from: nodes.pv,
-            to: nodes.house,
-            value: flow.pv_to_load,
-            color: "#fbbf24",
-        },
-        {
-            id: "pv_to_battery",
-            from: nodes.pv,
-            to: nodes.battery,
-            value: flow.pv_to_battery,
-            color: "#fde68a",
-        },
-        {
-            id: "battery_to_load",
-            from: nodes.battery,
-            to: nodes.house,
-            value: flow.battery_to_load,
-            color: "#4ade80",
-        },
-        {
-            id: "grid_import",
-            from: nodes.grid,
-            to: nodes.house,
-            value: flow.grid_to_load,
-            color: "#60a5fa",
-        },
-        {
-            id: "grid_export",
-            from: nodes.house,
-            to: nodes.grid,
-            value: flow.grid_export || 0,
-            color: "#93c5fd",
-        },
-    ];
-
-    const max = Math.max(...flows.map(f => f.value || 0), 1);
+    const { nodes, flows } = flowData;
 
     return (
-        <div className="w-full flex justify-center">
-            <div className="relative w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-3xl mx-auto">
 
-                <svg viewBox="0 0 200 200" className="w-full">
+            <h2 className="text-xl font-semibold text-center mb-6">
+                Energie fließt live
+            </h2>
 
-                    {/* ✅ FLOW LINES */}
-                    {flows.map(f => (
-                        <FlowLine
-                            key={f.id}
-                            {...f}
-                            max={max}
+            <svg viewBox="0 0 500 300" className="w-full">
+
+                {/* FLOWS */}
+                {flows.map(f => (
+                    <g key={f.id}>
+
+                        {/* Hover area */}
+                        <path
+                            d={f.path}
+                            stroke="transparent"
+                            strokeWidth="20"
+                            fill="none"
+                            onMouseEnter={() => setHoverText(f.label)}
+                            onMouseLeave={() => setHoverText(null)}
                         />
-                    ))}
 
-                    {/* ✅ NODES (ohne Status-Label!) */}
-                    <Node {...nodes.pv} />
-                    <Node {...nodes.battery} />
-                    <Node {...nodes.grid} />
-                    <Node {...nodes.house} />
+                        {/* visible line */}
+                        <path
+                            d={f.path}
+                            stroke={f.color}
+                            strokeWidth="3"
+                            fill="none"
+                            strokeOpacity="0.4"
+                        />
 
-                </svg>
+                        {/* moving dots */}
+                        {[0, 0.8].map((delay, i) => (
+                            <circle key={i} r="5" fill={f.color}>
+                                <animateMotion
+                                    dur={`${f.speed}s`}
+                                    begin={`${delay}s`}
+                                    repeatCount="indefinite"
+                                    path={f.path}
+                                />
+                            </circle>
+                        ))}
 
-                {/* ✅ FLOW LABELS (Energie-Werte bleiben!) */}
-                <div className="absolute inset-0 pointer-events-none">
-                    {flows.map(f => (
-                        <FlowLabel key={f.id} {...f} />
-                    ))}
+                    </g>
+                ))}
+
+                {/* NODES */}
+                {nodes.map(n => (
+                    <g key={n.id} transform={`translate(${n.x}, ${n.y})`}>
+
+                        <circle
+                            r="28"
+                            fill={n.type === "solar" ? "#fb923c20" : "#6366f120"}
+                        />
+
+                        <rect
+                            x="-20"
+                            y="-20"
+                            width="40"
+                            height="40"
+                            rx="10"
+                            fill={n.type === "solar" ? "#fb923c" : "#6366f1"}
+                        />
+
+                        <text
+                            textAnchor="middle"
+                            y="6"
+                            fontSize="18"
+                            fill="white"
+                        >
+                            {n.icon}
+                        </text>
+
+                        <text
+                            textAnchor="middle"
+                            y="40"
+                            fontSize="12"
+                            fill="#666"
+                        >
+                            {n.name}
+                        </text>
+
+                    </g>
+                ))}
+
+            </svg>
+
+            {/* TOOLTIP */}
+            {hoverText && (
+                <div className="mt-4 text-center text-sm text-gray-700">
+                    {hoverText}
                 </div>
+            )}
 
-            </div>
         </div>
     );
 }
 
 
-/* ---------------- FLOW LINE ---------------- */
-
-function FlowLine({ from, to, value, color, max }) {
-    if (!value || value <= 0) return null;
-
-    const width = Math.max(1.5, value / 2000);
-    const opacity = 0.3 + (value / max) * 0.7;
-
-    return (
-        <line
-            x1={from.x}
-            y1={from.y}
-            x2={to.x}
-            y2={to.y}
-            stroke={color}
-            strokeWidth={width}
-            strokeOpacity={opacity}
-            strokeLinecap="round"
-        />
-    );
-}
-
-
-/* ---------------- NODE ---------------- */
-
-function Node({ x, y, icon }) {
-    return (
-        <g transform={`translate(${x}, ${y})`}>
-
-            <circle
-                r="14"
-                fill="white"
-                opacity="0.08"
-            />
-
-            <text textAnchor="middle" dy="6">
-                {icon}
-            </text>
-
-        </g>
-    );
-}
-
-
-/* ---------------- FLOW LABEL ---------------- */
-
-function FlowLabel({ from, to, value }) {
-    if (!value || value <= 0) return null;
-
-    const x = (from.x + to.x) / 2;
-    const y = (from.y + to.y) / 2;
-
-    return (
-        <div
-            style={{
-                position: "absolute",
-                left: `${x / 2}%`,
-                top: `${y / 2}%`,
-                transform: "translate(-50%, -50%)",
-            }}
-            className="text-[11px] text-gray-600 bg-white/80 px-2 py-0.5 rounded-md"
-        >
-            {(value / 1000).toFixed(1)} kW
-        </div>
-    );
+/* ✅ DEMO DATA */
+function getDemoFlow() {
+    return {
+        nodes: [
+            { id: 1, name: "Solar", x: 100, y: 220, type: "solar", icon: "☀️" },
+            { id: 2, name: "Haus A", x: 400, y: 200, type: "home", icon: "🏠" },
+            { id: 3, name: "Haus B", x: 250, y: 80, type: "home", icon: "🏠" },
+        ],
+        flows: [
+            {
+                id: 1,
+                label: "Solar → Haus A (5 kWh)",
+                color: "#f97316",
+                path: "M100,220 Q250,140 400,200",
+                speed: 2
+            },
+            {
+                id: 2,
+                label: "Solar → Haus B (3 kWh)",
+                color: "#ec4899",
+                path: "M100,220 Q180,150 250,80",
+                speed: 3
+            },
+            {
+                id: 3,
+                label: "Haus B → Haus A (2 kWh)",
+                color: "#6366f1",
+                path: "M250,80 Q340,140 400,200",
+                speed: 2.5
+            }
+        ]
+    };
 }

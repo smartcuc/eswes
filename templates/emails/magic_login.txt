@@ -1,0 +1,11 @@
+Hallo 👋
+
+Schön, dass du wieder da bist bei Sharegy.
+
+Hier anmelden:
+{{ magic_link }}
+
+Der Link ist nur kurz gültig.
+
+Sharegy ⚡
+https://sharegy.de

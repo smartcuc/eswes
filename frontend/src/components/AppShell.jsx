@@ -3,9 +3,11 @@
 */
 
 import { useUser } from "../hooks/useUser";
-import Dashboard from "../pages/Dashboard";
+import Dashboard from "../pages/dashboard/Dashboard";
 import Settings from "../pages/Settings";
 import { Routes, Route, Navigate } from "react-router-dom";
+
+import AppHeader from "../components/AppHeader";
 
 export default function AppShell() {
 
@@ -20,11 +22,33 @@ export default function AppShell() {
         return <Navigate to="/" replace />;
     }
 
+
     return (
-        <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/settings" element={<Settings />} />
-        </Routes>
+
+        <div className="flex flex-col h-screen">
+
+            {/* ✅ HEADER → enthält UserMenu */}
+            <AppHeader />
+
+            {/* ✅ CONTENT */}
+            <div className="flex-1 overflow-auto">
+
+                <Routes>
+                    {/* ✅ Default */}
+                    <Route index element={<Navigate to="dashboard" replace />} />
+
+                    {/* ✅ DAS FEHLT BEI DIR */}
+                    <Route path="dashboard" element={<Dashboard user={user} />} />
+
+                    <Route path="settings" element={<Settings />} />
+
+                    {/* ✅ Fallback */}
+                    <Route path="*" element={<Navigate to="dashboard" />} />
+                </Routes>
+
+            </div>
+
+        </div>
     );
 }
 

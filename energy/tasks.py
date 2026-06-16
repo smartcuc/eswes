@@ -8,7 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 from celery import shared_task
 
-from energy.models import DeviceCommand
+#from energy.models import DeviceCommand
 from energy.mqtt_publisher import MqttPublisher
 
 logger = logging.getLogger("energy.command_publisher")

@@ -21,3 +21,4 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://sharegy.cloud",
 ]
+TRACKING_BASE_URL = "https://api.sharegy.de"
