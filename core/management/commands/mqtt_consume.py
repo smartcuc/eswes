@@ -32,12 +32,22 @@ OBIS_RE = re.compile(r"^\d+\.\d+\.\d+$")  # z.B. 1.8.0
 # ✅ HELPERS
 # ============================================================
 
-def parse_ts(ts_str: str):
+def parse_ts(ts_str):
+    # ✅ Kein ts → jetzt()
+    if not ts_str:
+        return timezone.now()
+
+    # ✅ parsen
     dt = parse_datetime(ts_str)
+
+    # ✅ ungültig → fallback statt crash
     if dt is None:
-        raise ValueError(f"Invalid ts format: {ts_str}")
+        return timezone.now()
+
+    # ✅ timezone korrigieren
     if timezone.is_naive(dt):
         dt = timezone.make_aware(dt, timezone=timezone.utc)
+
     return dt.astimezone(timezone.utc)
 
 
