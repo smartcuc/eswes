@@ -18,7 +18,8 @@ from django.utils.dateparse import parse_datetime
 from core.models import Meter, IntervalReading
 from core.utils.slots import slot_minutes  # ✅ FIX
 
-from devices.models import Device, DeviceMetric
+from devices.models import Device, DeviceMetric, Home
+
 
 logger = logging.getLogger("core.mqtt")  # ✅ FIX
 
@@ -144,12 +145,22 @@ class Command(BaseCommand):
     # ============================================================
 
     def ingest(self, topic: str, payload: bytes, auto_prov: bool):
-        m = TOPIC_RE.match(topic)
-        if not m:
+        parts = topic.split("/")
+
+        if len(parts) != 4:
             raise ValueError(f"Invalid topic: {topic}")
 
-        device_type = m.group("device_type").strip()
-        device_id = m.group("device_id").strip()
+        prefix, token, kind, device_id = parts
+
+        if prefix != "home" or kind != "device":
+            raise ValueError(f"Invalid topic: {topic}")
+
+        home = Home.objects.filter(mqtt_token=token).first()
+        if not home:
+            raise ValueError(f"Unknown token: {token}")
+
+        # 👉 Anpassung an dein Modell
+        device_type = "other"
 
         data = json.loads(payload.decode("utf-8"))
         ts = parse_ts(data.get("ts"))
@@ -159,23 +170,25 @@ class Command(BaseCommand):
 
         source = str(meta.get("source") or "mqtt")[:64]
 
-        device = Device.objects.filter(device_type=device_type, name=device_id).first()
+        home = Home.objects.filter(mqtt_token=token).first()
 
         if device is None:
             if not auto_prov:
                 raise ValueError(f"Device not provisioned: {device_type}/{device_id}")
 
-            device = Device.objects.create(
-                name=device_id,
-                device_type=(
-                    device_type
-                    if device_type in dict(Device.DEVICE_TYPE).keys()
-                    else "other"
-                ),
-                controllable=False,
-            )
+        device = Device.objects.create(
+            home=home,   # 🔥 wichtig!
+            name=device_id,
+            device_type=(
+                device_type
+                if device_type in dict(Device.DEVICE_TYPE).keys()
+                else "other"
+            ),
+            controllable=False,
 
-            logger.info("Auto-provisioned device=%s/%s", device_type, device_id)
+        )
+
+        logger.info("Auto-provisioned device=%s/%s", device_type, device_id)
 
         # 🔥 METER FLOW (→ IntervalReading)
         if device_type == "meter":
