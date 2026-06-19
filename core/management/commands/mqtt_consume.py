@@ -186,11 +186,14 @@ class Command(BaseCommand):
         if device is None:
             if not auto_prov:
                 raise ValueError(f"Device not provisioned: {device_id}")
-
+            
             device = Device.objects.create(
                 user=home.user,
                 home=home,
                 name=device_id,
+                identifier=device_id,        # 🔥 wichtig!
+                role="other",                # 🔥 musst du setzen
+                configured=False,            # 🔥 sicher setzen
             )
 
             logger.info("Auto-provisioned device=%s", device_id)
