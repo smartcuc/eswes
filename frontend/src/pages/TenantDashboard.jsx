@@ -4,10 +4,9 @@
 
 import { useEffect, useState } from "react";
 
-import { apiFetch } from "../api";
+import { apiFetch } from "../api/client";
 import { texts } from "../i18n";
 import { useLang } from "../hooks/useLang";
-
 
 export default function TenantDashboard() {
     const [tenant, setTenant] = useState(null);
@@ -18,23 +17,20 @@ export default function TenantDashboard() {
     const { lang } = useLang();
     const t = texts[lang];
 
-    // ✅ Zentrale Ladefunktion
-    function loadData() {
-        // Tenant + Members + Invites
-        apiFetch("/api/my-tenant/")
-            .then(res => res.json())
-            .then(data => {
-                setTenant(data.tenant);
-                setMembers(data.members || []);
-                setInvites(data.invites || []);
-            });
+    // ✅ Daten laden
+    async function loadData() {
+        try {
+            const data = await apiFetch("/api/my-tenant/");
 
-        // Audit Logs
-        fetch("/api/audit-log/")
-            .then(res => res.json())
-            .then(data => {
-                setLogs(data || []);
-            });
+            setTenant(data.tenant);
+            setMembers(data.members || []);
+            setInvites(data.invites || []);
+
+            const logData = await apiFetch("/api/audit-log/");
+            setLogs(logData || []);
+        } catch (err) {
+            console.error("Load failed:", err);
+        }
     }
 
     useEffect(() => {
@@ -43,21 +39,15 @@ export default function TenantDashboard() {
 
     // ✅ INVITE ERSTELLEN
     async function createInvite(role) {
-        const res = await apiFetch("/api/create-invite/", {
+        const data = await apiFetch("/api/create-invite/", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
             body: JSON.stringify({
                 tenant_id: tenant.id,
                 role: role,
             }),
         });
 
-        const data = await res.json();
-
-        // Refresh UI
-        loadData();
+        await loadData();
 
         alert(`${t.invite_link}:\n${window.location.origin}${data.link}`);
     }
@@ -66,7 +56,6 @@ export default function TenantDashboard() {
     async function updateRole(userId, role) {
         await apiFetch("/api/update-role/", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 tenant_id: tenant.id,
                 user_id: userId,
@@ -81,7 +70,6 @@ export default function TenantDashboard() {
     async function removeMember(userId) {
         await apiFetch("/api/remove-member/", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 tenant_id: tenant.id,
                 user_id: userId,
@@ -95,34 +83,28 @@ export default function TenantDashboard() {
     async function deactivateInvite(token) {
         await apiFetch("/api/deactivate-invite/", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token }),
         });
 
         loadData();
     }
 
-    // ✅ FORMAT ACTION TEXT
+    // ✅ ACTION TEXT
     function formatAction(log) {
         switch (log.action) {
             case "member_removed":
                 return t.member_removed || "Mitglied entfernt";
-
             case "role_updated":
                 return t.role_updated || "Rolle geändert";
-
             case "invite_created":
                 return t.invite_created || "Invite erstellt";
-
             case "invite_deactivated":
                 return t.invite_deactivated || "Invite deaktiviert";
-
             default:
                 return log.action;
         }
     }
 
-    // ✅ FORMAT DATE
     function formatDate(date) {
         return new Date(date).toLocaleString();
     }

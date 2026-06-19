@@ -3,8 +3,10 @@
 */
 
 import React from "react";
+import { apiFetch } from "../api/client";
 
 export default function DeviceSetupModal({ devices, onClose, onSaved }) {
+
     const [form, setForm] = React.useState({});
 
     const update = (id, field, value) => {
@@ -18,17 +20,21 @@ export default function DeviceSetupModal({ devices, onClose, onSaved }) {
     };
 
     const save = async () => {
-        for (const id of Object.keys(form)) {
-            await fetch(`/api/energy/devices/${id}/configure/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(form[id]),
-            });
-        }
+        try {
+            for (const id of Object.keys(form)) {
 
-        onSaved();
+                await apiFetch(`/api/energy/devices/${id}/configure/`, {
+                    method: "POST",
+                    body: JSON.stringify(form[id]),
+                });
+
+            }
+
+            onSaved();
+
+        } catch (err) {
+            console.error("Device setup failed:", err);
+        }
     };
 
     return (

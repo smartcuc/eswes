@@ -3,37 +3,36 @@
 */
 
 import { useUser } from "./hooks/useUser";
+import { useSettings } from "./hooks/useSettings";
 import Onboarding from "./pages/Onboarding";
 import AppShell from "./components/AppShell";
 import { Navigate } from "react-router-dom";
 
 export default function PrivateApp() {
-    const { user, loading, refreshUser } = useUser();
 
-    // ✅ Warten bis User geladen ist (CRITICAL!)
-    if (loading) {
+    const { user, loading: userLoading } = useUser();
+    const { settings, loading: settingsLoading } = useSettings();
+
+    if (userLoading || settingsLoading) {
         return (
-            <div className="p-6 text-gray-400">
-                Loading your data...
+            <div className="min-h-screen flex items-center justify-center text-gray-400">
+                Sharegy lädt…
             </div>
         );
     }
 
-    // ✅ Nicht eingeloggt → raus
+
     if (!user) {
         return <Navigate to="/" replace />;
     }
 
-    // ✅ Onboarding entscheidet ALLES
-    if (user.onboarding_step !== "done") {
-        return (
-            <Onboarding
-                user={user}
-                refreshUser={refreshUser}
-            />
-        );
+    if (!settings) {
+        return null;
     }
 
-    // ✅ Fertig → App
+    if (settings.onboarding_step !== "done") {
+        return <Onboarding />;
+    }
+
     return <AppShell />;
 }

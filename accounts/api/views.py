@@ -20,7 +20,7 @@ from django.utils.decorators import method_decorator
 
 from core.models import Tenant
 from accounts.serializers import UserMeSerializer
-from accounts.models import MagicLoginToken, EventLog
+from accounts.models import MagicLoginToken
 from accounts.models import (
     UserSettings,
     UserProfile,
@@ -545,16 +545,4 @@ class DashboardStatsView(APIView):
         })
     
 
-class TrackEventView(APIView):
-    def post(self, request):
-        event = request.data.get("event")
-        metadata = request.data.get("metadata", {})
-
-        EventLog.objects.create(
-            user=request.user if request.user.is_authenticated else None,
-            event=event,
-            metadata=metadata
-        )
-
-        return Response({"status": "ok"})
     

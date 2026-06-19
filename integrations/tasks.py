@@ -3,11 +3,16 @@
 ##########################
 
 import logging
+import os
+import json
+import redis
+
 from decimal import Decimal
 from datetime import datetime
 
 from celery import shared_task
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from integrations.models import InboundWebhookEvent
 from integrations.services_tibber import (
@@ -15,12 +20,18 @@ from integrations.services_tibber import (
 )
 
 from core.models import IntervalReading, MeterRegister
+from devices.models import Device, DeviceMetric
 
 from core.models import Meter
 from core.constants.obis import OBIS_MAP
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -260,3 +271,71 @@ def sync_tibber():
         "meters_processed": len(results),
         "results": results,
     }
+
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+r = redis.Redis.from_url(REDIS_URL)
+
+BUFFER_KEY = "mqtt:buffer"
+
+@shared_task
+def flush_mqtt_buffer():
+    items = r.lrange(BUFFER_KEY, 0, 99)
+    r.ltrim(BUFFER_KEY, 100, -1)
+
+    batch = []
+
+    for item in items:
+        try:
+            batch.append(json.loads(item.decode("utf-8")))
+        except Exception:
+            continue
+
+    metrics = []
+
+    for entry in batch:
+        device_id = entry.get("device_id")
+        user_id = entry.get("user_id")
+
+        if not device_id or not user_id:
+            continue
+
+        device = Device.objects.filter(
+            identifier=device_id,
+            user_id=user_id
+        ).first()
+
+        if not device:
+            continue
+
+        ts = parse_datetime(entry.get("timestamp"))
+        if not ts:
+            continue
+
+        if DeviceMetric.objects.filter(
+            device=device,
+            timestamp=ts
+        ).exists():
+            continue
+
+        metrics.append(
+            DeviceMetric(
+                device=device,
+                timestamp=ts,
+                power_w=entry.get("power"),
+                energy_kwh=entry.get("energy"),
+                data=entry,
+            )
+        )
+
+    if metrics:
+        DeviceMetric.objects.bulk_create(metrics)
+
+    logger.info(
+        "mqtt.buffer.flushed",
+        extra={
+            "batch_size": len(batch),
+            "written": len(metrics),
+        }
+    )
+    

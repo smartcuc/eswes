@@ -229,19 +229,3 @@ class MagicLoginToken(models.Model):
     def __str__(self):
         return f"{self.user} - {self.token}"
 
-
-class EventLog(models.Model):
-    user = models.ForeignKey(
-        "accounts.User",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL
-    )
-
-    event = models.CharField(max_length=100)
-    metadata = models.JSONField(default=dict, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.event} ({self.created_at})"

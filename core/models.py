@@ -39,6 +39,14 @@ class Tenant(models.Model):
 class Meter(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
+    SOURCE_CHOICES = [
+        ("imsys", "iMSys"),
+        ("mqtt", "MQTT"),
+        ("tibber", "Tibber"),
+        ("sungrow", "Sungrow"),
+        ("manual", "Manual"),
+    ]
+
     tenant = models.ForeignKey(
         "core.Tenant",
         on_delete=models.CASCADE,
@@ -71,18 +79,30 @@ class Meter(models.Model):
         ("battery", "Battery"),
     ]
 
+    # ✅ NEU: technisch (woher kommt die Daten)
+    source = models.CharField(
+        max_length=32,
+        choices=SOURCE_CHOICES,
+        default="manual",
+    )
+
+    # ✅ BLEIBT: fachlich (welche Integration / Anbieter)
+    integration_type = models.CharField(
+        max_length=32,
+        choices=[
+            ("tibber", "Tibber"),
+            ("manual", "Manual"),
+            ("none", "None"),
+        ],
+        default="none",
+    )
+
     meter_type = models.CharField(max_length=20, choices=METER_TYPES, default="electricity")
 
     manufacturer = models.CharField(max_length=100, blank=True)
 
     installed_at = models.DateTimeField(null=True, blank=True)
     removed_at = models.DateTimeField(null=True, blank=True)
-
-    integration_type = models.CharField(
-        max_length=32,
-        choices=[("tibber", "Tibber"), ("manual", "Manual"), ("none", "None")],
-        default="none",
-    )
 
     tibber_home_id = models.CharField(max_length=64, null=True, blank=True)
     last_tibber_sync = models.DateTimeField(null=True, blank=True)
@@ -91,7 +111,7 @@ class Meter(models.Model):
         indexes = [
             models.Index(fields=["tenant", "serial_number"]),
             models.Index(fields=["tenant"]),
-            models.Index(fields=["integration_type"]),
+            models.Index(fields=["integration_type"]),  # ✅ wichtig wieder drin
         ]
         constraints = owner_xor_constraints("meter")
 
@@ -112,7 +132,6 @@ class MeterRegister(models.Model):
     class Meta:
         db_table = "core_meterregister"
         unique_together = ("meter", "obis_code")
-
 
 
 # -----------------------------------------------------
@@ -213,17 +232,8 @@ class BalanceSlot(models.Model):
 
 
 class MemberEnergyProfile(models.Model):
-    """
-    Beschreibt die Energie-Rolle eines Members (Business-Logik).
-
-    Wird genutzt für:
-    - Dashboard (consumer / producer / prosumer)
-    - Energy Allocation / Billing
-    - spätere Feature-Flags
-    """
-
     member = models.OneToOneField(
-        "accounts.TenantMembership",  # ✅ WICHTIG: nicht altes Member!
+        "accounts.TenantMembership",
         on_delete=models.CASCADE,
         related_name="energy_profile",
     )

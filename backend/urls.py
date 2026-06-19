@@ -69,6 +69,7 @@ urlpatterns = [
         path("", include("content.urls_public")),
         path("energy/", include("energy.api.urls")),
         path("forecast/", include("forecast.urls")),
+        path("devices/", include("devices.urls")),
         path("api/public/", include("forecast.urls_public")),
     ])),
   
@@ -76,6 +77,7 @@ urlpatterns = [
     path("api/", include("integrations.urls")),
     path("api/", include("accounts.api.urls")),
     path("api/", include("content.urls_public")),
+    path("api/devices/", include("devices.urls")),
     path("api/", include(router.urls)),
 
     path("public/billing/", include("billing.api.urls_public")),

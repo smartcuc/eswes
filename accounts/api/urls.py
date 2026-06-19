@@ -15,7 +15,7 @@ from .views import RemoveMemberView
 from .views import DeactivateInviteView
 from .views import RequestMagicLinkView, MagicLoginView, MagicLinkStatsView, LiveLoginsView, TenantStatsView
 from .views import DashboardStatsView
-from .views import TrackEventView
+##from .views import TrackEventView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import MeView, LogoutView
@@ -69,7 +69,7 @@ urlpatterns += [
     path("stats/live-logins/", LiveLoginsView.as_view()),
     path("stats/tenants/", TenantStatsView.as_view()),
     path("stats/dashboard/", DashboardStatsView.as_view()),
-    path("track/", TrackEventView.as_view()),
+##    path("track/", TrackEventView.as_view()),
 ]
 
 urlpatterns += [

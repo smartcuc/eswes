@@ -2,31 +2,34 @@
 # src/pages/Settings.jsx
 */
 
+
 import AppLayout from "../components/AppLayout";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { useUser } from "../hooks/useUser";
+import { apiFetch } from "../api/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Settings() {
 
-    async function changeLanguage(lang) {
-        const { user, setUser } = useUser();
+    const { user } = useUser();
+    const queryClient = useQueryClient();
 
-        await fetch("/api/user-language/", {
+    async function changeLanguage(lang) {
+        await apiFetch("/api/user-language/", {
             method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
             body: JSON.stringify({ language: lang }),
         });
 
-        // ✅ sofort UI update (kein fetch nötig)
-        setUser(prev => ({
-            ...prev,
-            language: lang
-        }));
+        // ✅ sofort UI Update
+        queryClient.setQueryData(["user"], (old) => {
+            if (!old) return old;
+            return {
+                ...old,
+                language: lang,
+            };
+        });
     }
 
     return (

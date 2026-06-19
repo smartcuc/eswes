@@ -142,6 +142,7 @@ INSTALLED_APPS = [
     "billing",
     "market",
     "energy",
+    "tracking",
 ]
 
 
@@ -291,6 +292,12 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup_tokens": {
             "task": "accounts.tasks.cleanup_tokens",
             "schedule": crontab(hour=3, minute=0),
+        },
+
+    # ✅ MQTT Buffer
+    "flush-mqtt-buffer": {
+            "task": "integrations.tasks.flush_mqtt_buffer",
+            "schedule": 5.0,  # alle 5 Sekunden
         },
 
 }

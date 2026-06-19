@@ -2,75 +2,65 @@
 # src/pages/Onboarding.jsx
 */
 
-import { useEffect, useState } from "react";
-import { useSettings } from "../context/SettingsContext";
-import { useUser } from "../hooks/useUser";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSettings } from "../hooks/useSettings";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../api/client";
 
 export default function Onboarding() {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
-    const { settings, setSettings } = useSettings();
-    const { refreshUser } = useUser();
+    const { settings } = useSettings();
 
-    const [started, setStarted] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-
-    // ✅ STEP aus Settings bestimmen (Single Source of Truth)
-    useEffect(() => {
-        if (settings?.onboarding_step === "setup") {
-            setStarted(true);
-        }
-    }, [settings]);
-
-    async function updateStep(nextStep) {
-        setLoading(true);
-        setError("");
-
-        try {
-            const res = await fetch("/api/onboarding-step/", {
+    const mutation = useMutation({
+        mutationFn: async (step) => {
+            await apiFetch("/api/onboarding-step/", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
                 body: JSON.stringify({
-                    onboarding_step: nextStep,
+                    onboarding_step: step,
                 }),
             });
+        },
 
-            if (!res.ok) {
-                const text = await res.text();
-                console.error("Onboarding API error:", res.status, text);
-                throw new Error("Update failed");
-            }
+        onSuccess: (_, step) => {
+            queryClient.setQueryData(["settings"], (old) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    onboarding_step: step,
+                };
+            });
+        },
+    });
 
-            // ✅ Optimistic UI update (kein extra fetch nötig)
-            setSettings(prev => ({
-                ...prev,
-                onboarding_step: nextStep
-            }));
+    useEffect(() => {
+        if (!settings) return;
 
-            // ✅ fertig → User neu laden (Routing entscheidet dann)
-            if (nextStep === "done") {
-                await refreshUser();
-            } else {
-                setStarted(true);
-            }
-
-        } catch (err) {
-            console.error("Onboarding error:", err);
-            setError("❌ Etwas ist schiefgelaufen. Bitte erneut versuchen.");
+        if (settings.onboarding_step === "done") {
+            navigate("/app/dashboard", { replace: true });
         }
+    }, [settings, navigate]);
 
-        setLoading(false);
+    const started = settings && settings.onboarding_step === "setup";
+
+    function updateStep(step) {
+        if (mutation.isLoading) return;
+
+        mutation.mutate(step, {
+            onSuccess: () => {
+                if (step === "done") {
+                    navigate("/app/dashboard", { replace: true });
+                }
+            },
+        });
     }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center p-6">
-
             <div className="bg-white w-full max-w-xl rounded-2xl shadow-xl p-8">
 
-                {/* STEP 1 */}
                 {!started && (
                     <>
                         <h1 className="text-2xl font-bold text-center mb-4">
@@ -89,14 +79,14 @@ export default function Onboarding() {
 
                         <button
                             onClick={() => updateStep("setup")}
+                            disabled={mutation.isLoading}
                             className="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg transition"
                         >
-                            Los geht’s
+                            {mutation.isLoading ? "…" : "Los geht’s"}
                         </button>
                     </>
                 )}
 
-                {/* STEP 2 */}
                 {started && (
                     <>
                         <h2 className="text-xl font-semibold text-center mb-4">
@@ -107,23 +97,13 @@ export default function Onboarding() {
                             Starte jetzt mit deinem Energiemanagement.
                         </p>
 
-                        <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 mb-6 text-center">
-                            💡 Tipp: Du kannst jederzeit später eine Community erstellen
-                        </div>
-
                         <button
                             onClick={() => updateStep("done")}
-                            disabled={loading}
-                            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition transform hover:scale-[1.02] disabled:opacity-50"
+                            disabled={mutation.isLoading}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg"
                         >
-                            {loading ? "Starte…" : "Zum Dashboard"}
+                            {mutation.isLoading ? "…" : "Zum Dashboard"}
                         </button>
-
-                        {error && (
-                            <p className="mt-4 text-sm text-center text-red-500">
-                                {error}
-                            </p>
-                        )}
                     </>
                 )}
 

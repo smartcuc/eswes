@@ -5,10 +5,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { trackEvent } from "../lib/track";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function MagicLogin() {
     const navigate = useNavigate();
     const { token } = useParams();
+    const queryClient = useQueryClient();
 
     const [status, setStatus] = useState("loading");
 
@@ -20,7 +22,6 @@ export default function MagicLogin() {
 
         async function run() {
             try {
-                // ✅ TRACK
                 trackEvent("magic_login_attempt");
 
                 // ✅ STEP 1 — Login
@@ -35,31 +36,50 @@ export default function MagicLogin() {
                 // ✅ STEP 2 — Session sicherstellen
                 let meRes;
 
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < 6; i++) {
                     meRes = await fetch("/api/auth/me/", {
                         credentials: "include",
                     });
 
                     if (meRes.ok) break;
 
-                    await new Promise(r => setTimeout(r, 200));
+                    await new Promise(r => setTimeout(r, 250));
                 }
 
                 if (!meRes || !meRes.ok) {
                     throw new Error("Session not ready");
                 }
 
-                // ✅ TRACK: success
+                // ✅ 🔥 PREFETCH (DAS MACHT DEN UNTERSCHIED)
+                await queryClient.prefetchQuery({
+                    queryKey: ["user"],
+                    queryFn: async () => {
+                        const res = await fetch("/api/auth/me/", {
+                            credentials: "include",
+                        });
+                        return res.json();
+                    }
+                });
+
+                await queryClient.prefetchQuery({
+                    queryKey: ["settings"],
+                    queryFn: async () => {
+                        const res = await fetch("/api/settings/", {
+                            credentials: "include",
+                        });
+                        return res.json();
+                    }
+                });
+
                 trackEvent("magic_login_success");
 
-                // ✅ STEP 3 — Routing (einfach!)
+                // ✅ STEP 3 — direkt rein
                 navigate("/app/dashboard", { replace: true });
 
             } catch (err) {
                 console.error("MagicLogin error:", err);
 
                 setStatus("error");
-
                 trackEvent("magic_login_failed");
 
                 setTimeout(() => {
@@ -69,7 +89,7 @@ export default function MagicLogin() {
         }
 
         run();
-    }, [token, navigate]);
+    }, [token, navigate, queryClient]);
 
     return (
         <div className="flex items-center justify-center h-screen">

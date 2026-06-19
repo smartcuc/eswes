@@ -2,6 +2,7 @@
 # src/pages/Login.jsx
 */
 import { useState } from "react";
+import { apiFetch } from "../api/client";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -16,19 +17,10 @@ export default function Login() {
         setStatus("");
 
         try {
-            const res = await fetch("/api/request-magic-link/", {
+            await apiFetch("/api/request-magic-link/", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
                 body: JSON.stringify({ email }),
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Fehler");
-            }
 
             setStatus("✅ Check deine E-Mails – dein Login-Link ist unterwegs!");
             setEmail("");
@@ -47,7 +39,13 @@ export default function Login() {
             }, 1000);
 
         } catch (err) {
-            setStatus("❌ Fehler beim Senden. Bitte erneut versuchen.");
+            if (err?.type === "validation") {
+                // ✅ Backend Fehler anzeigen
+                setStatus(`❌ ${err.data?.error || "Ungültige Eingabe"}`);
+            } else {
+                // ✅ generischer Fehler
+                setStatus("❌ Fehler beim Senden. Bitte erneut versuchen.");
+            }
         }
 
         setLoading(false);

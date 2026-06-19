@@ -6,11 +6,13 @@ import { useState, useRef, useEffect } from "react";
 import { useUser } from "../hooks/useUser";
 import { useTheme } from "../theme/ThemeContext";
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 export default function UserMenu() {
 
     const theme = useTheme();
     const { user } = useUser();
+    const { logout } = useAuth();
 
     const [open, setOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -30,17 +32,6 @@ export default function UserMenu() {
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
-    // ✅ Logout (Session-based)
-    const logout = async () => {
-        await fetch("/api/auth/logout/", {
-            method: "POST",
-            credentials: "include",
-        });
-
-        // ✅ Hard redirect → sauberer State
-        window.location.replace("/");
-    };
-
     if (!user) return null;
 
     // ✅ Name & Initials
@@ -57,7 +48,7 @@ export default function UserMenu() {
     return (
         <div className="relative" ref={dropdownRef}>
 
-            {/* ✅ BUTTON */}
+            {/* BUTTON */}
             <button
                 onClick={() => setOpen(!open)}
                 aria-expanded={open}
@@ -68,10 +59,10 @@ export default function UserMenu() {
                     className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium text-white"
                     style={{
                         background: `linear-gradient(
-                            to right,
-                            ${theme.colors?.primary},
-                            ${theme.colors?.secondary}
-                        )`,
+                        to right,
+                        ${theme.colors?.primary},
+                        ${theme.colors?.secondary}
+                    )`,
                     }}
                 >
                     {initials}
@@ -82,7 +73,7 @@ export default function UserMenu() {
                     {displayName}
                 </span>
 
-                {/* Dropdown Arrow */}
+                {/* Arrow */}
                 <span
                     className={`text-xs text-gray-400 transition-transform ${open ? "rotate-180" : ""
                         }`}
@@ -91,7 +82,7 @@ export default function UserMenu() {
                 </span>
             </button>
 
-            {/* ✅ DROPDOWN */}
+            {/* DROPDOWN */}
             {open && (
                 <div className="absolute right-0 mt-2 min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
 
@@ -114,7 +105,10 @@ export default function UserMenu() {
 
                     {/* Logout */}
                     <button
-                        onClick={logout}
+                        onClick={() => {
+                            setOpen(false);
+                            logout();
+                        }}
                         className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50"
                     >
                         🚪 Logout
@@ -124,5 +118,5 @@ export default function UserMenu() {
             )}
         </div>
     );
-}
 
+}
