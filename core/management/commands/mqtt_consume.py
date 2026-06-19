@@ -187,6 +187,10 @@ class Command(BaseCommand):
             if not auto_prov:
                 raise ValueError(f"Device not provisioned: {device_id}")
             
+            print("TOKEN:", token)
+            print("HOME OBJ:", home)
+            print("HOME ID:", getattr(home, "id", None))
+            
             device = Device.objects.create(
                 user=home.user,
                 home=home,
