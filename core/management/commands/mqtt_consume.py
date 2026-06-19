@@ -186,22 +186,21 @@ class Command(BaseCommand):
         if device is None:
             if not auto_prov:
                 raise ValueError(f"Device not provisioned: {device_id}")
-            
-            print("TOKEN:", token)
-            print("HOME OBJ:", home)
-            print("HOME ID:", getattr(home, "id", None))
-            
-            device = Device.objects.create(
-                user=home.user,
-                home=home,
-                identifier=device_id,        # 🔥 wichtig!
-                name=device_id,
-                role="other",                # 🔥 musst du setzen
-                configured=False,            # 🔥 sicher setzen
-            )
+
+            print("DEBUG HOME:", home, getattr(home, "id", None))
+
+            device = Device()
+            device.user = home.user
+            device.home = home
+            device.identifier = device_id
+            device.name = device_id
+            device.role = "other"
+            device.configured = False
+
+            device.save()
 
             logger.info("Auto-provisioned device=%s", device_id)
-
+            
         # 🔥 METER FLOW (→ IntervalReading)
         if device_type == "meter":
             meter = self._resolve_meter(device_id)
