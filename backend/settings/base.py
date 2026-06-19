@@ -351,6 +351,19 @@ LOGGING = {
     },
 }
 
+# =====================================
+# MQTT
+# =====================================
+MQTT_INGEST_ENABLED = os.getenv("MQTT_INGEST_ENABLED", "False") == "True"
+MQTT_HOST = os.getenv("MQTT_HOST", "127.0.0.1")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "home/+/device/+")
+MQTT_QOS = int(os.getenv("MQTT_QOS", 1))
+MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "default-client")
+MQTT_PROFILE = os.getenv("MQTT_PROFILE", "")
+
 
 # =============================
 # Sentry
