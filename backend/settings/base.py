@@ -127,6 +127,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_celery_beat",
+    'django_celery_results',
     "rest_framework",  # ✅ hinzufügen
     "rest_framework_simplejwt",
     "corsheaders",
@@ -251,6 +252,11 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 270
+
+CELERY_CACHE_BACKEND = 'default'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_PUBLISH_RETRY = True
+CELERY_RESULT_EXTENDED = True
 
 CELERY_BEAT_SCHEDULE = {
     # Balance regelmäßig nachziehen
