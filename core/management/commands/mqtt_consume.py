@@ -180,9 +180,11 @@ class Command(BaseCommand):
 
         source = str(meta.get("source") or "mqtt")[:64]
 
-        home = Home.objects.filter(mqtt_token=token).first()
+        # 🔥 DEVICE MUSS HIER DEFINIERT WERDEN
+        device = Device.objects.filter(home=home, name=device_id).first()
 
         if device is None:
+
             if not auto_prov:
                 raise ValueError(f"Device not provisioned: {device_type}/{device_id}")
 
