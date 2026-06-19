@@ -93,7 +93,7 @@ class Command(BaseCommand):
 
         username = getattr(settings, "MQTT_USERNAME", "")
         password = getattr(settings, "MQTT_PASSWORD", "")
-        use_tls = getattr(settings, "MQTT_TLS", False)
+        use_tls = getattr(settings, "MQTT_TLS",True)
         auto_prov = getattr(settings, "MQTT_AUTO_PROVISION", False)
 
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -101,8 +101,11 @@ class Command(BaseCommand):
         if username:
             client.username_pw_set(username, password)
 
-        if use_tls:
+        if port == 8883:
             client.tls_set()
+            client.tls_insecure_set(True)
+
+        client.connect(host, port, keepalive=45)
 
         client.will_set(
             "energy/system/mqtt_consumer/status",

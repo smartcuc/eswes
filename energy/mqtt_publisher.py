@@ -2,7 +2,6 @@
 # energy/mqtt_publisher.py
 ##########################
 
-
 import json
 import logging
 import paho.mqtt.client as mqtt
@@ -17,15 +16,24 @@ class MqttPublisher:
         self.port = int(getattr(settings, "MQTT_PORT", 1883))
         self.username = getattr(settings, "MQTT_USERNAME", "")
         self.password = getattr(settings, "MQTT_PASSWORD", "")
-        self.use_tls = getattr(settings, "MQTT_TLS", False)
+        self.use_tls = getattr(settings, "MQTT_TLS", True)
 
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+
+        # ✅ Auth zuerst
         if self.username:
             self.client.username_pw_set(self.username, self.password)
-        if self.use_tls:
-            self.client.tls_set()
 
+        # ✅ TLS automatisch bei Port 8883
+        if self.port == 8883:
+            self.client.tls_set()
+            self.client.tls_insecure_set(True)
+
+        # ✅ verbinden
         self.client.connect(self.host, self.port, keepalive=30)
+
+        # ✅ wichtig für stabile
+
 
     def publish_json(
         self, topic: str, payload: dict, qos: int = 1, retain: bool = False
