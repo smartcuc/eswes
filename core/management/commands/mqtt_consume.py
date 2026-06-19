@@ -190,8 +190,8 @@ class Command(BaseCommand):
             device = Device.objects.create(
                 user=home.user,
                 home=home,
-                name=device_id,
                 identifier=device_id,        # 🔥 wichtig!
+                name=device_id,
                 role="other",                # 🔥 musst du setzen
                 configured=False,            # 🔥 sicher setzen
             )
