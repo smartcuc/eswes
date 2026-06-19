@@ -188,10 +188,9 @@ class Command(BaseCommand):
                 raise ValueError(f"Device not provisioned: {device_id}")
 
             device = Device.objects.create(
+                user=home.user,
                 home=home,
                 name=device_id,
-                device_type=device_type,
-                controllable=False,
             )
 
             logger.info("Auto-provisioned device=%s", device_id)
