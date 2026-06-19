@@ -160,6 +160,7 @@ class Command(BaseCommand):
         if len(parts) != 4:
             raise ValueError(f"Invalid topic: {topic}")
 
+
         prefix, token, kind, device_id = parts
 
         if prefix != "home" or kind != "device":
@@ -169,38 +170,31 @@ class Command(BaseCommand):
         if not home:
             raise ValueError(f"Unknown token: {token}")
 
-        # 👉 Anpassung an dein Modell
         device_type = "other"
 
         data = json.loads(payload.decode("utf-8"))
         ts = parse_ts(data.get("ts"))
-        metrics: Dict[str, Any] = data.get("metrics") or {}
-        state: Dict[str, Any] = data.get("state") or {}
-        meta: Dict[str, Any] = data.get("meta") or {}
+        metrics = data.get("metrics") or {}
+        state = data.get("state") or {}
+        meta = data.get("meta") or {}
 
         source = str(meta.get("source") or "mqtt")[:64]
 
-        # 🔥 DEVICE MUSS HIER DEFINIERT WERDEN
+        # ✅ HIER WAR DER FEHLER
         device = Device.objects.filter(home=home, name=device_id).first()
 
         if device is None:
-
             if not auto_prov:
-                raise ValueError(f"Device not provisioned: {device_type}/{device_id}")
+                raise ValueError(f"Device not provisioned: {device_id}")
 
-        device = Device.objects.create(
-            home=home,   # 🔥 wichtig!
-            name=device_id,
-            device_type=(
-                device_type
-                if device_type in dict(Device.DEVICE_TYPE).keys()
-                else "other"
-            ),
-            controllable=False,
+            device = Device.objects.create(
+                home=home,
+                name=device_id,
+                device_type=device_type,
+                controllable=False,
+            )
 
-        )
-
-        logger.info("Auto-provisioned device=%s/%s", device_type, device_id)
+            logger.info("Auto-provisioned device=%s", device_id)
 
         # 🔥 METER FLOW (→ IntervalReading)
         if device_type == "meter":
