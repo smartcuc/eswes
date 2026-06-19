@@ -355,6 +355,7 @@ LOGGING = {
 # MQTT
 # =====================================
 MQTT_INGEST_ENABLED = os.getenv("MQTT_INGEST_ENABLED", "False") == "True"
+MQTT_AUTO_PROVISION = os.getenv("MQTT_AUTO_PROVISION", "False") == "True"
 MQTT_HOST = os.getenv("MQTT_HOST", "127.0.0.1")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
