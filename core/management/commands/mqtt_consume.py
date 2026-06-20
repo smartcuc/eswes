@@ -2,295 +2,150 @@
 # core/management/commands/mqtt_consume.py
 ##############################################
 
+# ============================================================
+# MQTT CONSUMER – INGEST PIPELINE
+# ============================================================
+
 import json
 import logging
-import re
-from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional
 
-import paho.mqtt.client as mqtt
-from django.conf import settings
-from django.core.management.base import BaseCommand
-from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from devices.models import Home, Device, DeviceMetric
 
-from core.models import Meter, IntervalReading
-from core.utils.slots import slot_minutes  # ✅ FIX
-
-from devices.models import Device, DeviceMetric, Home
-
-
-logger = logging.getLogger("core.mqtt")  # ✅ FIX
-
-
-TOPIC_RE = re.compile(r"^energy/(?P<device_type>[^/]+)/(?P<device_id>[^/]+)/telemetry$")
-OBIS_RE = re.compile(r"^\d+\.\d+\.\d+$")  # z.B. 1.8.0
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# ✅ HELPERS
+# ✅ TIMESTAMP PARSER (robust)
 # ============================================================
 
 def parse_ts(ts_str):
-    # ✅ Kein ts → jetzt()
     if not ts_str:
         return timezone.now()
 
-    # ✅ parsen
     dt = parse_datetime(ts_str)
-
-    # ✅ ungültig → fallback statt crash
     if dt is None:
         return timezone.now()
 
-    # ✅ timezone korrigieren
     if timezone.is_naive(dt):
         dt = timezone.make_aware(dt, timezone=timezone.utc)
 
     return dt.astimezone(timezone.utc)
 
 
-def to_decimal(v: Any) -> Decimal:
+# ============================================================
+# ✅ INGEST ENTRYPOINT
+# ============================================================
+
+def ingest(topic: str, payload: bytes, auto_prov: bool):
+    parts = topic.split("/")
+
+    if len(parts) != 4:
+        raise ValueError(f"Invalid topic: {topic}")
+
+    prefix, token, kind, device_id = parts
+
+    if prefix != "home" or kind != "device":
+        raise ValueError(f"Invalid topic: {topic}")
+
+    # ========================================================
+    # ✅ HOME LOOKUP
+    # ========================================================
+
+    home = Home.objects.get(mqtt_token=token)
+
+    # ========================================================
+    # ✅ DEVICE LOOKUP / AUTO-PROVISION
+    # ========================================================
+
+    device = Device.objects.filter(
+        home=home,
+        identifier=device_id
+    ).first()
+
+    if device is None:
+        if not auto_prov:
+            raise ValueError(f"Device not provisioned: {device_id}")
+
+        device = Device.objects.create(
+            home=home,
+            identifier=device_id,
+            name=device_id,
+        )
+
+        logger.info("Auto-provisioned device=%s", device_id)
+
+    # ========================================================
+    # ✅ PAYLOAD PARSING
+    # ========================================================
+
+    data = json.loads(payload.decode("utf-8"))
+
+    ts = parse_ts(data.get("ts"))
+    metrics = data.get("metrics") or {}
+    state = data.get("state") or {}
+    meta = data.get("meta") or {}
+
+    source = str(meta.get("source") or "mqtt")[:64]
+
+    # ========================================================
+    # ✅ DEVICE ACTIVITY UPDATE
+    # ========================================================
+
+    device.last_seen = ts
+    device.save(update_fields=["last_seen"])
+
+    # ========================================================
+    # ✅ METRICS INGEST (clean format)
+    # ========================================================
+
+    for key, value in metrics.items():
+        DeviceMetric.objects.create(
+            device=device,
+            timestamp=ts,
+            metric=str(key),
+            value=_to_float(value),
+            unit=_guess_unit(key),
+            data={"source": source},
+        )
+
+    # ========================================================
+    # ✅ STATE → also store as metrics
+    # ========================================================
+
+    for key, value in state.items():
+        DeviceMetric.objects.create(
+            device=device,
+            timestamp=ts,
+            metric=f"state.{key}",
+            value=_to_float(value),
+            unit="",
+            data={"source": source},
+        )
+
+
+# ============================================================
+# ✅ HELPERS
+# ============================================================
+
+def _to_float(val):
     try:
-        return Decimal(str(v))
-    except (InvalidOperation, ValueError, TypeError):
-        raise ValueError(f"Invalid numeric value: {v!r}")
+        return float(val)
+    except Exception:
+        return None
 
 
-def guess_unit(metric: str) -> str:
+def _guess_unit(metric: str) -> str:
     m = metric.lower()
-    if m.endswith("_w"):
+
+    if "power" in m:
         return "W"
-    if m.endswith("_wh"):
-        return "Wh"
-    if m.endswith("_kwh"):
+    if "energy" in m:
         return "kWh"
-    if m.endswith("_eur_kwh"):
-        return "EUR/kWh"
-    if m.endswith("_soc"):
-        return "%"
-    if m.endswith("_v"):
+    if "voltage" in m:
         return "V"
-    if m.endswith("_a"):
+    if "current" in m:
         return "A"
+
     return ""
-
-
-# ============================================================
-# ✅ COMMAND
-# ============================================================
-
-class Command(BaseCommand):
-    help = "Run MQTT consumer for telemetry ingestion (meter + devices)."
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--host", default=getattr(settings, "MQTT_HOST", "127.0.0.1")
-        )
-        parser.add_argument(
-            "--port", type=int, default=getattr(settings, "MQTT_PORT", 1883)
-        )
-        parser.add_argument(
-            "--topic", default=getattr(settings, "MQTT_TOPIC", "energy/+/+/telemetry")
-        )
-        parser.add_argument("--qos", type=int, default=getattr(settings, "MQTT_QOS", 1))
-
-    def handle(self, *args, **opts):
-        host = opts["host"]
-        port = opts["port"]
-        topic = opts["topic"]
-        qos = opts["qos"]
-
-        username = getattr(settings, "MQTT_USERNAME", "")
-        password = getattr(settings, "MQTT_PASSWORD", "")
-        use_tls = getattr(settings, "MQTT_TLS",True)
-        auto_prov = getattr(settings, "MQTT_AUTO_PROVISION", False)
-
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-
-        if username:
-            client.username_pw_set(username, password)
-
-        if port == 8883:
-            client.tls_set()
-            client.tls_insecure_set(True)
-
-        client.connect(host, port, keepalive=45)
-
-        client.will_set(
-            "energy/system/mqtt_consumer/status",
-            payload="offline",
-            qos=1,
-            retain=True,
-        )
-
-        def on_connect(c, userdata, flags, reason_code, properties):
-            logger.info("MQTT connected rc=%s", reason_code)
-            c.publish(
-                "energy/system/mqtt_consumer/status", "online", qos=1, retain=True
-            )
-            c.subscribe(topic, qos=qos)
-            logger.info("Subscribed %s qos=%s", topic, qos)
-
-        def on_disconnect(c, userdata, reason_code, properties):
-            logger.warning("MQTT disconnected rc=%s", reason_code)
-
-        def on_message(c, userdata, msg):
-            try:
-                self.ingest(topic=msg.topic, payload=msg.payload, auto_prov=auto_prov)
-            except Exception as e:
-                logger.exception("Ingest failed topic=%s err=%s", msg.topic, e)
-
-        client.on_connect = on_connect
-        client.on_disconnect = on_disconnect
-        client.on_message = on_message
-
-        logger.info("Connecting to MQTT %s:%s ...", host, port)
-        client.connect(host, port, keepalive=45)
-        client.loop_forever(retry_first_connection=True)
-
-    # ============================================================
-    # ✅ INGEST
-    # ============================================================
-
-    def ingest(self, topic: str, payload: bytes, auto_prov: bool):
-        parts = topic.split("/")
-
-        if len(parts) != 4:
-            raise ValueError(f"Invalid topic: {topic}")
-
-
-        prefix, token, kind, device_id = parts
-
-        if prefix != "home" or kind != "device":
-            raise ValueError(f"Invalid topic: {topic}")
-
-        home = Home.objects.filter(mqtt_token=token).first()
-        if not home:
-            raise ValueError(f"Unknown token: {token}")
-
-        device_type = "other"
-
-        data = json.loads(payload.decode("utf-8"))
-        ts = parse_ts(data.get("ts"))
-        metrics = data.get("metrics") or {}
-        state = data.get("state") or {}
-        meta = data.get("meta") or {}
-
-        source = str(meta.get("source") or "mqtt")[:64]
-
-        # ✅ HIER WAR DER FEHLER
-        device = Device.objects.filter(home=home, name=device_id).first()
-
-        if device is None:
-            if not auto_prov:
-                raise ValueError(f"Device not provisioned: {device_id}")
-
-            print("DEBUG HOME:", home, getattr(home, "id", None))
-
-            device = Device()
-            device.user = home.user
-            device.home = home
-            device.identifier = device_id
-            device.name = device_id
-            device.role = "other"
-            device.configured = False
-
-            device.save()
-
-            logger.info("Auto-provisioned device=%s", device_id)
-            
-        # 🔥 METER FLOW (→ IntervalReading)
-        if device_type == "meter":
-            meter = self._resolve_meter(device_id)
-
-            if meter is None:
-                raise ValueError(f"Meter not found (id/serial): {device_id}")
-
-            for k, v in metrics.items():
-                key = str(k)
-
-                if OBIS_RE.match(key):
-                    self._upsert_intervalreading(
-                        meter=meter,
-                        ts=ts,
-                        obis_code=key,
-                        value=v,
-                        source=source,
-                    )
-                else:
-                    self._upsert_devicemetric(
-                        device, ts, key, v, unit=guess_unit(key), source=source
-                    )
-
-            for k, v in state.items():
-                self._upsert_devicemetric(
-                    device, ts, f"state.{k}", v, unit="", source=source
-                )
-
-            return
-
-        # 🔥 GENERIC DEVICE FLOW
-        for k, v in metrics.items():
-            self._upsert_devicemetric(
-                device, ts, str(k), v, unit=guess_unit(str(k)), source=source
-            )
-
-        for k, v in state.items():
-            self._upsert_devicemetric(
-                device, ts, f"state.{k}", v, unit="", source=source
-            )
-
-    # ============================================================
-    # ✅ HELPERS
-    # ============================================================
-
-    def _resolve_meter(self, device_id: str) -> Optional[Meter]:
-        meter = Meter.objects.filter(id=device_id).first()
-        if meter:
-            return meter
-        return Meter.objects.filter(serial_number=device_id).first()
-
-    def _upsert_intervalreading(
-        self, meter: Meter, ts, obis_code: str, value: Any, source: str
-    ):
-
-        # ✅ FIX: kein Hardcode mehr
-        ts_end = ts + timezone.timedelta(minutes=slot_minutes())
-
-        with transaction.atomic():
-            try:
-                IntervalReading.objects.update_or_create(
-                    meter=meter,
-                    ts_start=ts,
-                    obis_code=obis_code,
-                    defaults={
-                        "tenant": getattr(meter, "tenant", None),
-                        "ts_end": ts_end,
-                        "value": to_decimal(value),
-                        "unit": "kWh",
-                        "source": source,
-                    },
-                )
-            except IntegrityError:
-                pass
-
-    def _upsert_devicemetric(
-        self, device: Device, ts, metric: str, value: Any, unit: str, source: str
-    ):
-        with transaction.atomic():
-            try:
-                DeviceMetric.objects.update_or_create(
-                    device=device,
-                    ts=ts,
-                    metric=metric[:64],
-                    defaults={
-                        "value": to_decimal(value),
-                        "unit": (unit or "")[:16],
-                        "source": source[:64],
-                    },
-                )
-            except IntegrityError:
-                pass
-            

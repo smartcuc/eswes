@@ -9,6 +9,10 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
+# ============================================================
+# ✅ HOME
+# ============================================================
+
 class Home(models.Model):
     user = models.ForeignKey(
         User,
@@ -18,11 +22,10 @@ class Home(models.Model):
 
     name = models.CharField(max_length=100, default="Home")
 
-    mqtt_token = models.CharField(
-        max_length=64,
-        unique=True,
+    mqtt_token = models.UUIDField(
         default=uuid.uuid4,
-        editable=False,
+        unique=True,
+        editable=False
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -31,52 +34,108 @@ class Home(models.Model):
         return f"{self.name} ({self.user_id})"
 
 
-class Device(models.Model):
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="devices"
-    )
+# ============================================================
+# ✅ DEVICE ROLE
+# ============================================================
 
+class DeviceRole(models.Model):
+    key = models.CharField(max_length=20, unique=True)
+    label = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.label
+
+
+# ============================================================
+# ✅ FLOOR
+# ============================================================
+
+class Floor(models.Model):
     home = models.ForeignKey(
         Home,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
+        related_name="floors"
+    )
+    name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
+
+# ============================================================
+# ✅ ROOM
+# ============================================================
+
+class Room(models.Model):
+    floor = models.ForeignKey(
+        Floor,
+        on_delete=models.CASCADE,
+        related_name="rooms"
+    )
+    name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
+
+# ============================================================
+# ✅ DEVICE
+# ============================================================
+
+class Device(models.Model):
+    home = models.ForeignKey(
+        Home,
+        on_delete=models.CASCADE,
         related_name="devices"
     )
 
     identifier = models.CharField(max_length=100)
     name = models.CharField(max_length=255)
 
-    ROLE_CHOICES = [
-        ("pv", "PV"),
-        ("load", "Load"),
-        ("battery", "Battery"),
-        ("grid", "Grid"),
-    ]
-
-    role = models.CharField(
-        max_length=20,
-        choices=ROLE_CHOICES,
+    role = models.ForeignKey(
+        DeviceRole,
         null=True,
         blank=True,
+        on_delete=models.SET_NULL
     )
 
     configured = models.BooleanField(default=False)
 
-    home_label = models.CharField(max_length=100, default="home-1")
-    floor = models.CharField(max_length=100, null=True, blank=True)
-    room = models.CharField(max_length=100, null=True, blank=True)
+    floor = models.ForeignKey(
+        Floor,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
 
+    room = models.ForeignKey(
+        Room,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    # 🔥 Lifecycle
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    # 🔥 Standard
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("user", "identifier")
+        unique_together = ("home", "identifier")
+        indexes = [
+            models.Index(fields=["home", "identifier"]),
+        ]
 
     def __str__(self):
         return self.name
 
+
+# ============================================================
+# ✅ DEVICE METRIC
+# ============================================================
 
 class DeviceMetric(models.Model):
     device = models.ForeignKey(
@@ -86,12 +145,21 @@ class DeviceMetric(models.Model):
     )
 
     timestamp = models.DateTimeField()
-    power_w = models.FloatField(null=True, blank=True)
-    energy_kwh = models.FloatField(null=True, blank=True)
 
+    metric = models.CharField(max_length=64)
+    value = models.FloatField(null=True, blank=True)
+    unit = models.CharField(max_length=16, blank=True)
+
+    # 🔥 flexible Daten
     data = models.JSONField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["device", "timestamp"]),
+        ]
+
     def __str__(self):
         return f"{self.device.identifier} @ {self.timestamp}"
+    

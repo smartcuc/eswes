@@ -3,7 +3,7 @@
 ##################
 
 from django.contrib import admin
-from .models import Device, DeviceMetric, Home
+from .models import Home, Device, DeviceMetric, DeviceRole, Floor, Room
 
 
 @admin.register(Home)
@@ -24,17 +24,21 @@ class DeviceAdmin(admin.ModelAdmin):
         "home",
         "floor",
         "room",
+        "last_seen",
         "created_at",
     )
-    list_filter = ("configured", "role", "home")
-    search_fields = ("identifier", "name", "room")
+    list_filter = ("configured", "role", "home", "floor")
+    search_fields = ("identifier", "name", "room__name")
     ordering = ("-created_at",)
 
 
 @admin.register(DeviceMetric)
 class DeviceMetricAdmin(admin.ModelAdmin):
-    list_display = ("device", "created_at")
-    search_fields = ("device__identifier",)
-    ordering = ("-created_at",)
+    list_display = ("device", "metric", "value", "unit", "timestamp")
+    search_fields = ("device__identifier", "metric")
+    ordering = ("-timestamp",)
 
 
+admin.site.register(DeviceRole)
+admin.site.register(Floor)
+admin.site.register(Room)
