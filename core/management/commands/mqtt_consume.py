@@ -17,7 +17,6 @@ from django.utils.dateparse import parse_datetime
 from devices.models import Home, Device, DeviceMetric
 
 import paho.mqtt.client as mqtt
-from core.management.commands.mqtt_consume import ingest  # falls anders, anpassen
 
 
 logger = logging.getLogger(__name__)
