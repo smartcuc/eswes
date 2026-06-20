@@ -9,9 +9,13 @@
 import json
 import logging
 
+from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from devices.models import Home, Device, DeviceMetric
+
+import paho.mqtt.client as mqtt
+
 
 logger = logging.getLogger(__name__)
 
@@ -149,3 +153,40 @@ def _guess_unit(metric: str) -> str:
         return "A"
 
     return ""
+
+# ============================================================
+# ✅ DJANGO MANAGEMENT COMMAND ENTRYPOINT
+# ============================================================
+
+
+class Command(BaseCommand):
+    help = "MQTT Consumer"
+
+    def handle(self, *args, **options):
+        self.stdout.write("Starting MQTT consumer...")
+
+        client = mqtt.Client()
+
+        client.on_connect = self.on_connect
+        client.on_message = self.on_message
+
+        client.connect("127.0.0.1", 8883)
+        client.loop_forever()
+
+    # ---------------------------
+    # MQTT
+    # ---------------------------
+
+    def on_connect(self, client, userdata, flags, rc):
+        print(f"MQTT connected rc={rc}")
+        client.subscribe("home/+/device/+")
+
+    def on_message(self, client, userdata, msg):
+        try:
+            ingest(
+                topic=msg.topic,
+                payload=msg.payload,
+                auto_prov=True
+            )
+        except Exception as e:
+            print(f"Ingest failed topic={msg.topic} err={e}")
