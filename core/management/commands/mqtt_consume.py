@@ -165,17 +165,20 @@ class Command(BaseCommand):
     print("Starting MQTT consumer...")
     print("Connecting to MQTT 127.0.0.1:8883 ...")
 
-
     def handle(self, *args, **options):
-        self.stdout.write("Starting MQTT consumer...")
+        print("Starting MQTT consumer...")
 
         client = mqtt.Client()
+
+        client.username_pw_set("testuser", "testpass")
+        client.tls_set()
 
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
         client.connect("127.0.0.1", 8883)
         client.loop_forever()
+
 
     # ---------------------------
     # MQTT
