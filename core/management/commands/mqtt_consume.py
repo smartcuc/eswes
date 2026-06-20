@@ -166,36 +166,29 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         print("Starting MQTT consumer...")
 
-        host = os.getenv("MQTT_HOST", "127.0.0.1")
-        port = int(os.getenv("MQTT_PORT", 1883))
+        host = os.getenv("MQTT_HOST", "sharegy.de")
+        port = int(os.getenv("MQTT_PORT", 8883))
         user = os.getenv("MQTT_USERNAME")
         password = os.getenv("MQTT_PASSWORD")
-        use_tls = os.getenv("MQTT_TLS", "False") == "True"
-
-        client_id = os.getenv("MQTT_CLIENT_ID", "django-mqtt")
 
         print(f"Connecting to MQTT {host}:{port} ...")
 
-        client = mqtt.Client(client_id=client_id)
+        client = mqtt.Client()
 
         if user and password:
             client.username_pw_set(user, password)
 
-        if use_tls:
-            import ssl
-            client.tls_set(cert_reqs=ssl.CERT_NONE)
-            client.tls_insecure_set(True)
+        import ssl
+        client.tls_set(cert_reqs=ssl.CERT_NONE)
+        client.tls_insecure_set(True)
 
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
         client.connect(host, port)
 
-        client.loop_start()
-
-        print("MQTT loop started ✅")
-
-
+        print("MQTT loop starting ✅")
+        client.loop_forever()
 
     # ---------------------------
     # MQTT
