@@ -176,26 +176,25 @@ class Command(BaseCommand):
 
         print(f"Connecting to MQTT {host}:{port} ...")
 
-        import ssl
         client = mqtt.Client(client_id=client_id)
-                
-        if use_tls:
-            client.tls_set(cert_reqs=ssl.CERT_NONE)
-            client.tls_insecure_set(True)
-
 
         if user and password:
             client.username_pw_set(user, password)
 
         if use_tls:
-            client.tls_set()
+            import ssl
+            client.tls_set(cert_reqs=ssl.CERT_NONE)
             client.tls_insecure_set(True)
 
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
         client.connect(host, port)
-        client.loop_forever()
+
+        client.loop_start()
+
+        print("MQTT loop started ✅")
+
 
 
     # ---------------------------
