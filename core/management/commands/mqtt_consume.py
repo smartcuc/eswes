@@ -17,6 +17,7 @@ from django.utils.dateparse import parse_datetime
 from devices.models import Home, Device, DeviceMetric
 
 import paho.mqtt.client as mqtt
+from core.management.commands.mqtt_consume import ingest  # falls anders, anpassen
 
 
 logger = logging.getLogger(__name__)
@@ -160,7 +161,6 @@ def _guess_unit(metric: str) -> str:
 # ✅ DJANGO MANAGEMENT COMMAND ENTRYPOINT
 # ============================================================
 
-
 class Command(BaseCommand):
     help = "MQTT Consumer"
 
@@ -174,51 +174,50 @@ class Command(BaseCommand):
 
         print(f"Connecting to MQTT {host}:{port} ...")
 
-        # Für paho-mqtt >= 2.0 wird eine Callback-API-Version benötigt:
-        # client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-        client = mqtt.Client()
+        # ✅ V2 Callback API verwenden (KRITISCH)
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
+        # ✅ Auth
         if user and password:
             client.username_pw_set(user, password)
 
+        # ✅ TLS (DEV/TEST – PROD später härten)
         client.tls_set(cert_reqs=ssl.CERT_NONE)
         client.tls_insecure_set(True)
 
+        # ✅ Callbacks setzen
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
-        # 1. Verbindung aufbauen
-        client.connect(host, port, keepalive=60)
+        # ✅ Connect
+        client.connect(host, port)
 
-        # 2. Blockierende Schleife starten (hält den Prozess aktiv)
+        print("MQTT loop starting ✅")
+
         try:
             client.loop_forever()
         except KeyboardInterrupt:
-            print("MQTT Consumer stopped by user.")
-
-    def on_connect(self, client, userdata, flags, rc, properties=None):
-        print(f"Connected with result code {rc}")
-        # Abonnieren Sie Ihre Topics direkt nach dem Verbindungsaufbau
-        client.subscribe("ihr/topic/hier")
-
-    def on_message(self, client, userdata, msg):
-        print(f"Received message on {msg.topic}: {msg.payload.decode()}")
-  
+            print("MQTT stopped")
+            client.disconnect()
 
     # ---------------------------
-    # MQTT
+    # MQTT CALLBACKS (V2!)
     # ---------------------------
 
-    def on_connect(self, client, userdata, flags, rc):
-        print(f"MQTT connected rc={rc}")
-        client.subscribe("home/+/device/+")
+    def on_connect(self, client, userdata, flags, reason_code, properties):
+        if reason_code == 0:
+            print("MQTT connected ✅")
+            client.subscribe("home/+/device/+")
+        else:
+            print(f"MQTT failed rc={reason_code}")
 
     def on_message(self, client, userdata, msg):
         try:
             ingest(
                 topic=msg.topic,
                 payload=msg.payload,
-                auto_prov=True
+                auto_prov=True,
             )
         except Exception as e:
             print(f"Ingest failed topic={msg.topic} err={e}")
+
