@@ -73,20 +73,16 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
 
     device = Device.objects.filter(
         home=home,
-        identifier=device_id
+        identifier=device_identifier
     ).first()
 
-    if device is None:
-        if not auto_prov:
-            raise ValueError(f"Device not provisioned: {device_id}")
-
+    if not device and auto_prov:
         device = Device.objects.create(
             home=home,
-            identifier=device_id,
-            name=device_id,
+            identifier=device_identifier
         )
+        print(f"Auto-provisioned device={device_identifier}")
 
-        logger.info("Auto-provisioned device=%s", device_id)
 
     # ========================================================
     # ✅ PAYLOAD PARSING
