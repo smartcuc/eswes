@@ -168,20 +168,22 @@ class Command(BaseCommand):
 
         host = os.getenv("MQTT_HOST", "127.0.0.1")
         port = int(os.getenv("MQTT_PORT", 1883))
-        user = os.getenv("MQTT_USER")
+        user = os.getenv("MQTT_USERNAME")
         password = os.getenv("MQTT_PASSWORD")
         use_tls = os.getenv("MQTT_TLS", "False") == "True"
 
+        client_id = os.getenv("MQTT_CLIENT_ID", "django-mqtt")
+
         print(f"Connecting to MQTT {host}:{port} ...")
 
-        client = mqtt.Client()
+        client = mqtt.Client(client_id=client_id)
 
         if user and password:
             client.username_pw_set(user, password)
 
         if use_tls:
             client.tls_set()
-            client.tls_insecure_set(True)  # ok für self-signed / interne Nutzung
+            client.tls_insecure_set(True)
 
         client.on_connect = self.on_connect
         client.on_message = self.on_message
