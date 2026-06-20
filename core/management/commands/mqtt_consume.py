@@ -9,6 +9,7 @@
 import json
 import logging
 import os
+import ssl
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -173,22 +174,36 @@ class Command(BaseCommand):
 
         print(f"Connecting to MQTT {host}:{port} ...")
 
+        # Für paho-mqtt >= 2.0 wird eine Callback-API-Version benötigt:
+        # client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         client = mqtt.Client()
 
         if user and password:
             client.username_pw_set(user, password)
 
-        import ssl
         client.tls_set(cert_reqs=ssl.CERT_NONE)
         client.tls_insecure_set(True)
 
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
-        client.connect(host, port)
+        # 1. Verbindung aufbauen
+        client.connect(host, port, keepalive=60)
 
-        print("MQTT loop starting ✅")
-        client.loop_forever()
+        # 2. Blockierende Schleife starten (hält den Prozess aktiv)
+        try:
+            client.loop_forever()
+        except KeyboardInterrupt:
+            print("MQTT Consumer stopped by user.")
+
+    def on_connect(self, client, userdata, flags, rc, properties=None):
+        print(f"Connected with result code {rc}")
+        # Abonnieren Sie Ihre Topics direkt nach dem Verbindungsaufbau
+        client.subscribe("ihr/topic/hier")
+
+    def on_message(self, client, userdata, msg):
+        print(f"Received message on {msg.topic}: {msg.payload.decode()}")
+  
 
     # ---------------------------
     # MQTT
