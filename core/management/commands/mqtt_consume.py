@@ -161,12 +161,10 @@ def _guess_unit(metric: str) -> str:
 
 class Command(BaseCommand):
     help = "MQTT Consumer"
-    
-    print("Starting MQTT consumer...")
-    print("Connecting to MQTT 127.0.0.1:8883 ...")
 
     def handle(self, *args, **options):
         print("Starting MQTT consumer...")
+        print("Connecting to MQTT 127.0.0.1:8883 ...")
 
         client = mqtt.Client()
 
