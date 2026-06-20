@@ -8,6 +8,7 @@
 
 import json
 import logging
+import os
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -164,17 +165,28 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         print("Starting MQTT consumer...")
-        print("Connecting to MQTT 127.0.0.1:8883 ...")
+
+        host = os.getenv("MQTT_HOST", "127.0.0.1")
+        port = int(os.getenv("MQTT_PORT", 1883))
+        user = os.getenv("MQTT_USER")
+        password = os.getenv("MQTT_PASSWORD")
+        use_tls = os.getenv("MQTT_TLS", "False") == "True"
+
+        print(f"Connecting to MQTT {host}:{port} ...")
 
         client = mqtt.Client()
 
-        client.username_pw_set("testuser", "testpass")
-        client.tls_set()
+        if user and password:
+            client.username_pw_set(user, password)
+
+        if use_tls:
+            client.tls_set()
+            client.tls_insecure_set(True)  # ok für self-signed / interne Nutzung
 
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
-        client.connect("127.0.0.1", 8883)
+        client.connect(host, port)
         client.loop_forever()
 
 
