@@ -176,7 +176,13 @@ class Command(BaseCommand):
 
         print(f"Connecting to MQTT {host}:{port} ...")
 
+        import ssl
         client = mqtt.Client(client_id=client_id)
+                
+        if use_tls:
+            client.tls_set(cert_reqs=ssl.CERT_NONE)
+            client.tls_insecure_set(True)
+
 
         if user and password:
             client.username_pw_set(user, password)
