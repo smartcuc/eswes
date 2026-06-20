@@ -87,15 +87,82 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
     # ========================================================
     # ✅ PAYLOAD PARSING
     # ========================================================
+    # raw payload kommt als bytes rein
+    payload_str = payload.decode("utf-8")
 
-    data = json.loads(payload.decode("utf-8"))
+    print(f"RAW PAYLOAD: {payload_str}")
 
-    ts = parse_ts(data.get("ts"))
-    metrics = data.get("metrics") or {}
-    state = data.get("state") or {}
-    meta = data.get("meta") or {}
+    metrics = {}
+    state = {}
+    meta = {}
 
-    source = str(meta.get("source") or "mqtt")[:64]
+    # ========================================================
+    # ✅ PAYLOAD PARSING (ROBUST)
+    # ========================================================
+
+    try:
+        data = json.loads(payload_str)
+
+        # ✅ Case 1: {"metrics": {...}}
+        if isinstance(data, dict) and "metrics" in data:
+            metrics = data.get("metrics", {})
+            state = data.get("state", {})
+            meta = data.get("meta", {})
+
+        # ✅ Case 2: {"val": 229.8}
+        elif isinstance(data, dict) and "val" in data:
+            metrics = {"value": data["val"]}
+            meta = data
+
+        # ✅ Case 3: ioBroker wrapper
+        elif isinstance(data, dict) and "message" in data:
+            try:
+                val = float(data["message"])
+                metrics = {"value": val}
+                meta = data
+            except:
+                print("Invalid ioBroker message")
+                return
+
+        # ✅ Case 4: generic dict
+        elif isinstance(data, dict):
+            metrics = data
+
+        else:
+            metrics = {"value": float(data)}
+
+    except Exception:
+        # ✅ fallback plain string
+        try:
+            metrics = {"value": float(payload_str)}
+        except:
+            print(f"Invalid payload: {payload_str}")
+            return
+
+    # ========================================================
+    # ✅ TIMESTAMP + SOURCE
+    # ========================================================
+
+    ts = None
+
+    # ✅ try extract timestamp from meta
+    if isinstance(meta, dict):
+        if "ts" in meta:
+            try:
+                ts = timezone.datetime.fromtimestamp(meta["ts"] / 1000, tz=timezone.utc)
+            except:
+                ts = None
+        elif "timestamp" in meta:
+            ts = parse_ts(meta["timestamp"])
+
+    if not ts:
+        ts = timezone.now()
+
+    source = str(meta.get("from") or "mqtt")[:64] if isinstance(meta, dict) else "mqtt"
+
+    print(f"METRICS DEBUG: {metrics}")
+    print(f"STATE DEBUG: {state}")
+    print(f"SOURCE: {source}")
 
     # ========================================================
     # ✅ DEVICE ACTIVITY UPDATE
@@ -105,7 +172,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
     device.save(update_fields=["last_seen"])
 
     # ========================================================
-    # ✅ METRICS INGEST (clean format)
+    # ✅ METRICS INGEST
     # ========================================================
 
     for key, value in metrics.items():
@@ -115,11 +182,14 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
             metric=str(key),
             value=_to_float(value),
             unit=_guess_unit(key),
-            data={"source": source},
+            data={
+                "source": source,
+                "raw": meta,
+            },
         )
 
     # ========================================================
-    # ✅ STATE → also store as metrics
+    # ✅ STATE INGEST (separat gespeichert)
     # ========================================================
 
     for key, value in state.items():
@@ -129,9 +199,11 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
             metric=f"state.{key}",
             value=_to_float(value),
             unit="",
-            data={"source": source},
+            data={
+                "source": source,
+                "raw": meta,
+            },
         )
-
 
 # ============================================================
 # ✅ HELPERS
