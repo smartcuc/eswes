@@ -45,21 +45,27 @@ def parse_ts(ts_str):
 # ============================================================
 
 def ingest(topic: str, payload: bytes, auto_prov: bool):
+    
     parts = topic.split("/")
 
-    if len(parts) != 4:
-        raise ValueError(f"Invalid topic: {topic}")
+    if len(parts) < 4:
+        raise ValueError("Invalid topic format")
 
-    prefix, token, kind, device_id = parts
+    home_token = parts[1].strip()
+    device_identifier = parts[3]
 
-    if prefix != "home" or kind != "device":
-        raise ValueError(f"Invalid topic: {topic}")
 
     # ========================================================
     # ✅ HOME LOOKUP
     # ========================================================
 
-    home = Home.objects.get(mqtt_token=token)
+    #home = Home.objects.get(mqtt_token=token)
+    
+    print(f"HOME TOKEN DEBUG: {home_token}")
+
+    # ✅ DAS IST DIE KORREKTE ZEILE
+    home = Home.objects.get(mqtt_token=home_token)
+
 
     # ========================================================
     # ✅ DEVICE LOOKUP / AUTO-PROVISION
