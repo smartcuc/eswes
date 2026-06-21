@@ -2,6 +2,7 @@
 # devices/tasks.py
 ##################
 
+import os
 from celery import shared_task
 import subprocess
 
@@ -40,13 +41,26 @@ def provision_home(self, home_id):
 
     home = Home.objects.get(id=home_id)
 
+    mqtt_host = os.getenv("MQTT_HOST")
+    mqtt_port = os.getenv("MQTT_PORT", "8883")
+    admin_user = os.getenv("MQTT_ADMIN_USER")
+    admin_pass = os.getenv("MQTT_ADMIN_PASSWORD")
+    cafile = os.getenv("MQTT_CAFILE")
+    ctrl_path = os.getenv("MQTT_CTRL_PATH")
+
     try:
         subprocess.run([
-            "/usr/bin/mosquitto_ctrl", "dynsec", "createClient",
+            ctrl_path,
+            "-h", mqtt_host,
+            "-p", mqtt_port,
+            "--cafile", cafile,
+            "-u", admin_user,
+            "-P", admin_pass,
+            "dynsec", "createClient",
             home.mqtt_username,
             "-u", home.mqtt_username,
-            "-p", home.mqtt_password
-        ], check=False)
+            "-p", home.mqtt_password,
+        ], check=True)
 
         subprocess.run([
             "/usr/bin/mosquitto_ctrl", "dynsec", "addRoleACL",

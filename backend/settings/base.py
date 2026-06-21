@@ -365,6 +365,11 @@ MQTT_QOS = int(os.getenv("MQTT_QOS", 1))
 MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "default-client")
 MQTT_PROFILE = os.getenv("MQTT_PROFILE", "")
 
+MQTT_ADMIN_USER = os.getenv("MQTT_ADMIN_USER")
+MQTT_ADMIN_PASSWORD = os.getenv("MQTT_ADMIN_PASSWORD")
+MQTT_CAFILE = os.getenv("MQTT_CAFILE")
+MQTT_CTRL_PATH = os.getenv("MQTT_CTRL_PATH")
+
 
 # =============================
 # Sentry
