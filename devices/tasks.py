@@ -38,7 +38,7 @@ def provision_home(self, home_id):
         subprocess.run(mqtt_cmd(
             "dynsec", "createRole",
             home.mqtt_username
-        ), check=False)
+        ), check=True)
 
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
