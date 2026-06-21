@@ -14,14 +14,14 @@ def provision_home(self, home_id):
         home = Home.objects.get(id=home_id)
 
         subprocess.run([
-            "mosquitto_ctrl", "dynsec", "createClient",
+            "/usr/bin/mosquitto_ctrl", "dynsec", "createClient",
             home.mqtt_username,
             "-u", home.mqtt_username,
             "-p", home.mqtt_password
         ], check=True)
 
         subprocess.run([
-            "mosquitto_ctrl", "dynsec", "addRoleACL",
+            "/usr/bin/mosquitto_ctrl", "dynsec", "addRoleACL",
             home.mqtt_username,
             "publishClientSend",
             f"home/{home.mqtt_token}/#"
@@ -42,14 +42,14 @@ def provision_home(self, home_id):
 
     try:
         subprocess.run([
-            "mosquitto_ctrl", "dynsec", "createClient",
+            "/usr/bin/mosquitto_ctrl", "dynsec", "createClient",
             home.mqtt_username,
             "-u", home.mqtt_username,
             "-p", home.mqtt_password
         ], check=False)
 
         subprocess.run([
-            "mosquitto_ctrl", "dynsec", "addRoleACL",
+            "/usr/bin/mosquitto_ctrl", "dynsec", "addRoleACL",
             home.mqtt_username,
             "publishClientSend",
             f"home/{home.mqtt_token}/#"
@@ -70,7 +70,7 @@ def delete_mqtt_user(username):
     import subprocess
 
     subprocess.run([
-        "mosquitto_ctrl", "dynsec", "deleteClient",
+        "/usr/bin/mosquitto_ctrl", "dynsec", "deleteClient",
         username
     ], check=False)
 
