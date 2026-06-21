@@ -40,22 +40,15 @@ def provision_home(self, home_id):
             home.mqtt_username
         ), check=True)
 
+        # ✅ publishPattern ONLY
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "publishClientSend",
+            "publishPattern",
             f"home/{home.mqtt_token}/#"
         ), check=True)
 
-        # publish
-        subprocess.run(mqtt_cmd(
-            "dynsec", "addRoleACL",
-            home.mqtt_username,
-            "publishClientSend",
-            f"home/{home.mqtt_token}/#"
-        ), check=True)
-
-        # subscribe ✅ FIXED
+        # ✅ subscribePattern
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
@@ -69,7 +62,6 @@ def provision_home(self, home_id):
             home.mqtt_username
         ), check=True)
 
-        # ✅ jetzt als provisioned markieren
         home.mqtt_provisioned = True
         home.save(update_fields=["mqtt_provisioned"])
 
@@ -87,6 +79,4 @@ def delete_mqtt_user(username):
         "dynsec", "deleteClient",
         username
     ), check=False)
-
-
 
