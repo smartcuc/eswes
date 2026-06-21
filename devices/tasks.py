@@ -9,31 +9,6 @@ import subprocess
 from .models import Home
 
 
-@shared_task(bind=True)
-def provision_home(self, home_id):
-    try:
-        home = Home.objects.get(id=home_id)
-
-        subprocess.run([
-            "/usr/bin/mosquitto_ctrl", "dynsec", "createClient",
-            home.mqtt_username,
-            "-u", home.mqtt_username,
-            "-p", home.mqtt_password
-        ], check=True)
-
-        subprocess.run([
-            "/usr/bin/mosquitto_ctrl", "dynsec", "addRoleACL",
-            home.mqtt_username,
-            "publishClientSend",
-            f"home/{home.mqtt_token}/#"
-        ], check=True)
-
-        return "OK"
-
-    except Exception as e:
-        raise self.retry(exc=e, countdown=5, max_retries=3)
-
-
 def mqtt_cmd(*args):
     return [
         os.getenv("MQTT_CTRL_PATH"),
