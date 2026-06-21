@@ -40,20 +40,22 @@ def provision_home(self, home_id):
             home.mqtt_username
         ), check=True)
 
-        # 3. ACL für Publish (Geändert auf publishClient wegen der '#' Wildcard)
+        # 3. ACL für Senden (Korrektes Argument: publishClientSend)
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "publishClient",
-            f"home/{home.mqtt_token}/#"
+            "publishClientSend",
+            f"home/{home.mqtt_token}/#",
+            "allow"
         ), check=True)
 
-        # 4. ACL für Subscribe (Geändert auf subscribeClient wegen der '#' Wildcard)
+        # 4. ACL für Empfangen (Korrektes Argument: subscribePattern)
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "subscribeClient",
-            f"home/{home.mqtt_token}/#"
+            "subscribePattern",
+            f"home/{home.mqtt_token}/#",
+            "allow"
         ), check=True)
             
         # 5. Rolle dem Client zuweisen
