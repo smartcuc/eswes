@@ -55,9 +55,11 @@ def send_magic_link_email(user, link, token):
         "tracking_base_url": settings.TRACKING_BASE_URL,
     })
 
+    plain_message = f"Login-Link: {link}"
+
     send_mail(
         subject,
-        "",  # plain text optional
+        plain_message,
         settings.DEFAULT_FROM_EMAIL,
         [user.email],
         html_message=html_message,
