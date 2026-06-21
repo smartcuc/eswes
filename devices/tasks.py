@@ -3,8 +3,8 @@
 ##################
 
 import os
-from celery import shared_task
 import subprocess
+from celery import shared_task
 
 from .models import Home
 
@@ -23,11 +23,10 @@ def mqtt_cmd(*args):
 
 @shared_task(bind=True)
 def provision_home(self, home_id):
-    import subprocess
-
     home = Home.objects.get(id=home_id)
 
     try:
+        # 1. Client erstellen
         subprocess.run(mqtt_cmd(
             "dynsec", "createClient",
             home.mqtt_username,
@@ -35,33 +34,36 @@ def provision_home(self, home_id):
             "-p", home.mqtt_password
         ), check=True)
       
+        # 2. Rolle erstellen
         subprocess.run(mqtt_cmd(
             "dynsec", "createRole",
             home.mqtt_username
         ), check=True)
 
-        # ✅ publishPattern ONLY
+        # 3. ACL für Publish (Geändert auf publishClient wegen der '#' Wildcard)
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "publishPattern",
+            "publishClient",
             f"home/{home.mqtt_token}/#"
         ), check=True)
 
-        # ✅ subscribePattern
+        # 4. ACL für Subscribe (Geändert auf subscribeClient wegen der '#' Wildcard)
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "subscribePattern",
+            "subscribeClient",
             f"home/{home.mqtt_token}/#"
         ), check=True)
             
+        # 5. Rolle dem Client zuweisen
         subprocess.run(mqtt_cmd(
             "dynsec", "addClientRole",
             home.mqtt_username,
             home.mqtt_username
         ), check=True)
 
+        # Status in DB speichern
         home.mqtt_provisioned = True
         home.save(update_fields=["mqtt_provisioned"])
 
@@ -73,10 +75,7 @@ def provision_home(self, home_id):
 
 @shared_task
 def delete_mqtt_user(username):
-    import subprocess
-    
     subprocess.run(mqtt_cmd(
         "dynsec", "deleteClient",
         username
     ), check=False)
-
