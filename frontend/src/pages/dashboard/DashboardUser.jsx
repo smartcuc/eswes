@@ -7,7 +7,14 @@ import KPI from "../../components/ui/KPI";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
+import AddDeviceModal from "../../components/device/AddDeviceModal";
+import { useState } from "react";
+
+
 export default function DashboardUser() {
+
+    const [modalOpen, setModalOpen] = useState(false);
+
     return (
         <DashboardLayout>
 
@@ -42,14 +49,24 @@ export default function DashboardUser() {
             {/* CTA */}
             <Card className="flex justify-between items-center">
                 <span className="text-gray-600">
-                    Verbinde deine Energiequelle
+                    Starte mit deinem ersten Energiegerät
                 </span>
 
-                <Button>
-                    Tibber verbinden
+                <Button
+                    onClick={() => setModalOpen(true)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+                >
+                    Gerät hinzufügen
                 </Button>
             </Card>
+
+            {/* ✅ Modal gehört HIER hin */}
+            <AddDeviceModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+            />
 
         </DashboardLayout>
     );
 }
+

@@ -3,7 +3,7 @@
 */
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "../api";
+import { apiFetch } from "../api/client";
 
 export default function Join() {
     const [token, setToken] = useState("");

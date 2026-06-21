@@ -2,7 +2,7 @@
 # src/api.js
 */
 
-export function apiFetch(url, options = {}) {
+export function apiFetchi(url, options = {}) {
     return fetch(url, {
         method: options.method || "GET",
         headers: {

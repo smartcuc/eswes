@@ -11,7 +11,7 @@ from .models import Home, Device, DeviceMetric, DeviceRole, Floor, Room
 
 @admin.register(Home)
 class HomeAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "name", "mqtt_token", "created_at")
+    list_display = ("id", "user", "name", "mqtt_token", "mqtt_provisioned", "created_at")
     search_fields = ("name", "user__email")
     ordering = ("-created_at",)
 
@@ -101,3 +101,4 @@ class FloorAdmin(admin.ModelAdmin):
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "floor")
+

@@ -3,6 +3,7 @@
 #####################
 
 import uuid
+import secrets
 from django.db import models
 from django.contrib.auth import get_user_model
 
@@ -30,8 +31,31 @@ class Home(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    
+# ✅ NEU
+    mqtt_username = models.CharField(max_length=100, blank=True)
+    mqtt_password = models.CharField(max_length=100, blank=True)
+    mqtt_provisioned = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # 🔥 HIER KOMMT DIE METHODE HIN
+    def save(self, *args, **kwargs):
+
+        # ✅ Username = Token (einfach & eindeutig)
+        if not self.mqtt_username:
+            self.mqtt_username = str(self.mqtt_token)
+
+        # ✅ Passwort generieren (nur beim ersten Mal)
+        if not self.mqtt_password:
+            import secrets
+            self.mqtt_password = secrets.token_hex(16)
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.name} ({self.user_id})"
+
 
 
 # ============================================================

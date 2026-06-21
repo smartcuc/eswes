@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 from django.db.models import OuterRef, Subquery, DateTimeField
+from django_celery_results.models import TaskResult
 
 from core.models import (
     Meter,
@@ -15,6 +16,27 @@ from core.models import (
     MeterRegister,
     Tenant,  
 )
+
+
+# ============================================================
+# ✅ CELERY TASKS
+# ============================================================
+
+
+# ✅ erst deregistrieren
+admin.site.unregister(TaskResult)
+
+@admin.register(TaskResult)
+class TaskResultAdmin(admin.ModelAdmin):
+    list_display = (
+        "task_id",
+        "task_name",
+        "status",
+        "date_done",
+    )
+    search_fields = ("task_id", "task_name")
+    list_filter = ("status",)
+    readonly_fields = ("result", "traceback")
 
 
 # ============================================================
@@ -205,3 +227,4 @@ class BalanceSlotAdmin(admin.ModelAdmin):
 class TenantAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "slug", "is_public")
     search_fields = ("name", "slug")
+

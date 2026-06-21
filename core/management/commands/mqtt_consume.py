@@ -76,12 +76,19 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
         identifier=device_identifier
     ).first()
 
+    # ✅ AUTO-PROVISION FIRST
     if not device and auto_prov:
         device = Device.objects.create(
             home=home,
             identifier=device_identifier
         )
         print(f"Auto-provisioned device={device_identifier}")
+
+    # ✅ MAGIC MOMENT DANACH
+    if device and not device.configured:
+        device.configured = True
+        device.save(update_fields=["configured"])
+        print(f"✅ Device {device_identifier} connected")
 
 
     # ========================================================

@@ -77,7 +77,7 @@ urlpatterns = [
     path("api/", include("integrations.urls")),
     path("api/", include("accounts.api.urls")),
     path("api/", include("content.urls_public")),
-    path("api/devices/", include("devices.urls")),
+  #  path("api/devices/", include("devices.urls")),
     path("api/", include(router.urls)),
 
     path("public/billing/", include("billing.api.urls_public")),
