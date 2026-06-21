@@ -45,15 +45,17 @@ def provision_home(self, home_id):
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "publishPattern",
-            f"home/{home.mqtt_token}/#"
+            f"home/{home.mqtt_token}/#",
+            "0"
         ), check=True)
 
-        # ✅ subscribePattern (OHNE allow!)
+        # subscribe
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "subscribePattern",
-            f"home/{home.mqtt_token}/#"
+            f"home/{home.mqtt_token}/#",
+            "0"
         ), check=True)
             
         # 5. Rolle dem Client zuweisen
