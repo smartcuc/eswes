@@ -44,10 +44,11 @@ def provision_home(self, home_id):
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "publishClientSend",
+            "publishPattern",
             f"home/{home.mqtt_token}/#",
             "allow"
         ), check=True)
+
 
         # 4. ACL für Empfangen (Korrektes Argument: subscribePattern)
         subprocess.run(mqtt_cmd(
