@@ -2,9 +2,9 @@
 # src/components/device/AddDeviceModal.jsx
 */
 
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCreateDevice } from "../../hooks/useCreateDevice";
+import { useDeviceStatus } from "../../hooks/useDevices";
 
 export default function AddDeviceModal({ open, onClose }) {
 
@@ -89,7 +89,7 @@ export default function AddDeviceModal({ open, onClose }) {
 
 
                 {step === 4 && (
-                    <StepWaiting onClose={onClose} />
+                    <StepWaiting device={device} onClose={onClose} />
                 )}
 
                 {/* Close */}
@@ -216,24 +216,105 @@ function StepConfig({ device, onNext, onBack }) {
 
 /* ------------------ STEP 4 ------------------ */
 
-function StepWaiting({ onClose }) {
+function StepWaiting({ device, onClose }) {
 
+    const { data: devices } = useDeviceStatus();
+
+    const [connected, setConnected] = useState(false);
+    const [timeoutReached, setTimeoutReached] = useState(false);
+
+    // ✅ Device Status ermitteln
+    const deviceStatus = devices?.find(
+        (d) => d.identifier === device?.identifier
+    );
+
+    // ✅ Erfolg erkennen (SAUBER via useEffect!)
+    useEffect(() => {
+        if (deviceStatus?.status === "online") {
+            setConnected(true);
+        }
+    }, [deviceStatus]);
+
+    // ✅ Timeout (einmal starten)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setTimeoutReached(true);
+        }, 30000);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // =====================================================
+    // ✅ SUCCESS STATE
+    // =====================================================
+    if (connected) {
+        return (
+            <div className="text-center">
+                <h2 className="text-lg font-semibold mb-4">
+                    ✅ Gerät verbunden!
+                </h2>
+
+                <div className="text-gray-500 mb-4">
+                    Dein Gerät sendet bereits Daten.
+                </div>
+
+                <button
+                    onClick={onClose}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+                >
+                    Zum Dashboard
+                </button>
+            </div>
+        );
+    }
+
+    // =====================================================
+    // ✅ TIMEOUT STATE
+    // =====================================================
+    if (timeoutReached && deviceStatus?.status !== "online") {
+        return (
+            <div className="text-center">
+                <h2 className="text-lg font-semibold mb-4">
+                    ⏳ Noch keine Daten empfangen
+                </h2>
+
+                <div className="text-gray-500 mb-4">
+                    Prüfe bitte MQTT‑Verbindung oder Gerät.
+                </div>
+
+                <button
+                    onClick={onClose}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+                >
+                    Schließen
+                </button>
+            </div>
+        );
+    }
+
+    // =====================================================
+    // ✅ WAITING STATE
+    // =====================================================
     return (
         <div className="text-center">
             <h2 className="text-lg font-semibold mb-4">
-                Warte auf Daten…
+                Warte auf erste Daten…
             </h2>
 
             <div className="text-gray-500 mb-4">
-                Sobald dein Gerät sendet, erscheint es im Dashboard.
+                Sobald dein Gerät sendet, verbinden wir es automatisch.
             </div>
 
-            <button
-                onClick={onClose}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
-            >
-                Schließen
-            </button>
+            <div className="animate-pulse text-indigo-600">
+                ⏳ Verbinde…
+            </div>
+
+            {/* ✅ kleiner UX Boost */}
+            {deviceStatus?.status === "offline" && (
+                <div className="mt-3 text-sm text-gray-400">
+                    Gerät erkannt, aber noch nicht aktiv…
+                </div>
+            )}
         </div>
     );
 }

@@ -21,6 +21,8 @@ export function useDeviceStatus() {
         queryKey: ["device-status"],
         queryFn: () => apiFetch("/api/devices/status/"),
         staleTime: 5000,
+
+        refetchInterval: 3000, // ✅ VERY IMPORTANT
     });
 }
 

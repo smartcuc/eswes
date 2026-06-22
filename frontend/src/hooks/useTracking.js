@@ -3,7 +3,7 @@
 */
 
 import { useQuery } from "@tanstack/react-query";
-import apiFetch from "../lib/apiFetch";
+import { apiFetch } from "../api/client";
 
 export function useTrackingKPIs(days = 7) {
     return useQuery({
