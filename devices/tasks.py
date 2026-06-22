@@ -4,79 +4,168 @@
 
 import os
 import subprocess
+import logging
+
 from celery import shared_task
+from django.db import transaction
 
 from .models import Home
+from .mqtt import mqtt_cmd
+
+logger = logging.getLogger(__name__)
 
 
-def mqtt_cmd(*args):
-    return [
-        os.getenv("MQTT_CTRL_PATH"),
-        "-h", os.getenv("MQTT_HOST"),
-        "-p", os.getenv("MQTT_PORT", "8883"),
-        "--cafile", os.getenv("MQTT_CAFILE"),
-        "-u", os.getenv("MQTT_ADMIN_USER"),
-        "-P", os.getenv("MQTT_ADMIN_PASSWORD"),
-        *args
-    ]
+
+# ============================================================
+# ✅ HELPER: SAFE COMMAND EXECUTION
+# ============================================================
+
+def run_mqtt_cmd(*args, raise_on_error=False):
+    """
+    Runs mosquitto_ctrl command safely.
+    Logs errors but does not break provisioning unless desired.
+    """
+
+    result = subprocess.run(
+        mqtt_cmd(*args),
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        logger.warning(
+            "mqtt.command.failed",
+            extra={
+                "cmd": args,
+                "stderr": result.stderr.strip(),
+                "stdout": result.stdout.strip(),
+            },
+        )
+
+        if raise_on_error:
+            raise RuntimeError(result.stderr.strip())
+
+    else:
+        logger.debug(
+            "mqtt.command.ok",
+            extra={"cmd": args},
+        )
+
+    return result
 
 
-@shared_task(bind=True)
+# ============================================================
+# ✅ PROVISION HOME (IDEMPOTENT)
+# ============================================================
+
+@shared_task(bind=True, max_retries=3)
 def provision_home(self, home_id):
-    home = Home.objects.get(id=home_id)
-
     try:
-        # 1. Client erstellen
-        subprocess.run(mqtt_cmd(
+        home = Home.objects.get(id=home_id)
+
+        logger.info("mqtt.provision.start", extra={"home": home.id})
+
+        # ----------------------------------------------------
+        # 1. Client
+        # ----------------------------------------------------
+        run_mqtt_cmd(
             "dynsec", "createClient",
             home.mqtt_username,
-            "-u", home.mqtt_username,
-            "-p", home.mqtt_password
-        ), check=True)
-      
-        # 2. Rolle erstellen
-        subprocess.run(mqtt_cmd(
-            "dynsec", "createRole",
-            home.mqtt_username
-        ), check=True)
+            "-p", home.mqtt_password,
+        )
 
-        # ✅ publish erlauben
-        subprocess.run(mqtt_cmd(
+        # ----------------------------------------------------
+        # 2. Role
+        # ----------------------------------------------------
+        run_mqtt_cmd(
+            "dynsec", "createRole",
+            home.mqtt_username,
+        )
+
+        # ----------------------------------------------------
+        # 3. ACL: publish
+        # ----------------------------------------------------
+        run_mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "publishClientSend",
-            f"home/{home.mqtt_token}/device",
-            "allow"
-        ), check=True)
+            f"home/{home.mqtt_token}/device/#",
+            "allow",
+        )
 
-        # ✅ subscribe erlauben
-        subprocess.run(mqtt_cmd(
+        # ----------------------------------------------------
+        # 4. ACL: subscribe
+        # ----------------------------------------------------
+        run_mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "subscribePattern",
             f"home/{home.mqtt_token}/#",
-            "allow"
-        ), check=True)
-        
-        # 5. Rolle dem Client zuweisen
-        subprocess.run(mqtt_cmd(
+            "allow",
+        )
+
+        # ----------------------------------------------------
+        # 5. Role Binding
+        # ----------------------------------------------------
+        run_mqtt_cmd(
             "dynsec", "addClientRole",
             home.mqtt_username,
-            home.mqtt_username
-        ), check=True)
+            home.mqtt_username,
+        )
 
-        home.mqtt_provisioned = True
-        home.save(update_fields=["mqtt_provisioned"])
+        # ----------------------------------------------------
+        # ✅ DB Update (atomic)
+        # ----------------------------------------------------
+        with transaction.atomic():
+            home.mqtt_provisioned = True
+            home.save(update_fields=["mqtt_provisioned"])
+
+        logger.info("mqtt.provision.success", extra={"home": home.id})
 
         return "OK"
 
     except Exception as e:
-        raise self.retry(exc=e, countdown=5, max_retries=3)
+        logger.error(
+            "mqtt.provision.failed",
+            extra={"home": home_id, "error": str(e)},
+        )
+        raise self.retry(exc=e, countdown=5)
 
 
+# ============================================================
+# ✅ DELETE MQTT USER (ROBUST)
+# ============================================================
+
+@shared_task(bind=True, max_retries=3)
+def delete_mqtt_user(self, username):
+    try:
+        logger.info("mqtt.delete.start", extra={"user": username})
+
+        # ✅ delete client
+        run_mqtt_cmd(
+            "dynsec", "deleteClient",
+            username,
+        )
+
+        # ✅ delete role (wichtig!)
+        run_mqtt_cmd(
+            "dynsec", "deleteRole",
+            username,
+        )
+
+        logger.info("mqtt.delete.success", extra={"user": username})
+
+    except Exception as e:
+        logger.error(
+            "mqtt.delete.failed",
+            extra={"user": username, "error": str(e)},
+        )
+        raise self.retry(exc=e, countdown=5)
+
+# ============================================================
+# ✅ MONITORING
+# ============================================================    
 @shared_task
-def delete_mqtt_user(username):
-    subprocess.run(mqtt_cmd(
-        "dynsec", "deleteClient",
-        username
-    ), check=False)
+def mqtt_health_check():
+    from django.core.management import call_command
+    call_command("mqtt_monitor")

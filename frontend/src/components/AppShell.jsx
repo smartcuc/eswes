@@ -4,6 +4,7 @@
 
 import { useUser } from "../hooks/useUser";
 import Dashboard from "../pages/dashboard/Dashboard";
+import OverviewPage from "../pages/dashboard/overview/OverviewPage";
 import Settings from "../pages/Settings";
 import { Routes, Route, Navigate } from "react-router-dom";
 
@@ -37,8 +38,11 @@ export default function AppShell() {
                     {/* ✅ Default */}
                     <Route index element={<Navigate to="dashboard" replace />} />
 
-                    {/* ✅ DAS FEHLT BEI DIR */}
+                    {/* ✅ bestehendes User-Dashboard */}
                     <Route path="dashboard" element={<Dashboard user={user} />} />
+
+                    {/* ✅ NEU – Overview */}
+                    <Route path="overview" element={<OverviewPage />} />
 
                     <Route path="settings" element={<Settings />} />
 

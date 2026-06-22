@@ -10,7 +10,7 @@ import os
 
 from .models import Device, DeviceMetric
 from .models import Home
-from .serializers import DeviceSerializer, DeviceCreateSerializer
+from .serializers import DeviceSerializer, DeviceCreateSerializer, DeviceStatusSerializer
 
 
 # ✅ Geräte Liste + Create (EIN Endpoint!)
@@ -19,7 +19,9 @@ from .serializers import DeviceSerializer, DeviceCreateSerializer
 def device_list(request):
   
     home = request.user.homes.first()   # ✅ nur lesen, NICHT entscheiden
-
+    
+    if not home:
+        return Response({"detail": "No home"}, status=400)
     # 🔹 CREATE
     if request.method == "POST":
 
@@ -103,6 +105,7 @@ def device_metrics(request, device_id):
 
 # ✅ REBUILD MQQT PASSWD
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def mqtt_status(request):
     homes = Home.objects.all()
 
@@ -116,3 +119,15 @@ def mqtt_status(request):
     
     ])
 
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def device_status_list(request):
+
+    devices = Device.objects.filter(
+        home__in=request.user.homes.all()
+    )
+
+    serializer = DeviceStatusSerializer(devices, many=True)
+
+    return Response(serializer.data)

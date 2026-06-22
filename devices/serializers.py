@@ -7,6 +7,7 @@ from .models import Device
 from .models import Home
 
 from devices.tasks import provision_home
+from devices.services.device_health import device_status
 
 
 class DeviceSerializer(serializers.ModelSerializer):
@@ -54,11 +55,11 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
                 name="Mein Zuhause"
             )
             created = True
-
-        device = Device.objects.create(
+  
+        device, _ = Device.objects.get_or_create(
+            home=home,
             identifier=validated_data["identifier"],
-            name=validated_data["identifier"],
-            home=home
+            defaults={"name": validated_data["identifier"]},
         )
 
         # ✅ Celery triggern (BESTE STELLE)
@@ -66,3 +67,20 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
             provision_home.delay(home.id)
 
         return device
+    
+    
+class DeviceStatusSerializer(serializers.ModelSerializer):
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Device
+        fields = [
+            "id",
+            "identifier",
+            "name",
+            "status",
+            "last_seen",
+        ]
+
+    def get_status(self, obj):
+        return device_status(obj)

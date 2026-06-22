@@ -1,6 +1,6 @@
-############################################
-#devices/management/commands/rebuild_mqtt.py
-############################################
+#############################################
+# devices/management/commands/rebuild_mqtt.py
+#############################################
 
 from django.core.management.base import BaseCommand
 from devices.models import Home
@@ -16,6 +16,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Provisioning {homes.count()} missing homes...")
 
         for home in homes:
+            self.stdout.write(f"→ provisioning {home.mqtt_username}")
             provision_home.delay(home.id)
 
         self.stdout.write("✅ Done")
+

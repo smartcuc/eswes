@@ -10,5 +10,5 @@ from .tasks import delete_mqtt_user
 
 @receiver(post_delete, sender=Home)
 def delete_home_mqtt(sender, instance, **kwargs):
-    delete_mqtt_user.delay(instance.mqtt_username)
-
+    if instance.mqtt_username:
+        delete_mqtt_user.delay(instance.mqtt_username)

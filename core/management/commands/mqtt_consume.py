@@ -21,6 +21,8 @@ import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
 
+LAST_MESSAGE_TS = None
+
 
 # ============================================================
 # ✅ TIMESTAMP PARSER (robust)
@@ -291,7 +293,11 @@ class Command(BaseCommand):
         else:
             print(f"MQTT failed rc={reason_code}")
 
-    def on_message(self, client, userdata, msg):
+    def on_message(self, client, userdata, msg):      
+        global LAST_MESSAGE_TS
+
+        LAST_MESSAGE_TS = timezone.now()
+
         try:
             ingest(
                 topic=msg.topic,
@@ -301,3 +307,19 @@ class Command(BaseCommand):
         except Exception as e:
             print(f"Ingest failed topic={msg.topic} err={e}")
 
+
+# ============================================================
+# ✅ MQTT INGEST HEALTH
+# ============================================================
+
+def check_ingest_health(timeout_seconds=120):
+    from django.utils import timezone
+    from datetime import timedelta
+
+    if not LAST_MESSAGE_TS:
+        return False, "no_messages"
+
+    if LAST_MESSAGE_TS < timezone.now() - timedelta(seconds=timeout_seconds):
+        return False, "stalled"
+
+    return True, "ok"
