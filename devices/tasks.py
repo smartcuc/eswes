@@ -44,9 +44,8 @@ def provision_home(self, home_id):
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
-            "publishPattern",
-            f"home/{home.mqtt_token}/#",
-            "0"
+            "publishClientSend",
+            f"home/{home.mqtt_token}/device"
         ), check=True)
 
         # subscribe
