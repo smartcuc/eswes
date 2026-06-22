@@ -127,7 +127,7 @@ def device_status_list(request):
     devices = Device.objects.filter(
         home__in=request.user.homes.all()
     )
-    devices = Device.objects.all() ##
+
     serializer = DeviceStatusSerializer(devices, many=True)
 
     return Response(serializer.data)
