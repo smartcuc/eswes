@@ -128,6 +128,10 @@ def device_status_list(request):
         home__in=request.user.homes.all()
     )
 
+    print("USER:", request.user)
+    print("USER HOMES:", list(request.user.homes.all()))
+    print("ALL DEVICES:", list(Device.objects.values("id", "identifier", "home_id")))
+
     serializer = DeviceStatusSerializer(devices, many=True)
 
     return Response(serializer.data)
