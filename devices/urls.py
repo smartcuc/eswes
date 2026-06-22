@@ -12,7 +12,8 @@ urlpatterns = [
     path("", device_list),
     path("status/", device_status_list),
     path("mqtt-status/", mqtt_status),
-    path("<int:device_id>/", device_update),
-    path("<int:device_id>/metrics/", device_metrics),
+    path("by-id/<int:device_id>/", device_update),
+    path("by-id/<int:device_id>/metrics/", device_metrics),
+
 ]
 
