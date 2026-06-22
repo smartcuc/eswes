@@ -40,23 +40,24 @@ def provision_home(self, home_id):
             home.mqtt_username
         ), check=True)
 
-        # ✅ publishPattern (OHNE allow!)
+        # ✅ publish erlauben
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "publishClientSend",
-            f"home/{home.mqtt_token}/device"
+            f"home/{home.mqtt_token}/device",
+            "allow"
         ), check=True)
 
-        # subscribe
+        # ✅ subscribe erlauben
         subprocess.run(mqtt_cmd(
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "subscribePattern",
             f"home/{home.mqtt_token}/#",
-            "0"
+            "allow"
         ), check=True)
-            
+        
         # 5. Rolle dem Client zuweisen
         subprocess.run(mqtt_cmd(
             "dynsec", "addClientRole",
