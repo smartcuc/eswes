@@ -229,8 +229,12 @@ function StepWaiting({ device, onClose }) {
     );
 
     // ✅ Erfolg erkennen (SAUBER via useEffect!)
+
     useEffect(() => {
-        if (deviceStatus?.status === "online") {
+        if (
+            deviceStatus?.status === "online" ||
+            deviceStatus?.status === "stale"
+        ) {
             setConnected(true);
         }
     }, [deviceStatus]);

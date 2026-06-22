@@ -77,7 +77,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
         home=home,
         identifier=device_identifier
     ).first()
-
+    print(f"DEVICE DEBUG: {device} | identifier={device_identifier} | home={home}") # Test
     # ✅ AUTO-PROVISION FIRST
     if not device and auto_prov:
         device = Device.objects.create(
@@ -85,6 +85,14 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
             identifier=device_identifier
         )
         print(f"Auto-provisioned device={device_identifier}")
+    
+    # Test
+    print(f"DEVICE DEBUG: {device} | identifier={device_identifier} | home={home}") # Test
+
+    if not device:
+        print(f"❌ DEVICE NOT FOUND: {device_identifier}")
+        return
+    # Test
 
     # ✅ MAGIC MOMENT DANACH
     if device and not device.configured:
