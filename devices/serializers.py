@@ -72,6 +72,7 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
 class DeviceStatusSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
 
+    last_seen = serializers.DateTimeField(allow_null=True)
     class Meta:
         model = Device
         fields = [
