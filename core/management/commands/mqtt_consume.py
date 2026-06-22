@@ -185,7 +185,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
     # ✅ DEVICE ACTIVITY UPDATE
     # ========================================================
 
-    device.last_seen = ts
+    device.last_seen = ts or timezone.now()
     device.save(update_fields=["last_seen"])
 
     # ========================================================
