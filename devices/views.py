@@ -123,11 +123,12 @@ def mqtt_status(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_status_list(request):
-    
+
     devices = Device.objects.filter(
-        user=request.user
+        home__in=request.user.homes.all()
     ).select_related("home")
 
     serializer = DeviceStatusSerializer(devices, many=True)
 
     return Response(serializer.data)
+
