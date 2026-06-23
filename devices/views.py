@@ -123,6 +123,9 @@ def mqtt_status(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_status_list(request):
+    print("USER:", request.user)                                                    #
+    print("USER HOMES:", list(request.user.homes.all().values("id", "name")))       #
+    print("DEVICES:", list(Device.objects.values("id", "identifier", "home_id")))   #
 
     devices = Device.objects.filter(
         home__in=request.user.homes.all()
