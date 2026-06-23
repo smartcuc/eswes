@@ -131,12 +131,13 @@ INSTALLED_APPS = [
     "rest_framework",  # ✅ hinzufügen
     "rest_framework_simplejwt",
     "corsheaders",
+    "devices.apps.DevicesConfig",
     "core",
     "integrations",  # ✅ DAS IST WICHTIG
     "tenants",
     "content",
     "design",
-    "devices",
+#    "devices",
     "channels",
     "forecast",
     "accounts",

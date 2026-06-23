@@ -5,9 +5,15 @@
 from rest_framework import serializers
 from .models import Device
 from .models import Home
+from .models import DeviceMetric
 
 from devices.tasks import provision_home
 from devices.services.device_health import device_status
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class DeviceSerializer(serializers.ModelSerializer):
@@ -85,3 +91,25 @@ class DeviceStatusSerializer(serializers.ModelSerializer):
 
     def get_status(self, obj):
         return device_status(obj)
+
+
+
+
+@receiver(post_save, sender=DeviceMetric)
+def send_metric_update(sender, instance, created, **kwargs):
+    channel_layer = get_channel_layer()
+
+    data = {
+        "type": "metric_update",
+        "device_id": instance.device.id,
+        "device_type": getattr(instance.device, "type", None),
+        "value": instance.value,
+    }
+
+    async_to_sync(channel_layer.group_send)(
+        "energy",   # ✅ passt zu deinem consumer!
+        {
+            "type": "send.energy.update",  # ✅ gleich unten fixen
+            "data": data
+        }
+    )
