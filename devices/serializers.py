@@ -3,19 +3,13 @@
 ########################
 
 from rest_framework import serializers
-from .models import Device
-from .models import Home
-from .models import DeviceMetric
+from .models import Device, Home, DeviceMetric
 
 from devices.tasks import provision_home
 from devices.services.device_health import device_status
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 
+# ✅ READ SERIALIZER (für Dashboard etc.)
 class DeviceSerializer(serializers.ModelSerializer):
     role_display = serializers.CharField(source="role.label", read_only=True)
     floor_display = serializers.CharField(source="floor.name", read_only=True)
@@ -37,10 +31,10 @@ class DeviceSerializer(serializers.ModelSerializer):
             "configured",
         ]
         read_only_fields = ["identifier"]
-        
 
+
+# ✅ CREATE SERIALIZER (für POST /api/devices/)
 class DeviceCreateSerializer(serializers.ModelSerializer):
-
     identifier = serializers.CharField()
 
     class Meta:
@@ -50,35 +44,36 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context["request"].user
 
-        # ✅ Home garantiert setzen
+        # ✅ Home holen oder erstellen
         home = user.homes.first()
         created = False
 
-        # ✅ HIER erzeugen, NICHT in validate()
         if not home:
             home = Home.objects.create(
                 user=user,
                 name="Mein Zuhause"
             )
             created = True
-  
+
+        # ✅ Device erstellen oder holen
         device, _ = Device.objects.get_or_create(
             home=home,
             identifier=validated_data["identifier"],
             defaults={"name": validated_data["identifier"]},
         )
 
-        # ✅ Celery triggern (BESTE STELLE)
+        # ✅ Provisioning nur bei neuem Home
         if created:
             provision_home.delay(home.id)
 
         return device
-    
-    
+
+
+# ✅ STATUS SERIALIZER (für Monitoring)
 class DeviceStatusSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
-
     last_seen = serializers.DateTimeField(allow_null=True)
+
     class Meta:
         model = Device
         fields = [
@@ -91,25 +86,4 @@ class DeviceStatusSerializer(serializers.ModelSerializer):
 
     def get_status(self, obj):
         return device_status(obj)
-
-
-
-
-@receiver(post_save, sender=DeviceMetric)
-def send_metric_update(sender, instance, created, **kwargs):
-    channel_layer = get_channel_layer()
-
-    data = {
-        "type": "metric_update",
-        "device_id": instance.device.id,
-        "device_type": getattr(instance.device, "type", None),
-        "value": instance.value,
-    }
-
-    async_to_sync(channel_layer.group_send)(
-        "energy",   # ✅ passt zu deinem consumer!
-        {
-            "type": "send.energy.update",  # ✅ gleich unten fixen
-            "data": data
-        }
-    )
+    
