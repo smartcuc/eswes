@@ -8,14 +8,20 @@ import useEnergySocket from "../hooks/useEnergySocket";
 import { useEnergy } from "../context/EnergyContext";
 
 export default function EnergySankey() {
-    const { devices, updateMetric } = useEnergy();
+    const energy = useEnergy();
+    const devices = energy?.devices;
+    const updateMetric = energy?.updateMetric;
 
     const [grouped, setGrouped] = useState(true);
 
-    // ✅ WebSocket → global store
+    // ✅ WebSocket immer oben (kein conditional hook!)
     useEnergySocket(updateMetric);
 
+    // ✅ Daten vorbereiten (immer safe ausführen)
     const data = useMemo(() => {
+        if (!devices || Object.keys(devices).length === 0) {
+            return { nodes: [], links: [] };
+        }
 
         const nodes = [];
         const links = [];
@@ -31,8 +37,8 @@ export default function EnergySankey() {
             let battery = 0;
             let consumption = 0;
 
-            Object.values(devices).forEach(d => {
-                if (!d.power) return;
+            Object.values(devices).forEach((d) => {
+                if (!d?.power) return;
 
                 if (d.type === "pv") pv += d.power;
                 else if (d.type === "battery") battery += d.power;
@@ -46,15 +52,21 @@ export default function EnergySankey() {
                 { id: "consumer", label: "Verbraucher" }
             );
 
-            if (pv > 0)
+            if (pv > 0) {
                 links.push({ source: "pv", target: HOUSE, value: pv });
+            }
 
-            if (battery > 0)
+            if (battery > 0) {
                 links.push({ source: "battery", target: HOUSE, value: battery });
+            }
 
-            if (consumption > 0)
-                links.push({ source: HOUSE, target: "consumer", value: consumption });
-
+            if (consumption > 0) {
+                links.push({
+                    source: HOUSE,
+                    target: "consumer",
+                    value: consumption,
+                });
+            }
         } else {
             // =========================
             // ✅ DEVICE MODE
@@ -63,42 +75,48 @@ export default function EnergySankey() {
             nodes.push({ id: HOUSE, label: "Haus" });
 
             Object.entries(devices).forEach(([id, d]) => {
-                if (!d.power) return;
+                if (!d?.power) return;
 
                 const nodeId = `device_${id}`;
 
                 nodes.push({
                     id: nodeId,
-                    label: d.type || `Device ${id}`
+                    label: d.type || `Device ${id}`,
                 });
 
                 if (d.type === "pv") {
                     links.push({
                         source: nodeId,
                         target: HOUSE,
-                        value: d.power
+                        value: d.power,
                     });
                 } else if (d.type === "battery" && d.power > 0) {
                     links.push({
                         source: nodeId,
                         target: HOUSE,
-                        value: d.power
+                        value: d.power,
                     });
                 } else {
                     links.push({
                         source: HOUSE,
                         target: nodeId,
-                        value: Math.abs(d.power)
+                        value: Math.abs(d.power),
                     });
                 }
             });
         }
 
         return { nodes, links };
-
     }, [devices, grouped]);
 
-    if (!Object.keys(devices).length) {
+    // ✅ FINAL SAFETY (entscheidend für deinen Crash!)
+    if (
+        !data ||
+        !Array.isArray(data.nodes) ||
+        !Array.isArray(data.links) ||
+        data.nodes.length === 0 ||
+        data.links.length === 0
+    ) {
         return <div className="text-gray-400">Warte auf Live-Daten…</div>;
     }
 

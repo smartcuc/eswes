@@ -44,7 +44,11 @@ export default function useEnergySocket(onMessage) {
 
                     // ✅ nur relevante Events
                     if (data?.type === "metric_update") {
-                        onMessage(data);
+
+                        // 🔥 CRITICAL FIX
+                        if (typeof onMessage === "function") {
+                            onMessage(data);
+                        }
                     }
 
                 } catch (e) {

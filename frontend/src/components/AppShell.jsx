@@ -37,7 +37,7 @@ export default function AppShell() {
 
                 <Routes>
                     {/* ✅ Default */}
-                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route index element={<Navigate to="/app/dashboard" replace />} />
 
                     {/* ✅ bestehendes User-Dashboard */}
                     <Route path="dashboard" element={<Dashboard user={user} />} />

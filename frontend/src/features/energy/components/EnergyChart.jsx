@@ -15,15 +15,28 @@ import { useMemo } from "react";
 import { useEnergy } from "../context/EnergyContext";
 
 export default function EnergyChart() {
-    const { history } = useEnergy();
+    const energy = useEnergy();
+    const history = energy?.history;
 
-    // ✅ optional aggregieren (z.B. Gesamtleistung)
+    // ✅ Immer Hooks oben
     const data = useMemo(() => {
+        if (!history || !Array.isArray(history)) return [];
+
         return history.map((h, i) => ({
-            ...h,
-            idx: i
+            idx: i,
+            value: h?.value ?? 0
         }));
     }, [history]);
+
+    // ✅ danach erst Guards
+
+    if (!history || !Array.isArray(history)) {
+        return <div>Loading chart…</div>;
+    }
+
+    if (history.length === 0) {
+        return <div>No data yet</div>;
+    }
 
     if (!data.length) {
         return <div className="text-gray-400">Warte auf Live-Daten…</div>;
@@ -31,7 +44,9 @@ export default function EnergyChart() {
 
     return (
         <div style={{ height: 300 }}>
-            <h3 style={{ marginBottom: 10 }}>📈 Live Leistungs‑Verlauf</h3>
+            <h3 style={{ marginBottom: 10 }}>
+                📈 Live Leistungs‑Verlauf
+            </h3>
 
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
@@ -52,3 +67,4 @@ export default function EnergyChart() {
         </div>
     );
 }
+

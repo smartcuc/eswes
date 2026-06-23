@@ -20,6 +20,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 
 import integrations.routing
+import devices.routing
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 
@@ -29,7 +30,10 @@ application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
         "websocket": AuthMiddlewareStack(
-            URLRouter(integrations.routing.websocket_urlpatterns)
+            URLRouter(
+            integrations.routing.websocket_urlpatterns
+            + devices.routing.websocket_urlpatterns
+            )
         ),
     }
 )

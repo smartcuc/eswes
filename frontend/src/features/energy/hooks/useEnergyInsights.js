@@ -1,20 +1,25 @@
 /*
-#
+# src/features/energy/hooks/useEnergyInsights.js
 */
 
 import { useMemo } from "react";
 import { useEnergy } from "../context/EnergyContext";
 
 export default function useEnergyInsights() {
-    const { devices } = useEnergy();
+    const energy = useEnergy();
 
     return useMemo(() => {
+        // ✅ SAFETY GUARD
+        if (!energy || !energy.devices) return [];
+
+        const { devices } = energy;
+
         let pv = 0;
         let consumption = 0;
         let battery = 0;
 
         Object.values(devices).forEach(d => {
-            if (!d.power) return;
+            if (!d?.power) return;
 
             if (d.type === "pv") pv += d.power;
             else if (d.type === "battery") battery += d.power;
@@ -27,15 +32,13 @@ export default function useEnergyInsights() {
         const insights = [];
 
         if (selfConsumptionRate > 0) {
-            insights.push(`⚡ ${selfConsumptionRate.toFixed(0)}% deiner PV wird direkt genutzt`);
+            insights.push(
+                `⚡ ${selfConsumptionRate.toFixed(0)}% deiner PV wird genutzt`
+            );
         }
 
-        if (battery > 0) {
-            insights.push("🔋 Batterie entlädt");
-        }
-        if (battery < 0) {
-            insights.push("🔋 Batterie lädt");
-        }
+        if (battery > 0) insights.push("🔋 Batterie entlädt");
+        if (battery < 0) insights.push("🔋 Batterie lädt");
 
         if (pv > consumption) {
             insights.push("🌍 Überschussenergie vorhanden");
@@ -43,5 +46,5 @@ export default function useEnergyInsights() {
 
         return insights;
 
-    }, [devices]);
+    }, [energy]);
 }
