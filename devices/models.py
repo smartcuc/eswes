@@ -3,6 +3,7 @@
 #####################
 
 import uuid
+import secrets
 from django.core.cache import cache
 
 from django.db import models
@@ -16,7 +17,7 @@ User = get_user_model()
 
 
 # ============================================================
-# ✅ HOME / STRUCTURE
+# ✅ HOME (MQTT + CORE)
 # ============================================================
 
 class Home(models.Model):
@@ -25,8 +26,38 @@ class Home(models.Model):
         on_delete=models.CASCADE,
         related_name="homes"
     )
+
     name = models.CharField(max_length=100)
 
+    # ✅ MQTT FIELDS (WICHTIG!)
+    mqtt_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False
+    )
+
+    mqtt_username = models.CharField(max_length=100, blank=True)
+    mqtt_password = models.CharField(max_length=100, blank=True)
+    mqtt_provisioned = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.mqtt_username:
+            self.mqtt_username = str(self.mqtt_token)
+
+        if not self.mqtt_password:
+            self.mqtt_password = secrets.token_hex(16)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} ({self.user_id})"
+
+
+# ============================================================
+# ✅ STRUCTURE
+# ============================================================
 
 class Floor(models.Model):
     home = models.ForeignKey(
@@ -35,6 +66,9 @@ class Floor(models.Model):
         related_name="floors"
     )
     name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
 
 
 class Room(models.Model):
@@ -45,15 +79,15 @@ class Room(models.Model):
     )
     name = models.CharField(max_length=50)
 
+    def __str__(self):
+        return self.name
+
 
 # ============================================================
-# ✅ SEMANTIC LAYER (DAS IST DEIN GAMECHANGER)
+# ✅ SEMANTIC LAYER
 # ============================================================
 
 class DeviceRole(models.Model):
-    """
-    Energie-Richtung (für Sankey!)
-    """
     key = models.CharField(max_length=20, unique=True)
     label = models.CharField(max_length=50)
 
@@ -62,9 +96,6 @@ class DeviceRole(models.Model):
 
 
 class MetricDefinition(models.Model):
-    """
-    Definiert mögliche Messwerte (DB-driven UI!)
-    """
     key = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
     unit = models.CharField(max_length=20)
@@ -74,13 +105,9 @@ class MetricDefinition(models.Model):
 
 
 class DeviceType(models.Model):
-    """
-    Gerätetyp (Wärmepumpe, PV, Batterie...)
-    """
     key = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
 
-    # 👉 entscheidet Sankey-Verhalten!
     role = models.ForeignKey(
         DeviceRole,
         on_delete=models.PROTECT,
@@ -92,9 +119,6 @@ class DeviceType(models.Model):
 
 
 class DeviceTypeMetric(models.Model):
-    """
-    Welche Metrics ein Type haben darf
-    """
     device_type = models.ForeignKey(
         DeviceType,
         on_delete=models.CASCADE,
@@ -110,7 +134,7 @@ class DeviceTypeMetric(models.Model):
 
 
 # ============================================================
-# ✅ DEVICE (DEIN KERNOBJEKT)
+# ✅ DEVICE
 # ============================================================
 
 class Device(models.Model):
@@ -124,7 +148,6 @@ class Device(models.Model):
     identifier = models.CharField(max_length=100)
     name = models.CharField(max_length=255)
 
-    # ✅ SEMANTIK
     type = models.ForeignKey(
         DeviceType,
         null=True,
@@ -133,7 +156,6 @@ class Device(models.Model):
         related_name="devices"
     )
 
-    # optional (kann später automatisch kommen)
     role = models.ForeignKey(
         DeviceRole,
         null=True,
@@ -141,7 +163,6 @@ class Device(models.Model):
         on_delete=models.SET_NULL
     )
 
-    # ✅ LOCATION
     room = models.ForeignKey(
         Room,
         null=True,
@@ -150,21 +171,22 @@ class Device(models.Model):
         related_name="devices"
     )
 
-    # ✅ SETUP STATUS
     configured = models.BooleanField(default=False)
 
-    # ✅ timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("home", "identifier")
+        indexes = [
+            models.Index(fields=["home", "identifier"]),
+        ]
 
     def __str__(self):
         return self.name
 
 
 class DeviceSelectedMetric(models.Model):
-    """
-    Welche Metrics DAS Gerät wirklich nutzt
-    """
     device = models.ForeignKey(
         Device,
         on_delete=models.CASCADE,
@@ -180,12 +202,12 @@ class DeviceSelectedMetric(models.Model):
 
 
 # ============================================================
-# ✅ MESSDATEN (bestehend, aber sauber gekoppelt)
+# ✅ DEVICE METRIC (REALTIME + WS)
 # ============================================================
 
 class DeviceMetric(models.Model):
     device = models.ForeignKey(
-        "devices.Device",
+        Device,
         on_delete=models.CASCADE,
         related_name="metrics"
     )
@@ -204,7 +226,6 @@ class DeviceMetric(models.Model):
 
         old_value = None
 
-        # ✅ Sicherer Zugriff auf alten Wert
         if not is_new:
             old_value = (
                 DeviceMetric.objects.filter(pk=self.pk)
@@ -214,44 +235,29 @@ class DeviceMetric(models.Model):
 
         super().save(*args, **kwargs)
 
-        # =====================================================
-        # ✅ Nur neue oder geänderte Werte
-        # =====================================================
+        # ✅ nur neue oder geänderte Werte
         if not is_new:
             if (old_value is None and self.value is None):
                 return
             if old_value == self.value:
                 return
 
-        # =====================================================
-        # ✅ Nur relevante Metrics
-        # =====================================================
+        # ✅ nur power Events
         if self.metric_key != "power":
             return
 
         user_id = self.device.home.user_id
 
-        # =====================================================
-        # ✅ Throttle (pro User)
-        # =====================================================
+        # ✅ Throttle
         cache_key = f"ws_update_{user_id}"
-
         if cache.get(cache_key):
             return
-
         cache.set(cache_key, True, timeout=1)
 
-        # =====================================================
-        # ✅ Sichere Channel Layer Nutzung
-        # =====================================================
         channel_layer = get_channel_layer()
-
         if not channel_layer:
-            return  # ✅ verhindert crash bei fehlender config
+            return
 
-        # =====================================================
-        # ✅ Event senden
-        # =====================================================
         async_to_sync(channel_layer.group_send)(
             f"energy_{user_id}",
             {
