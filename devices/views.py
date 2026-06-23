@@ -20,12 +20,21 @@ from .serializers import DeviceSerializer, DeviceCreateSerializer, DeviceStatusS
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def device_list(request):
-  
-    home = request.user.homes.first()   # ✅ nur lesen, NICHT entscheiden
-    
-    if not home:
-        return Response({"detail": "No home"}, status=400)
-    # 🔹 CREATE
+
+    # ✅ Nur für GET wichtig – NICHT für POST blocken!
+    if request.method == "GET":
+        home = request.user.homes.first()
+
+        if not home:
+            return Response([], status=200)  # ✅ leer statt Fehler
+
+        devices = Device.objects.filter(home=home)
+
+        return Response(
+            DeviceSerializer(devices, many=True).data
+        )
+
+    # 🔥 CREATE (NICHT blockieren!)
     if request.method == "POST":
 
         serializer = DeviceCreateSerializer(
