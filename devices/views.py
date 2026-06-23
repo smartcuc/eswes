@@ -2,11 +2,14 @@
 # devices/views.py
 ##################
 
+import os
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-import os
 
 from .models import Device, DeviceMetric
 from .models import Home
@@ -123,9 +126,6 @@ def mqtt_status(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_status_list(request):
-    print("USER:", request.user)                                                    #
-    print("USER HOMES:", list(request.user.homes.all().values("id", "name")))       #
-    print("DEVICES:", list(Device.objects.values("id", "identifier", "home_id")))   #
 
     devices = Device.objects.filter(
         home__in=request.user.homes.all()
@@ -135,3 +135,78 @@ def device_status_list(request):
 
     return Response(serializer.data)
 
+
+# ✅ DEVICE SETUP
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def configure_device(request, device_id):
+
+    device = Device.objects.get(id=device_id)
+
+    if device.home not in request.user.homes.all():
+        return Response({"error": "Forbidden"}, status=403)
+
+    device.type = request.data.get("type")
+    device.metrics = request.data.get("metrics", [])
+    device.configured = True
+
+    device.save()
+
+    return Response({"status": "configured"})
+
+
+# ✅ SEND MQTT CONFIG BY MAIL
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def send_device_config(request):
+
+    device = request.data.get("device")
+    email_override = request.data.get("email")
+
+    if not device:
+        return Response({"error": "No device data"}, status=400)
+
+    try:
+        topic = f"home/{device['mqtt_token']}/device/{device['identifier']}"
+
+        to_email = email_override or request.user.email
+
+        context = {
+            "host": device["mqtt_host"],
+            "port": device["mqtt_port"],
+            "username": device["mqtt_username"],
+            "password": device["mqtt_password"],
+            "topic": topic,
+        }
+
+        html_content = render_to_string("email/device_config.html", context)
+
+        text_content = f"""
+MQTT Setup:
+
+Host: {context["host"]}
+Port: {context["port"]}
+User: {context["username"]}
+Password: {context["password"]}
+
+Topic:
+{context["topic"]}
+"""
+
+        email = EmailMultiAlternatives(
+            subject=f"Sharegy Setup: {device['identifier']}",
+            body=text_content,
+            to=[to_email],
+        )
+
+        email.attach_alternative(html_content, "text/html")
+        email.send()
+
+        return Response({
+            "status": "sent",
+            "email": to_email
+        })
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+    

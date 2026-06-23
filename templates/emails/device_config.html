@@ -1,0 +1,31 @@
+{% extends "email/base.html" %}
+
+{% block content %}
+
+<h2 style="margin-bottom:20px;">Gerät verbunden ✅</h2>
+
+<p>Hier sind deine MQTT Zugangsdaten:</p>
+
+<table style="margin-top:20px;font-size:14px;">
+  <tr><td>Host:</td><td><b>{{ host }}</b></td></tr>
+  <tr><td>Port:</td><td><b>{{ port }}</b></td></tr>
+  <tr><td>User:</td><td><b>{{ username }}</b></td></tr>
+  <tr><td>Password:</td><td><b>{{ password }}</b></td></tr>
+</table>
+
+<p style="margin-top:20px;">Topic:</p>
+<p style="color:#4f46e5;word-break:break-all;">
+  {{ topic }}
+</p>
+
+<p style="margin-top:20px;">
+Test (optional):
+</p>
+
+<pre style="background:#f3f4f6;padding:10px;border-radius:6px;">
+mosquitto_pub -h {{ host }} -p {{ port }} \
+-u {{ username }} -P {{ password }} \
+-t "{{ topic }}" -m 1
+</pre>
+
+{% endblock %}
