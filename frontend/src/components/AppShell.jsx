@@ -7,6 +7,7 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import OverviewPage from "../pages/dashboard/overview/OverviewPage";
 import Settings from "../pages/Settings";
 import { Routes, Route, Navigate } from "react-router-dom";
+import EnergyDashboard from "../features/energy/EnergyDashboard";
 
 import AppHeader from "../components/AppHeader";
 
@@ -43,6 +44,9 @@ export default function AppShell() {
 
                     {/* ✅ NEU – Overview */}
                     <Route path="overview" element={<OverviewPage />} />
+
+                    {/* ⚡ ENERGY DASHBOARD */}
+                    <Route path="energy" element={<EnergyDashboard />} />
 
                     <Route path="settings" element={<Settings />} />
 

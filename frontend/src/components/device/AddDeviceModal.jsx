@@ -3,7 +3,7 @@
 */
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 import { useCreateDevice } from "../../hooks/useCreateDevice";
 import { useDeviceStatus } from "../../hooks/useDevices";
 

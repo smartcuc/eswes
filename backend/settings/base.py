@@ -319,8 +319,15 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [os.getenv("CHANNEL_LAYERS_URL")],
+            "capacity": 1500,
+            "expiry": 10,
         },
     },
+    "energy": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+
+
 }
 
 CACHES = {
