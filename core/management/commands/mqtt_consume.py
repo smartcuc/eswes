@@ -188,7 +188,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
         DeviceMetric.objects.create(
             device=device,
             timestamp=ts,
-            metric=str(key),
+            metric_key=str(key),
             value=_to_float(value),
             unit=_guess_unit(key),
             data={
@@ -205,7 +205,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
         DeviceMetric.objects.create(
             device=device,
             timestamp=ts,
-            metric=f"state.{key}",
+            metric_key=f"state.{key}",
             value=_to_float(value),
             unit="",
             data={

@@ -35,7 +35,7 @@ class SungrowProvider(BaseProvider):
         )
 
         def get_latest(metric_name):
-            m = metrics.filter(metric=metric_name).order_by("-ts").first()
+            m = metrics.filter(metric_key=metric_name).order_by("-ts").first()
             return float(m.value) if m else None
 
         return {
