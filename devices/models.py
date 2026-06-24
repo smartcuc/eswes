@@ -43,9 +43,12 @@ class Home(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+
+        # ✅ Username = Token (einfach & eindeutig)
         if not self.mqtt_username:
             self.mqtt_username = str(self.mqtt_token)
 
+        # ✅ Passwort generieren (nur beim ersten Mal)
         if not self.mqtt_password:
             self.mqtt_password = secrets.token_hex(16)
 
@@ -58,6 +61,9 @@ class Home(models.Model):
 # ============================================================
 # ✅ STRUCTURE
 # ============================================================
+# ============================================================
+# ✅ FLOOR
+# ============================================================
 
 class Floor(models.Model):
     home = models.ForeignKey(
@@ -69,7 +75,11 @@ class Floor(models.Model):
 
     def __str__(self):
         return self.name
-
+    
+    
+# ============================================================
+# ✅ ROOM
+# ============================================================
 
 class Room(models.Model):
     floor = models.ForeignKey(
@@ -86,6 +96,9 @@ class Room(models.Model):
 # ============================================================
 # ✅ SEMANTIC LAYER
 # ============================================================
+# ============================================================
+# ✅ DEVICE ROLE
+# ============================================================
 
 class DeviceRole(models.Model):
     key = models.CharField(max_length=20, unique=True)
@@ -94,6 +107,9 @@ class DeviceRole(models.Model):
     def __str__(self):
         return self.label
 
+# ============================================================
+# ✅ DEVICE METRIC
+# ============================================================
 
 class MetricDefinition(models.Model):
     key = models.CharField(max_length=50, unique=True)
@@ -163,6 +179,13 @@ class Device(models.Model):
         on_delete=models.SET_NULL
     )
 
+    floor = models.ForeignKey(
+        Floor,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
     room = models.ForeignKey(
         Room,
         null=True,
@@ -173,6 +196,11 @@ class Device(models.Model):
 
     configured = models.BooleanField(default=False)
 
+    # 🔥 Lifecycle
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    # 🔥 Standard
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

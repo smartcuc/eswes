@@ -255,7 +255,7 @@ function StepConfig({ device, onNext, onBack }) {
                     onClick={() => setShowQR(true)}
                     className="cursor-pointer flex justify-center"
                 >
-                    <QRCode
+                    <QRCodeSVG
                         value={JSON.stringify({
                             host: device.mqtt_host,
                             port: device.mqtt_port,
@@ -435,7 +435,7 @@ ${topic}`;
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-xl text-center">
 
-                        <QRCode
+                        <QRCodeSVG
                             value={JSON.stringify({
                                 host: device.mqtt_host,
                                 port: device.mqtt_port,
