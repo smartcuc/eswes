@@ -5,23 +5,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../api/client";
 
-export function useHomes() {
-    return useQuery({
-        queryKey: ["homes"],
-        queryFn: () => apiFetch("/api/homes/"),
-    });
-}
 
-export function useFloors() {
+export function useStructure() {
     return useQuery({
-        queryKey: ["floors"],
-        queryFn: () => apiFetch("/api/floors/"),
-    });
-}
-
-export function useRooms() {
-    return useQuery({
-        queryKey: ["rooms"],
-        queryFn: () => apiFetch("/api/rooms/"),
+        queryKey: ["structure"],
+        queryFn: async () => {
+            return await apiFetch("/api/devices/setup-options/");
+        },
     });
 }

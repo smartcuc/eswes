@@ -4,15 +4,9 @@
 
 import { useState, useEffect } from "react";
 import { useUnconfiguredDevices } from "../../hooks/useUnconfiguredDevices";
-import {
-    useDeviceRoles,
-    useMeasurementTypes
-} from "../../hooks/useDeviceMeta";
-import {
-    useHomes,
-    useFloors,
-    useRooms
-} from "../../hooks/useStructure";
+import { useSettings } from "../../hooks/useSettings";
+import { useStructure } from "../../hooks/useStructure";
+
 import { apiFetch } from "../../api/client";
 
 
@@ -22,12 +16,17 @@ export default function DeviceSetupModal({ open, onClose }) {
     const devices = query?.data?.devices || [];
     const isLoading = query?.isLoading;
 
-    const roles = useDeviceRoles().data || [];
-    const measurementTypes = useMeasurementTypes().data || [];
+    const roles = structure?.roles || [];
+    const measurementTypes = structure?.measurement_types || [];
 
-    const homes = useHomes().data || [];
-    const floors = useFloors().data || [];
-    const rooms = useRooms().data || [];
+    const { settings } = useSettings();
+    const homes = settings?.homes || [];
+    const hasMultipleHomes = homes.length > 1;
+
+    const { data: structure } = useStructure();
+
+    const floors = structure?.floors || [];
+    const rooms = structure?.rooms || [];
 
     const [localValues, setLocalValues] = useState({});
     const [saving, setSaving] = useState({});
@@ -188,10 +187,10 @@ export default function DeviceSetupModal({ open, onClose }) {
                             <div
                                 key={device.id}
                                 className={`p-4 border rounded-lg transition hover:shadow ${isComplete
-                                        ? "bg-green-50 border-green-200"
-                                        : index % 2 === 0
-                                            ? "bg-gray-50"
-                                            : "bg-white"
+                                    ? "bg-green-50 border-green-200"
+                                    : index % 2 === 0
+                                        ? "bg-gray-50"
+                                        : "bg-white"
                                     }`}
                             >
 
@@ -202,8 +201,8 @@ export default function DeviceSetupModal({ open, onClose }) {
                                     </div>
 
                                     <span className={`text-xs px-2 py-0.5 rounded-full ${isComplete
-                                            ? "bg-green-100 text-green-700"
-                                            : "bg-yellow-100 text-yellow-700"
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-yellow-100 text-yellow-700"
                                         }`}>
                                         {isComplete ? "Fertig" : "Offen"}
                                     </span>
@@ -253,17 +252,43 @@ export default function DeviceSetupModal({ open, onClose }) {
                                 </div>
 
                                 {/* LOCATION */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+
+                                    {/* ✅ HOME – nur wenn mehrere */}
+                                    {hasMultipleHomes && (
+                                        <select
+                                            value={
+                                                local.home ??
+                                                device.config?.home?.id ??
+                                                device.home?.id ??
+                                                ""
+                                            }
+                                            onChange={(e) =>
+                                                handleChange(device.id, "home", Number(e.target.value))
+                                            }
+                                            className="border rounded px-2 py-1 text-sm w-full"
+                                        >
+                                            <option value="">🏠 Zuhause</option>
+                                            {homes.map((h) => (
+                                                <option key={h.id} value={h.id}>
+                                                    {h.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
 
                                     <select
                                         value={local.floor ?? device.config?.floor?.id ?? ""}
                                         onChange={(e) =>
                                             handleChange(device.id, "floor", Number(e.target.value))
                                         }
+                                        className="border rounded px-2 py-1 text-sm w-full"
                                     >
                                         <option value="">🏢 Etage</option>
-                                        {floors.map(f => (
-                                            <option key={f.id} value={f.id}>{f.name}</option>
+                                        {floors.map((f) => (
+                                            <option key={f.id} value={f.id}>
+                                                {f.name}
+                                            </option>
                                         ))}
                                     </select>
 
@@ -272,15 +297,31 @@ export default function DeviceSetupModal({ open, onClose }) {
                                         onChange={(e) =>
                                             handleChange(device.id, "room", Number(e.target.value))
                                         }
+                                        className="border rounded px-2 py-1 text-sm w-full"
                                     >
                                         <option value="">🚪 Raum</option>
-                                        {rooms.map(r => (
-                                            <option key={r.id} value={r.id}>{r.name}</option>
+                                        {rooms.map((r) => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.name}
+                                            </option>
                                         ))}
                                     </select>
 
-                                    <button onClick={() => handleSave(device)}>
-                                        Save
+                                    <button
+                                        onClick={() => handleSave(device)}
+                                        disabled={saving[device.id]}
+                                        className={`w-full px-3 py-1 text-sm rounded transition ${saving[device.id]
+                                            ? "bg-gray-200 text-gray-500"
+                                            : saved[device.id]
+                                                ? "bg-green-500 text-white"
+                                                : "bg-indigo-600 text-white hover:bg-indigo-700"
+                                            }`}
+                                    >
+                                        {saving[device.id]
+                                            ? "..."
+                                            : saved[device.id]
+                                                ? "✔"
+                                                : "Save"}
                                     </button>
 
                                 </div>

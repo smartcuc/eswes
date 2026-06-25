@@ -31,5 +31,6 @@ export function useSettings() {
     return {
         settings: query.data,
         loading: query.isLoading,
+        error: query.error,
     };
 }

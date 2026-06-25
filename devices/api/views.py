@@ -28,16 +28,31 @@ from .serializers import (
 @permission_classes([IsAuthenticated])
 def device_setup_options(request):
 
-    user = request.user
-
-    rooms = Room.objects.filter(floor__home__user=user)
-    floors = Floor.objects.filter(home__user=user)
     roles = DeviceRole.objects.all()
+    rooms = Room.objects.all()
+    floors = Floor.objects.all()
+
+    # ✅ wenn du measurement types brauchst:
+    from devices.models import MetricDefinition
+    metrics = MetricDefinition.objects.all()
 
     return Response({
-        "roles": DeviceRoleSerializer(roles, many=True).data,
-        "rooms": RoomSerializer(rooms, many=True).data,
-        "floors": FloorSerializer(floors, many=True).data,
+        "roles": [
+            {"id": r.id, "label": r.label}
+            for r in roles
+        ],
+        "rooms": [
+            {"id": r.id, "name": r.name}
+            for r in rooms
+        ],
+        "floors": [
+            {"id": f.id, "name": f.name}
+            for f in floors
+        ],
+        "measurement_types": [
+            {"key": m.key, "name": m.name}
+            for m in metrics
+        ],
     })
 
 
