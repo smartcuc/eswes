@@ -3,13 +3,19 @@
 */
 
 import { useUser } from "../hooks/useUser";
+import AppTopbar from "../components/layout/Topbar";
+import Sidebar from "../components/layout/Sidebar";
+
 import Dashboard from "../pages/dashboard/Dashboard";
 import OverviewPage from "../pages/dashboard/overview/OverviewPage";
 import Settings from "../pages/Settings";
-import { Routes, Route, Navigate } from "react-router-dom";
 import EnergyDashboard from "../features/energy/EnergyDashboard";
 
-import AppHeader from "../components/AppHeader";
+import DevicesPage from "../pages/DevicesPage";
+import MetricsPage from "../pages/MetricsPage";
+import StructurePage from "../pages/StructurePage";
+
+import { Routes, Route, Navigate } from "react-router-dom";
 
 export default function AppShell() {
 
@@ -19,46 +25,48 @@ export default function AppShell() {
         return <div className="p-6">Loading...</div>;
     }
 
-    // ❗ nicht eingeloggt → zurück zu landing
     if (!user) {
         return <Navigate to="/" replace />;
     }
 
-
     return (
+        <div className="flex h-screen">
 
-        <div className="flex flex-col h-screen">
+            {/* ✅ SIDEBAR */}
+            <Sidebar />
 
-            {/* ✅ HEADER → enthält UserMenu */}
-            <AppHeader />
+            <div className="flex-1 flex flex-col">
 
-            {/* ✅ CONTENT */}
-            <div className="flex-1 overflow-auto">
+                {/* ✅ TOPBAR */}
+                <AppTopbar />
 
-                <Routes>
-                    {/* ✅ Default */}
-                    <Route index element={<Navigate to="/app/dashboard" replace />} />
+                {/* ✅ CONTENT */}
+                <div className="flex-1 overflow-auto">
+                    <Routes>
 
-                    {/* ✅ bestehendes User-Dashboard */}
-                    <Route path="dashboard" element={<Dashboard user={user} />} />
+                        {/* ✅ DEFAULT */}
+                        <Route index element={<Navigate to="/app/dashboard" replace />} />
 
-                    {/* ✅ NEU – Overview */}
-                    <Route path="overview" element={<OverviewPage />} />
+                        <Route path="dashboard" element={<Dashboard user={user} />} />
+                        <Route path="overview" element={<OverviewPage />} />
+                        <Route path="energy" element={<EnergyDashboard />} />
+                        <Route path="settings" element={<Settings />} />
 
-                    {/* ⚡ ENERGY DASHBOARD */}
-                    <Route path="energy" element={<EnergyDashboard />} />
+                        <Route path="devices" element={<DevicesPage />} />
+                        <Route path="metrics" element={<MetricsPage />} />
+                        <Route path="structure" element={<StructurePage />} />
 
-                    <Route path="settings" element={<Settings />} />
+                        {/* ✅ FALLBACK IMMER UNTEN */}
+                        <Route path="*" element={<Navigate to="dashboard" />} />
 
-                    {/* ✅ Fallback */}
-                    <Route path="*" element={<Navigate to="dashboard" />} />
-                </Routes>
+                    </Routes>
+                </div>
 
             </div>
-
         </div>
     );
 }
+
 
 // {isRefreshing && <span className="text-xs text-gray-400">Syncing...</span>} muss noch iregenwo in
 // der UI eingebaut werden

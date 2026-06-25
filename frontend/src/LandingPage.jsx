@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "./hooks/useUser";
+import { useNavigate } from "react-router-dom";
 
 import Header from "./components/Header";
 import EnergyFlow from "./components/EnergyFlow";
@@ -13,13 +14,26 @@ import { trackEvent } from "./lib/track";
 
 export default function LandingPage() {
 
-    const { user } = useUser();
+    const { user, loading } = useUser();
+    const navigate = useNavigate();
+
     const [variant] = useState(Math.random() > 0.5 ? "A" : "B");
 
     useEffect(() => {
+
         document.title = "Sharegy – Dein Energy OS";
+
         trackEvent("landing_view", { variant });
+
     }, [variant]);
+
+    // ✅ NEU: Redirect wenn eingeloggt
+    useEffect(() => {
+        if (!loading && user) {
+            navigate("/app/dashboard", { replace: true });
+        }
+    }, [user, loading, navigate]);
+
 
     const handleStart = () => {
         trackEvent("cta_click", {
@@ -27,8 +41,12 @@ export default function LandingPage() {
             variant
         });
 
-        window.location.href = "/login";
+        navigate("/login");
     };
+
+    if (loading) {
+        return <div className="p-6">Loading...</div>;
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -55,7 +73,7 @@ export default function LandingPage() {
 
                 <div className="mt-8 flex justify-center gap-4 flex-wrap relative z-10">
 
-                    {/* ✅ LIVE VIEW (Scroll) */}
+                    {/* LIVE VIEW */}
                     <button
                         onClick={() => {
                             trackEvent("cta_click", {
@@ -72,7 +90,7 @@ export default function LandingPage() {
                         Live ansehen
                     </button>
 
-                    {/* ✅ MAIN CTA (konsistent) */}
+                    {/* MAIN CTA */}
                     <button
                         onClick={handleStart}
                         className="border border-white px-6 py-3 rounded-lg hover:scale-105 transition"
@@ -82,7 +100,6 @@ export default function LandingPage() {
 
                 </div>
 
-                {/* ✅ TRUST BOOST */}
                 <div className="mt-6 text-sm opacity-80">
                     Kein Setup · Kein Risiko · Funktioniert sofort
                 </div>
@@ -120,14 +137,10 @@ export default function LandingPage() {
             {/* SPLIT */}
             <section className="mt-12 max-w-6xl mx-auto grid md:grid-cols-2 gap-8 px-6">
 
-                <div className="bg-white p-8 rounded-2xl shadow hover:shadow-lg transition">
+                <div className="bg-white p-8 rounded-2xl shadow">
                     <h3 className="text-lg font-semibold mb-4 text-indigo-600">
                         ⚡ Für dein Zuhause
                     </h3>
-
-                    <p className="text-gray-500 text-sm mb-6">
-                        Behalte deinen Verbrauch im Blick und optimiere automatisch.
-                    </p>
 
                     <ul className="space-y-2 text-sm text-gray-600">
                         <li>✅ Live-Verbrauch</li>
@@ -136,14 +149,10 @@ export default function LandingPage() {
                     </ul>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl shadow hover:shadow-lg transition">
+                <div className="bg-white p-8 rounded-2xl shadow">
                     <h3 className="text-lg font-semibold mb-4 text-orange-500">
                         🤝 Für deine Community
                     </h3>
-
-                    <p className="text-gray-500 text-sm mb-6">
-                        Teile Energie und nutze Überschüsse lokal.
-                    </p>
 
                     <ul className="space-y-2 text-sm text-gray-600">
                         <li>✅ Energie teilen</li>
@@ -154,83 +163,9 @@ export default function LandingPage() {
 
             </section>
 
-            {/* MID CTA */}
-            <div className="mt-12 text-center">
-
-                <button
-                    onClick={() =>
-                        trackEvent("cta_click", {
-                            location: "mid",
-                            variant
-                        })
-                    }
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition transform hover:scale-105"
-                >
-                    Jetzt kostenlos starten →
-                </button>
-
-            </div>
-
-            {/* ✅ ENERGY FLOW */}
+            {/* ENERGY FLOW */}
             <section id="energy-flow" className="mt-20 px-6 text-center">
-
-                <h3 className="text-xl font-semibold mb-4 text-indigo-600">
-                    So fließt Energie in deiner Community
-                </h3>
-
-                <p className="text-gray-500 max-w-xl mx-auto mb-8">
-                    In Echtzeit sichtbar: Verbrauch, Produktion und Sharing.
-                </p>
-
-                {/* ✅ Demo Mode = immer sichtbar */}
                 <EnergyFlow mode="demo" />
-
-            </section>
-
-            {/* ✅ GROWTH HOOK */}
-            <section className="mt-20 bg-gray-100 py-16 px-6 text-center">
-
-                <h3 className="text-xl font-semibold mb-4">
-                    Mehr Wert durch deine Community
-                </h3>
-
-                <p className="text-gray-600 max-w-xl mx-auto">
-                    Je mehr teilnehmen, desto mehr Energie bleibt lokal –
-                    und desto geringer werden deine Kosten.
-                </p>
-
-                {/* ✅ Growth CTA */}
-                <div className="mt-4">
-                    <button className="text-sm text-indigo-600 hover:underline">
-                        Community erstellen →
-                    </button>
-                </div>
-
-            </section>
-
-            {/* FINAL CTA */}
-            <section className="mt-24 bg-black text-white py-20 text-center px-6">
-
-                <h3 className="text-3xl font-semibold mb-4">
-                    Starte jetzt – in unter 2 Minuten
-                </h3>
-
-                <p className="text-gray-400 mb-8">
-                    Keine Installation. Kein Risiko.
-                </p>
-
-                <button
-                    onClick={() =>
-                        trackEvent("cta_click", {
-                            location: "final",
-                            variant
-                        })
-                    }
-                    className="bg-orange-500 hover:bg-orange-600 transition transform hover:scale-105 px-8 py-4 rounded-lg text-lg font-medium"
-                >
-                    Jetzt kostenlos starten
-                </button>
-
             </section>
 
             <Footer />

@@ -29,7 +29,7 @@ class Home(models.Model):
 
     name = models.CharField(max_length=100)
 
-    # ✅ MQTT FIELDS (WICHTIG!)
+    # ✅ MQTT (nur Transport!)
     mqtt_token = models.UUIDField(
         default=uuid.uuid4,
         unique=True,
@@ -43,12 +43,9 @@ class Home(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-
-        # ✅ Username = Token (einfach & eindeutig)
         if not self.mqtt_username:
             self.mqtt_username = str(self.mqtt_token)
 
-        # ✅ Passwort generieren (nur beim ersten Mal)
         if not self.mqtt_password:
             self.mqtt_password = secrets.token_hex(16)
 
@@ -59,10 +56,7 @@ class Home(models.Model):
 
 
 # ============================================================
-# ✅ STRUCTURE
-# ============================================================
-# ============================================================
-# ✅ FLOOR
+# ✅ STRUCTURE (flexibel, bleibt erstmal so)
 # ============================================================
 
 class Floor(models.Model):
@@ -75,11 +69,7 @@ class Floor(models.Model):
 
     def __str__(self):
         return self.name
-    
-    
-# ============================================================
-# ✅ ROOM
-# ============================================================
+
 
 class Room(models.Model):
     floor = models.ForeignKey(
@@ -94,10 +84,7 @@ class Room(models.Model):
 
 
 # ============================================================
-# ✅ SEMANTIC LAYER
-# ============================================================
-# ============================================================
-# ✅ DEVICE ROLE
+# ✅ SEMANTIC
 # ============================================================
 
 class DeviceRole(models.Model):
@@ -107,9 +94,6 @@ class DeviceRole(models.Model):
     def __str__(self):
         return self.label
 
-# ============================================================
-# ✅ DEVICE METRIC
-# ============================================================
 
 class MetricDefinition(models.Model):
     key = models.CharField(max_length=50, unique=True)
@@ -120,37 +104,8 @@ class MetricDefinition(models.Model):
         return self.name
 
 
-class DeviceType(models.Model):
-    key = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=100)
-
-    role = models.ForeignKey(
-        DeviceRole,
-        on_delete=models.PROTECT,
-        related_name="device_types"
-    )
-
-    def __str__(self):
-        return self.name
-
-
-class DeviceTypeMetric(models.Model):
-    device_type = models.ForeignKey(
-        DeviceType,
-        on_delete=models.CASCADE,
-        related_name="allowed_metrics"
-    )
-    metric = models.ForeignKey(
-        MetricDefinition,
-        on_delete=models.CASCADE
-    )
-
-    class Meta:
-        unique_together = ("device_type", "metric")
-
-
 # ============================================================
-# ✅ DEVICE
+# ✅ DEVICE (NUR TECHNISCH!)
 # ============================================================
 
 class Device(models.Model):
@@ -162,39 +117,6 @@ class Device(models.Model):
     )
 
     identifier = models.CharField(max_length=100)
-    name = models.CharField(max_length=255)
-
-    type = models.ForeignKey(
-        DeviceType,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="devices"
-    )
-
-    role = models.ForeignKey(
-        DeviceRole,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL
-    )
-
-    floor = models.ForeignKey(
-        Floor,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL
-    )
-
-    room = models.ForeignKey(
-        Room,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="devices"
-    )
-
-    configured = models.BooleanField(default=False)
 
     # 🔥 Lifecycle
     first_seen = models.DateTimeField(auto_now_add=True)
@@ -211,26 +133,77 @@ class Device(models.Model):
         ]
 
     def __str__(self):
-        return self.name
-
-
-class DeviceSelectedMetric(models.Model):
-    device = models.ForeignKey(
-        Device,
-        on_delete=models.CASCADE,
-        related_name="selected_metrics"
-    )
-    metric = models.ForeignKey(
-        MetricDefinition,
-        on_delete=models.CASCADE
-    )
-
-    class Meta:
-        unique_together = ("device", "metric")
+        return self.identifier
 
 
 # ============================================================
-# ✅ DEVICE METRIC (REALTIME + WS)
+# ✅ DEVICE CONFIG (DEIN KERN!)
+# ============================================================
+
+class DeviceConfig(models.Model):
+
+    device = models.OneToOneField(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="config"
+    )
+
+    # ✅ Anzeige
+    name = models.CharField(max_length=255, blank=True)
+
+    # ✅ Semantik
+    role = models.ForeignKey(
+        DeviceRole,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    measurement_type = models.CharField(
+        max_length=50,
+        blank=True
+    )
+
+    # ✅ Location (flexibel!)
+    home = models.ForeignKey(
+        Home,
+        on_delete=models.CASCADE
+    )
+
+    floor = models.ForeignKey(
+        Floor,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    room = models.ForeignKey(
+        Room,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # ✅ derived
+    def display_name(self):
+        return self.name or self.device.identifier
+
+    def is_classified(self):
+        return (
+            self.role is not None
+            and bool(self.measurement_type)
+            and (self.room or self.floor)
+        )
+
+    def __str__(self):
+        return self.display_name()
+
+
+# ============================================================
+# ✅ DEVICE METRIC (UNVERÄNDERT ✅)
 # ============================================================
 
 class DeviceMetric(models.Model):
@@ -263,20 +236,17 @@ class DeviceMetric(models.Model):
 
         super().save(*args, **kwargs)
 
-        # ✅ nur neue oder geänderte Werte
         if not is_new:
             if (old_value is None and self.value is None):
                 return
             if old_value == self.value:
                 return
 
-        # ✅ nur power Events
         if self.metric_key != "power":
             return
 
         user_id = self.device.home.user_id
 
-        # ✅ Throttle
         cache_key = f"ws_update_{user_id}"
         if cache.get(cache_key):
             return
@@ -297,7 +267,7 @@ class DeviceMetric(models.Model):
                     "value": self.value,
                     "unit": self.unit,
                     "timestamp": self.timestamp.isoformat(),
-                    "device_type": self.device.type.key if self.device.type else None,
                 },
             },
         )
+

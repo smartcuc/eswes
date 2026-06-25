@@ -1,7 +1,7 @@
 ##################################################
 # devices/management/commands/seed_device_setup.py
 ##################################################
-
+""" 
 from django.core.management.base import BaseCommand
 from devices.models import (
     DeviceRole,
@@ -86,3 +86,4 @@ class Command(BaseCommand):
                 )
 
         self.stdout.write(self.style.SUCCESS("✅ Device setup seeded"))
+ """

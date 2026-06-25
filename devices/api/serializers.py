@@ -3,14 +3,13 @@
 ############################
 
 from rest_framework import serializers
-from devices.models import Device, DeviceSelectedMetric
+from devices.models import Device
+#, DeviceSelectedMetric
 
 from devices.models import (
     Device,
-    DeviceType,
     MetricDefinition,
-    DeviceSelectedMetric,
-    DeviceTypeMetric,
+#    DeviceSelectedMetric,
     Room
 )
 
@@ -21,7 +20,7 @@ class MetricSerializer(serializers.ModelSerializer):
         fields = ("key", "name", "unit")
 
 
-class DeviceTypeSerializer(serializers.ModelSerializer):
+""" class DeviceTypeSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source="role.key")
     metrics = serializers.SerializerMethodField()
 
@@ -33,7 +32,7 @@ class DeviceTypeSerializer(serializers.ModelSerializer):
         mappings = DeviceTypeMetric.objects.filter(device_type=obj)
         metrics = [m.metric for m in mappings]
         return MetricSerializer(metrics, many=True).data
-    
+     """
 
 class RoomSerializer(serializers.ModelSerializer):
     floor = serializers.CharField(source="floor.name")
@@ -50,7 +49,7 @@ class DeviceConfigureSerializer(serializers.Serializer):
         child=serializers.CharField()
     )
     room_id = serializers.IntegerField()
-
+""" 
     def validate(self, data):
         try:
             device_type = DeviceType.objects.get(id=data["type_id"])
@@ -70,7 +69,7 @@ class DeviceConfigureSerializer(serializers.Serializer):
 
         return data
 
-
+ """
 class DeviceListSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     role = serializers.CharField(source="role.key", default=None)

@@ -3,22 +3,37 @@
 */
 
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
+import AddDeviceModal from "../../components/device/AddDeviceModal";
+import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
+import DeviceSetupModal from "../../components/device/DeviceSetupModal";
 import KPI from "../../components/ui/KPI";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
-import AddDeviceModal from "../../components/device/AddDeviceModal";
 import { useState } from "react";
 
 
 export default function DashboardUser() {
 
     const [modalOpen, setModalOpen] = useState(false);
+    const [openSetup, setOpenSetup] = useState(false);
 
     return (
         <DashboardLayout>
 
             {/* Header */}
+
+            <div className="p-6">
+
+                {/* <UnconfiguredDevicesBanner /> */}
+                <UnconfiguredDevicesBanner onOpen={() => setOpenSetup(true)} />
+                <DeviceSetupModal
+                    open={openSetup}
+                    onClose={() => setOpenSetup(false)}
+                />
+
+            </div>
+
             <div>
                 <h1 className="text-2xl font-bold">
                     Dein Energie Dashboard ⚡

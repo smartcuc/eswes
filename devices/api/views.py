@@ -8,9 +8,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from devices.models import DeviceType, Room
+from devices.models import Room
 from devices.models import Device, DeviceMetric
-from .serializers import DeviceTypeSerializer, RoomSerializer
+#from .serializers import DeviceTypeSerializer, RoomSerializer
+from .serializers import RoomSerializer
 from .serializers import DeviceConfigureSerializer
 from .serializers import DeviceListSerializer, DeviceDetailSerializer
 
@@ -18,9 +19,9 @@ from collections import defaultdict
 
 from devices.models import (
     Device,
-    DeviceType,
+#    DeviceType,
     MetricDefinition,
-    DeviceSelectedMetric,  # ✅ DAS FEHLT DIR
+#    DeviceSelectedMetric,  # ✅ DAS FEHLT DIR
     Room
 )
 
@@ -34,10 +35,10 @@ def device_setup_options(request):
     # 👉 nur eigene Homes → Rooms
     rooms = Room.objects.filter(floor__home__user=user)
 
-    types = DeviceType.objects.all()
+ #   types = DeviceType.objects.all()
 
     return Response({
-        "types": DeviceTypeSerializer(types, many=True).data,
+   #     "types": DeviceTypeSerializer(types, many=True).data,
         "rooms": RoomSerializer(rooms, many=True).data
     })
 
@@ -58,12 +59,12 @@ def configure_device(request, device_id):
 
     data = serializer.validated_data
 
-    device_type = DeviceType.objects.get(id=data["type_id"])
+   # device_type = DeviceType.objects.get(id=data["type_id"])
     room = Room.objects.get(id=data["room_id"])
 
     # ✅ Device setzen
-    device.type = device_type
-    device.role = device_type.role  # 🔥 automatisch!
+   # device.type = device_type
+   # device.role = device_type.role  # 🔥 automatisch!
     device.room = room
     device.configured = True
     device.save()

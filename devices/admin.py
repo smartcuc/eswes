@@ -1,9 +1,20 @@
+##################
+# devices/admin.py
+##################
+
 from django.contrib import admin
 from .models import *
 
+
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "identifier", "configured")
+    list_display = ("id", "identifier", "home")
+
+
+@admin.register(DeviceConfig)
+class DeviceConfigAdmin(admin.ModelAdmin):
+    list_display = ("id", "device", "name", "role")
+    list_filter = ("role", "home")
 
 
 @admin.register(DeviceMetric)
@@ -29,11 +40,6 @@ class RoomAdmin(admin.ModelAdmin):
 @admin.register(DeviceRole)
 class DeviceRoleAdmin(admin.ModelAdmin):
     list_display = ("id", "key", "label")
-
-
-@admin.register(DeviceType)
-class DeviceTypeAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "key", "role")
 
 
 @admin.register(MetricDefinition)
