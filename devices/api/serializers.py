@@ -3,144 +3,90 @@
 ############################
 
 from rest_framework import serializers
-from devices.models import Device
-#, DeviceSelectedMetric
-
-from devices.models import (
-    Device,
-    MetricDefinition,
-#    DeviceSelectedMetric,
-    Room
-)
+from devices.models import Device, DeviceConfig, DeviceRole, Room, Floor
 
 
-class MetricSerializer(serializers.ModelSerializer):
+# ============================================================
+# ✅ ROLE
+# ============================================================
+
+class DeviceRoleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MetricDefinition
-        fields = ("key", "name", "unit")
+        model = DeviceRole
+        fields = ("id", "key", "label")
 
 
-""" class DeviceTypeSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source="role.key")
-    metrics = serializers.SerializerMethodField()
-
-    class Meta:
-        model = DeviceType
-        fields = ("id", "key", "name", "role", "metrics")
-
-    def get_metrics(self, obj):
-        mappings = DeviceTypeMetric.objects.filter(device_type=obj)
-        metrics = [m.metric for m in mappings]
-        return MetricSerializer(metrics, many=True).data
-     """
+# ============================================================
+# ✅ LOCATION
+# ============================================================
 
 class RoomSerializer(serializers.ModelSerializer):
-    floor = serializers.CharField(source="floor.name")
-    home = serializers.CharField(source="floor.home.name")
-
     class Meta:
         model = Room
-        fields = ("id", "name", "floor", "home")
+        fields = ("id", "name")
 
 
-class DeviceConfigureSerializer(serializers.Serializer):
-    type_id = serializers.IntegerField()
-    metric_keys = serializers.ListField(
-        child=serializers.CharField()
+class FloorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Floor
+        fields = ("id", "name")
+
+
+# ============================================================
+# ✅ CONFIG
+# ============================================================
+
+class DeviceConfigSerializer(serializers.ModelSerializer):
+
+    role = DeviceRoleSerializer(read_only=True)
+
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=DeviceRole.objects.all(),
+        source="role",
+        write_only=True,
+        allow_null=True,
+        required=False
     )
-    room_id = serializers.IntegerField()
-""" 
-    def validate(self, data):
-        try:
-            device_type = DeviceType.objects.get(id=data["type_id"])
-        except DeviceType.DoesNotExist:
-            raise serializers.ValidationError("Invalid device type")
 
-        # ✅ erlaubte Metrics holen
-        allowed_metrics = set(
-            device_type.allowed_metrics.values_list("metric__key", flat=True)
+    class Meta:
+        model = DeviceConfig
+        fields = (
+            "name",
+            "role",
+            "role_id",
+            "measurement_type",
+            "floor",
+            "room",
         )
 
-        for key in data["metric_keys"]:
-            if key not in allowed_metrics:
-                raise serializers.ValidationError(
-                    f"Metric '{key}' not allowed for this device type"
-                )
 
-        return data
+# ============================================================
+# ✅ DEVICE
+# ============================================================
 
- """
-class DeviceListSerializer(serializers.ModelSerializer):
-    type = serializers.SerializerMethodField()
-    role = serializers.CharField(source="role.key", default=None)
-    room = serializers.CharField(source="room.name", default=None)
-    metrics = serializers.SerializerMethodField()
+class DeviceSerializer(serializers.ModelSerializer):
+
+    config = DeviceConfigSerializer(read_only=True)
+
+    display_name = serializers.SerializerMethodField()
+    classified = serializers.SerializerMethodField()
 
     class Meta:
         model = Device
         fields = (
             "id",
-            "name",
             "identifier",
-            "configured",
-            "type",
-            "role",
-            "room",
-            "metrics",
+            "display_name",
+            "classified",
+            "config",
         )
 
-    def get_type(self, obj):
-        if not obj.type:
-            return None
-        return {
-            "key": obj.type.key,
-            "name": obj.type.name
-        }
+    def get_display_name(self, obj):
+        if hasattr(obj, "config") and obj.config:
+            return obj.config.display_name()
+        return obj.identifier
 
-    def get_metrics(self, obj):
-        return list(
-            obj.selected_metrics.values_list("metric__key", flat=True)
-        )
-    
-
-class DeviceDetailSerializer(serializers.ModelSerializer):
-    type = serializers.SerializerMethodField()
-    role = serializers.CharField(source="role.key", default=None)
-    room = serializers.SerializerMethodField()
-    metrics = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Device
-        fields = "__all__"
-
-    def get_type(self, obj):
-        if not obj.type:
-            return None
-        return {
-            "key": obj.type.key,
-            "name": obj.type.name
-        }
-
-    def get_room(self, obj):
-        if not obj.room:
-            return None
-
-        return {
-            "id": obj.room.id,
-            "name": obj.room.name,
-            "floor": obj.room.floor.name
-        }
-
-    def get_metrics(self, obj):
-        metrics = DeviceSelectedMetric.objects.filter(device=obj)
-
-        return [
-            {
-                "key": m.metric.key,
-                "name": m.metric.name,
-                "unit": m.metric.unit
-            }
-            for m in metrics
-        ]
-
-
+    def get_classified(self, obj):
+        if hasattr(obj, "config") and obj.config:
+            return obj.config.is_classified()
+        return False

@@ -5,12 +5,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../api/client";
 
-export function useDeviceTypes() {
-    return useQuery({
-        queryKey: ["device_types"],
-        queryFn: () => apiFetch("/api/device-types/"),
-    });
-}
 
 export function useDeviceRoles() {
     return useQuery({

@@ -3,7 +3,7 @@
 */
 
 import { useUnconfiguredDevices } from "../hooks/useUnconfiguredDevices";
-import { useDeviceTypes, useDeviceRoles } from "../hooks/useDeviceMeta";
+import { useDeviceRoles } from "../hooks/useDeviceMeta";
 
 import { apiFetch } from "../api/client";
 
@@ -12,10 +12,8 @@ export default function DevicesPage() {
     const query = useUnconfiguredDevices();
     const devices = query?.data?.devices || [];
 
-    const typesQuery = useDeviceTypes();
     const rolesQuery = useDeviceRoles();
 
-    const types = typesQuery.data || [];
     const roles = rolesQuery.data || [];
 
     async function updateDevice(id, field, value) {
@@ -46,26 +44,26 @@ export default function DevicesPage() {
 
                 {devices.map((device) => (
                     <div
-                        key={device.id}
+                        key={device.config.id}
                         className="bg-white border rounded p-4 flex items-center gap-4"
                     >
 
                         {/* NAME */}
                         <div className="flex-1">
                             <div className="font-medium">
-                                {device.name || `Device ${device.id}`}
+                                {device.config.name || `Device ${device.config.id}`}
                             </div>
 
                             <div className="text-xs text-gray-400">
-                                {device.identifier}
+                                {device.config.identifier}
                             </div>
                         </div>
 
                         {/* TYPE */}
                         <select
-                            value={device.type?.key || ""}
+                            value={device.config.type?.key || ""}
                             onChange={(e) =>
-                                updateDevice(device.id, "type", e.target.value)
+                                updateDevice(device.config.id, "type", e.target.value)
                             }
                             className="border rounded px-2 py-1 text-sm"
                         >
@@ -80,9 +78,9 @@ export default function DevicesPage() {
 
                         {/* ROLE */}
                         <select
-                            value={device.role?.key || ""}
+                            value={device.config.role?.key || ""}
                             onChange={(e) =>
-                                updateDevice(device.id, "role", e.target.value)
+                                updateDevice(device.config.id, "role", e.target.value)
                             }
                             className="border rounded px-2 py-1 text-sm"
                         >
