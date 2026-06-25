@@ -29,12 +29,14 @@ class HomeAdmin(admin.ModelAdmin):
 
 @admin.register(Floor)
 class FloorAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "home")
+    list_display = ("id", "name")
+    search_fields = ("name",)
 
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "floor")
+    list_display = ("id", "name")
+    search_fields = ("name",)
 
 
 @admin.register(DeviceRole)

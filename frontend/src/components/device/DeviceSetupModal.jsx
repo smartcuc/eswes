@@ -5,7 +5,6 @@
 import { useState, useEffect } from "react";
 import { useUnconfiguredDevices } from "../../hooks/useUnconfiguredDevices";
 import {
-    useDeviceTypes,
     useDeviceRoles,
     useMeasurementTypes
 } from "../../hooks/useDeviceMeta";
@@ -16,13 +15,13 @@ import {
 } from "../../hooks/useStructure";
 import { apiFetch } from "../../api/client";
 
+
 export default function DeviceSetupModal({ open, onClose }) {
 
     const query = useUnconfiguredDevices();
     const devices = query?.data?.devices || [];
     const isLoading = query?.isLoading;
 
-    const types = useDeviceTypes().data || [];
     const roles = useDeviceRoles().data || [];
     const measurementTypes = useMeasurementTypes().data || [];
 
@@ -42,7 +41,7 @@ export default function DeviceSetupModal({ open, onClose }) {
         (page + 1) * PAGE_SIZE
     );
 
-    // ✅ FIXED CHANGE HANDLER
+    // ✅ ✅ ✅ FIXED CHANGE HANDLER
     function handleChange(id, field, value) {
         setLocalValues((prev) => ({
             ...prev,
@@ -99,13 +98,8 @@ export default function DeviceSetupModal({ open, onClose }) {
         }
     }, [open]);
 
-    // ✅ PROGRESS
-    const completed = devices.filter(d =>
-        d.type?.key &&
-        d.role?.key &&
-        d.room?.id
-    ).length;
-
+    // ✅ PROGRESS (neu korrekt!)
+    const completed = devices.filter(d => d.classified).length;
     const total = devices.length;
     const percent = total ? Math.round((completed / total) * 100) : 0;
 
@@ -182,10 +176,12 @@ export default function DeviceSetupModal({ open, onClose }) {
                     {!isLoading && paginatedDevices.map((device, index) => {
 
                         const local = localValues[device.id] || {};
+
                         const isComplete =
-                            (local.type || device.type?.key) &&
-                            (local.role || device.role?.key) &&
-                            (local.room || device.room?.id);
+                            (local.role_id || device.config?.role?.id) &&
+                            (local.measurement_type || device.config?.measurement_type) &&
+                            (local.room || local.floor ||
+                                device.config?.room?.id || device.config?.floor?.id);
 
                         return (
 
@@ -199,10 +195,10 @@ export default function DeviceSetupModal({ open, onClose }) {
                                     }`}
                             >
 
-                                {/* NAME + STATUS */}
+                                {/* NAME */}
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="text-sm font-medium">
-                                        {device.name || `Device ${device.id}`}
+                                        {device.display_name}
                                     </div>
 
                                     <span className={`text-xs px-2 py-0.5 rounded-full ${isComplete
@@ -213,144 +209,79 @@ export default function DeviceSetupModal({ open, onClose }) {
                                     </span>
                                 </div>
 
-                                {/* ✅ FUNKTION */}
-                                <div className="mb-3">
-                                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-1 uppercase">
-                                        ⚡ Funktion
-                                    </div>
+                                {/* FUNKTION */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <select
+                                        value={local.role_id ?? device.config?.role?.id ?? ""}
+                                        onChange={(e) =>
+                                            handleChange(
+                                                device.id,
+                                                "role_id",
+                                                e.target.value ? Number(e.target.value) : null
+                                            )
+                                        }
+                                        className="border rounded px-2 py-1 text-sm w-full"
+                                    >
+                                        <option value="">🔁 Rolle</option>
+                                        {roles.map(r => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.label}
+                                            </option>
+                                        ))}
+                                    </select>
 
-                                        <select
-                                            value={local.type ?? device.type?.key ?? ""}
-                                            onChange={(e) =>
-                                                handleChange(device.id, "type", e.target.value)
-                                            }
-                                            className="border rounded px-2 py-1 text-sm w-full"
-                                        >
-                                            <option value="">⚙️ Type</option>
-                                            {types.map(t => (
-                                                <option key={t.key} value={t.key}>
-                                                    {t.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <select
+                                        value={
+                                            local.measurement_type ??
+                                            device.config?.measurement_type ??
+                                            ""
+                                        }
+                                        onChange={(e) =>
+                                            handleChange(device.id, "measurement_type", e.target.value)
+                                        }
+                                        className="border rounded px-2 py-1 text-sm w-full"
+                                    >
+                                        <option value="">📏 Messart</option>
+                                        {measurementTypes.map(m => (
+                                            <option key={m.key} value={m.key}>
+                                                {m.name}
+                                            </option>
+                                        ))}
+                                    </select>
 
-                                        <select
-                                            value={local.role ?? device.role?.key ?? ""}
-                                            onChange={(e) =>
-                                                handleChange(device.id, "role", e.target.value)
-                                            }
-                                            className="border rounded px-2 py-1 text-sm w-full"
-                                        >
-                                            <option value="">🔁 Role</option>
-                                            {roles.map(r => (
-                                                <option key={r.key} value={r.key}>
-                                                    {r.name}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        <select
-                                            value={
-                                                local.measurement_type ??
-                                                device.measurement_type ??
-                                                ""
-                                            }
-                                            onChange={(e) =>
-                                                handleChange(device.id, "measurement_type", e.target.value)
-                                            }
-                                            className="border rounded px-2 py-1 text-sm w-full"
-                                        >
-                                            <option value="">📏 Messart</option>
-                                            {measurementTypes.map(m => (
-                                                <option key={m.key} value={m.key}>
-                                                    {m.name}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                    </div>
                                 </div>
 
-                                {/* ✅ STANDORT */}
-                                <div className="mb-3">
-                                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-1 uppercase">
-                                        📍 Standort
-                                    </div>
+                                {/* LOCATION */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <select
+                                        value={local.floor ?? device.config?.floor?.id ?? ""}
+                                        onChange={(e) =>
+                                            handleChange(device.id, "floor", Number(e.target.value))
+                                        }
+                                    >
+                                        <option value="">🏢 Etage</option>
+                                        {floors.map(f => (
+                                            <option key={f.id} value={f.id}>{f.name}</option>
+                                        ))}
+                                    </select>
 
-                                        {homes.length > 1 && (
-                                            <select
-                                                value={local.home ?? device.home?.id ?? ""}
-                                                onChange={(e) =>
-                                                    handleChange(device.id, "home", e.target.value)
-                                                }
-                                                className="border rounded px-2 py-1 text-sm w-full"
-                                            >
-                                                <option value="">🏠 Home</option>
-                                                {homes.map(h => (
-                                                    <option key={h.id} value={h.id}>
-                                                        {h.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        )}
+                                    <select
+                                        value={local.room ?? device.config?.room?.id ?? ""}
+                                        onChange={(e) =>
+                                            handleChange(device.id, "room", Number(e.target.value))
+                                        }
+                                    >
+                                        <option value="">🚪 Raum</option>
+                                        {rooms.map(r => (
+                                            <option key={r.id} value={r.id}>{r.name}</option>
+                                        ))}
+                                    </select>
 
-                                        <select
-                                            value={local.floor ?? device.floor?.id ?? ""}
-                                            onChange={(e) =>
-                                                handleChange(device.id, "floor", e.target.value)
-                                            }
-                                            className="border rounded px-2 py-1 text-sm w-full"
-                                        >
-                                            <option value="">🏢 Etage</option>
-                                            {floors.map(f => (
-                                                <option key={f.id} value={f.id}>
-                                                    {f.name}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        <select
-                                            value={local.room ?? device.room?.id ?? ""}
-                                            onChange={(e) =>
-                                                handleChange(device.id, "room", e.target.value)
-                                            }
-                                            className="border rounded px-2 py-1 text-sm w-full"
-                                        >
-                                            <option value="">🚪 Raum</option>
-                                            {rooms.map(r => (
-                                                <option key={r.id} value={r.id}>
-                                                    {r.name}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        {/* SAVE */}
-                                        <button
-                                            onClick={() => handleSave(device)}
-                                            disabled={saving[device.id]}
-                                            className={`w-full px-3 py-1 text-sm rounded transform transition ${saving[device.id]
-                                                    ? "bg-gray-200 text-gray-500"
-                                                    : "bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95"
-                                                }`}
-                                        >
-                                            {saving[device.id]
-                                                ? "..."
-                                                : saved[device.id]
-                                                    ? "✔"
-                                                    : "Save"}
-                                        </button>
-
-                                    </div>
-
-                                    {saved[device.id] && (
-                                        <div className="text-xs text-green-600 mt-1">
-                                            ✓ gespeichert
-                                        </div>
-                                    )}
+                                    <button onClick={() => handleSave(device)}>
+                                        Save
+                                    </button>
 
                                 </div>
 
@@ -360,32 +291,11 @@ export default function DeviceSetupModal({ open, onClose }) {
 
                 </div>
 
-                {/* PAGINATION */}
-                {!isLoading && total > PAGE_SIZE && (
-                    <div className="flex justify-between mt-4 text-sm">
-                        <button
-                            disabled={page === 0}
-                            onClick={() => setPage(p => p - 1)}
-                        >
-                            ←
-                        </button>
-
-                        <span>{page + 1} / {Math.ceil(total / PAGE_SIZE)}</span>
-
-                        <button
-                            disabled={(page + 1) * PAGE_SIZE >= total}
-                            onClick={() => setPage(p => p + 1)}
-                        >
-                            →
-                        </button>
-                    </div>
-                )}
-
                 {/* FOOTER */}
                 <div className="mt-6 flex justify-end">
                     <button
                         onClick={onClose}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded"
                     >
                         Fertig
                     </button>

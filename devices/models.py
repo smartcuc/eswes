@@ -56,15 +56,10 @@ class Home(models.Model):
 
 
 # ============================================================
-# ✅ STRUCTURE (flexibel, bleibt erstmal so)
+# ✅ STRUCTURE (JETZT WIRKLICH UNABHÄNGIG ✅)
 # ============================================================
 
 class Floor(models.Model):
-    home = models.ForeignKey(
-        Home,
-        on_delete=models.CASCADE,
-        related_name="floors"
-    )
     name = models.CharField(max_length=50)
 
     def __str__(self):
@@ -72,11 +67,6 @@ class Floor(models.Model):
 
 
 class Room(models.Model):
-    floor = models.ForeignKey(
-        Floor,
-        on_delete=models.CASCADE,
-        related_name="rooms"
-    )
     name = models.CharField(max_length=50)
 
     def __str__(self):
@@ -137,7 +127,7 @@ class Device(models.Model):
 
 
 # ============================================================
-# ✅ DEVICE CONFIG (DEIN KERN!)
+# ✅ DEVICE CONFIG (KERN)
 # ============================================================
 
 class DeviceConfig(models.Model):
@@ -164,7 +154,7 @@ class DeviceConfig(models.Model):
         blank=True
     )
 
-    # ✅ Location (flexibel!)
+    # ✅ Location (frei!)
     home = models.ForeignKey(
         Home,
         on_delete=models.CASCADE
@@ -203,7 +193,7 @@ class DeviceConfig(models.Model):
 
 
 # ============================================================
-# ✅ DEVICE METRIC (UNVERÄNDERT ✅)
+# ✅ DEVICE METRIC (UNVERÄNDERT)
 # ============================================================
 
 class DeviceMetric(models.Model):
@@ -270,4 +260,4 @@ class DeviceMetric(models.Model):
                 },
             },
         )
-
+        
