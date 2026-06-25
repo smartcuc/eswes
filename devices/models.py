@@ -107,6 +107,9 @@ class Device(models.Model):
     )
 
     identifier = models.CharField(max_length=100)
+    
+    # ✅ NEU: technischer Status
+    configured = models.BooleanField(default=False, db_index=True)
 
     # 🔥 Lifecycle
     first_seen = models.DateTimeField(auto_now_add=True)
@@ -260,4 +263,4 @@ class DeviceMetric(models.Model):
                 },
             },
         )
-        
+

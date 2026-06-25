@@ -32,11 +32,16 @@ class DeviceProvider(BaseProvider):
             device = m.device
             role = device.role
 
-            # ❗ nur konfigurierte Geräte
+            # ✅ 1. technisch vorhanden?❗nur konfigurierte Geräte
             if not device.configured:
                 continue
+            
+            config = getattr(device, "config", None)
 
-            if not role or role in seen_roles:
+            # ✅ 2. fachlich nutzbar?
+            config = getattr(device, "config", None)
+
+            if not config or not config.is_classified():
                 continue
 
             power = m.data.get("power")
