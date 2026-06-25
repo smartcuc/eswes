@@ -252,8 +252,15 @@ def latest_device_values(request):
         if not d.latest_key:
             continue
 
+        config = getattr(d, "config", None)
+
+        if config and config.measurement_type:
+            metric_key = config.measurement_type
+        else:
+            metric_key = d.latest_key
+
         metric = MetricDefinition.objects.filter(
-            key=d.latest_key
+            key=metric_key
         ).first()
 
         result.append({
