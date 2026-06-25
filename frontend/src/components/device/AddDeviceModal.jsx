@@ -86,10 +86,24 @@ export default function AddDeviceModal({ open, onClose }) {
                         loading={createDevice.isLoading}
                         onNext={async () => {
 
-                            const identifier = name.toLowerCase().replace(/\s+/g, "_");
+                            const identifier = name
+                                .toLowerCase()
+                                .replace(/ä/g, "ae")
+                                .replace(/ö/g, "oe")
+                                .replace(/ü/g, "ue")
+                                .replace(/ß/g, "ss")
+                                .replace(/\s+/g, "_")
+                                .replace(/[^\w]/g, "")
+                                .replace(/_+/g, "_")
+                                .replace(/^_|_$/g, "");
 
                             try {
-                                const result = await createDevice.mutateAsync({ identifier });
+
+                                const result = await createDevice.mutateAsync({
+                                    identifier,
+                                    name
+                                });
+
                                 setDevice(result);
                                 next();
                             } catch {

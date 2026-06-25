@@ -16,15 +16,14 @@ export default function DeviceSetupModal({ open, onClose }) {
     const devices = query?.data?.devices || [];
     const isLoading = query?.isLoading;
 
-    const roles = structure?.roles || [];
-    const measurementTypes = structure?.measurement_types || [];
-
     const { settings } = useSettings();
     const homes = settings?.homes || [];
     const hasMultipleHomes = homes.length > 1;
 
     const { data: structure } = useStructure();
 
+    const roles = structure?.roles || [];
+    const measurementTypes = structure?.measurement_types || [];
     const floors = structure?.floors || [];
     const rooms = structure?.rooms || [];
 
