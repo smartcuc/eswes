@@ -8,15 +8,15 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
 from django.db.models import OuterRef, Subquery
-from devices.models import DeviceMetric
+from devices.models import DeviceMetric, MetricDefinition
 
 from devices.models import Device, DeviceConfig, DeviceRole, Room, Floor
 from .serializers import (
     DeviceSerializer,
     DeviceConfigSerializer,
-    DeviceRoleSerializer,
-    RoomSerializer,
-    FloorSerializer,
+#    DeviceRoleSerializer,
+#    RoomSerializer,
+#    FloorSerializer,
 )
 
 
@@ -218,3 +218,48 @@ def sankey_data(request):
         "nodes": nodes,
         "links": links
     })
+
+
+# ============================================================
+# ✅ LATEST DEVCE VALUE
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def latest_device_values(request):
+
+    latest_metrics = DeviceMetric.objects.filter(
+        device=OuterRef("pk")
+    ).order_by("-timestamp")
+
+    devices = (
+        Device.objects
+        .filter(home__user=request.user)
+        .annotate(
+            latest_value=Subquery(
+                latest_metrics.values("value")[:1]
+            ),
+            latest_key=Subquery(
+                latest_metrics.values("metric_key")[:1]
+            ),
+        )
+    )
+
+    result = []
+
+    for d in devices:
+
+        if not d.latest_key:
+            continue
+
+        metric = MetricDefinition.objects.filter(
+            key=d.latest_key
+        ).first()
+
+        result.append({
+            "device": d.id,
+            "value": d.latest_value,
+            "unit": metric.unit if metric else "",
+        })
+
+    return Response(result)

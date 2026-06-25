@@ -8,6 +8,7 @@ from .views import (
     device_setup_options,
     device_list,
     unconfigured_devices,
+    latest_device_values,
     configure_device,
     sankey_data,
 )
@@ -16,6 +17,7 @@ urlpatterns = [
     path("", device_list),
     path("setup-options/", device_setup_options),
     path("unconfigured/", unconfigured_devices),
+    path("devices/latest/", latest_device_values),
     path("<int:device_id>/", configure_device),
     path("sankey/", sankey_data),
 ]
