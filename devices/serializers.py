@@ -96,17 +96,23 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
 class DeviceStatusSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     last_seen = serializers.DateTimeField(allow_null=True)
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Device
         fields = [
             "id",
             "identifier",
-            "name",
+            "display_name",
             "status",
             "last_seen",
         ]
 
     def get_status(self, obj):
         return device_status(obj)
+
+    def get_display_name(self, obj):
+        if hasattr(obj, "config") and obj.config:
+            return obj.config.display_name()
+        return obj.identifier
     
