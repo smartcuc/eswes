@@ -5,12 +5,16 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
 from django.shortcuts import get_object_or_404
-
 from django.db.models import OuterRef, Subquery
-from devices.models import DeviceMetric, MetricDefinition
+from datetime import timedelta
+from django.utils import timezone
 
+from devices.models import DeviceMetric, MetricDefinition
 from devices.models import Device, DeviceConfig, DeviceRole, Room, Floor
+from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
+
 from .serializers import (
     DeviceSerializer,
     DeviceConfigSerializer,
@@ -270,3 +274,93 @@ def latest_device_values(request):
         })
 
     return Response(result)
+
+
+# ============================================================
+# ✅ TIMESERIES API
+# ============================================================
+
+def get_range_config(range_str):
+    if range_str == "1h":
+        return {
+            "model": DeviceMetric,
+            "delta": timedelta(hours=1),
+            "field": "timestamp",
+            "value_field": "value",
+        }
+
+    if range_str == "6h":
+        return {
+            "model": DeviceMetric1m,
+            "delta": timedelta(hours=6),
+            "field": "bucket",
+            "value_field": "avg",
+        }
+
+    if range_str == "24h":
+        return {
+            "model": DeviceMetric1m,
+            "delta": timedelta(hours=24),
+            "field": "bucket",
+            "value_field": "avg",
+        }
+
+    if range_str == "7d":
+        return {
+            "model": DeviceMetric5m,
+            "delta": timedelta(days=7),
+            "field": "bucket",
+            "value_field": "avg",
+        }
+
+    raise ValueError("invalid_range")
+
+
+@api_view(["GET"])
+def device_timeseries(request, device_id):
+
+    range_str = request.GET.get("range", "24h")
+
+    try:
+        config = get_range_config(range_str)
+    except ValueError:
+        return Response({"error": "invalid_range"}, status=400)
+
+    now = timezone.now()
+
+    # Ende immer sauber runden
+    field = config["field"]
+
+    if field == "bucket":
+        now = now.replace(second=0, microsecond=0)
+
+    start = now - config["delta"]
+
+    qs = (
+        config["model"].objects
+        .filter(device_id=device_id)
+        .filter(**{
+            f"{field}__gte": start,
+            f"{field}__lte": now,
+        })
+        .order_by(field)
+    )
+
+    points = []
+
+    for row in qs:
+        t = getattr(row, field).timestamp()
+        v = getattr(row, config["value_field"])
+
+        points.append({
+            "t": int(t),
+            "v": v,
+            "min": getattr(row, "min", None),
+            "max": getattr(row, "max", None),
+        })
+
+    return Response({
+        "device": device_id,
+        "range": range_str,
+        "points": points,
+    })

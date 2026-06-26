@@ -264,3 +264,40 @@ class DeviceMetric(models.Model):
             },
         )
 
+
+# ============================================================
+# ✅ METRIC AGGREGATIONS
+# ============================================================
+
+class DeviceMetric1m(models.Model):
+    device = models.ForeignKey("Device", on_delete=models.CASCADE)
+    bucket = models.DateTimeField(db_index=True)
+
+    avg = models.FloatField()
+    min = models.FloatField()
+    max = models.FloatField()
+    count = models.IntegerField()
+
+    class Meta:
+        unique_together = ("device", "bucket")
+        indexes = [
+            models.Index(fields=["device", "bucket"]),
+        ]
+
+
+class DeviceMetric5m(models.Model):
+    device = models.ForeignKey("Device", on_delete=models.CASCADE)
+    bucket = models.DateTimeField(db_index=True)
+
+    avg = models.FloatField()
+    min = models.FloatField()
+    max = models.FloatField()
+    count = models.IntegerField()
+
+    class Meta:
+        unique_together = ("device", "bucket")
+        indexes = [
+            models.Index(fields=["device", "bucket"]),
+        ]
+
+    

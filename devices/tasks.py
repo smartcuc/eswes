@@ -169,3 +169,25 @@ def delete_mqtt_user(self, username):
 def mqtt_health_check():
     from django.core.management import call_command
     call_command("mqtt_monitor")
+
+
+# ============================================================
+# ✅AGGRIGATIONS
+# ============================================================   
+
+from celery import shared_task
+
+from devices.services.aggregation import (
+    aggregate_1m,
+    aggregate_5m,
+)
+
+
+@shared_task
+def run_1m_aggregation():
+    aggregate_1m()
+
+
+@shared_task
+def run_5m_aggregation():
+    aggregate_5m()
