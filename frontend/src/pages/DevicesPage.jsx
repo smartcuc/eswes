@@ -7,6 +7,15 @@ import { useState } from "react";
 import { apiFetch } from "../api/client";
 import { useStructure } from "../hooks/useStructure";
 
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+    ResponsiveContainer
+} from "recharts";
+
 
 /* =========================================================
    DEVICE CARD
@@ -54,7 +63,6 @@ function DeviceCard({ device, onSelect, onEdit }) {
                     </div>
                 </div>
 
-                {/* ✅ FIXED ALIGNMENT */}
                 <div className="flex items-center gap-2 h-full">
 
                     <button
@@ -69,7 +77,6 @@ function DeviceCard({ device, onSelect, onEdit }) {
 
                     <div className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"
                         }`} />
-
                 </div>
             </div>
 
@@ -88,6 +95,66 @@ function DeviceCard({ device, onSelect, onEdit }) {
                     ⚠ Messart fehlt
                 </div>
             )}
+        </div>
+    );
+}
+
+
+/* =========================================================
+   CHART MODAL ✅ NEU
+========================================================= */
+function DeviceChartModal({ device, onClose }) {
+
+    const { data } = useQuery({
+        queryKey: ["timeseries", device.id],
+        queryFn: () =>
+            apiFetch(`/api/devices/${device.id}/timeseries/?range=24h`)
+    });
+
+    const points = (data?.points || []).map(p => ({
+        time: new Date(p.t * 1000).toLocaleTimeString(),
+        value: p.v
+    }));
+
+    return (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+            <div className="bg-white p-6 rounded-xl w-full max-w-2xl">
+
+                <h3 className="font-semibold mb-4">
+                    {device.display_name}
+                </h3>
+
+                <div style={{ width: "100%", height: 300 }}>
+
+                    <ResponsiveContainer>
+                        <LineChart data={points}>
+
+                            <XAxis dataKey="time" />
+                            <YAxis />
+                            <Tooltip />
+
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#6366f1"
+                                dot={false}
+                            />
+
+                        </LineChart>
+                    </ResponsiveContainer>
+
+                </div>
+
+                <button
+                    onClick={onClose}
+                    className="mt-4 bg-gray-200 px-3 py-1 rounded"
+                >
+                    Schließen
+                </button>
+
+            </div>
+
         </div>
     );
 }
@@ -113,7 +180,6 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
         floor: device.config?.floor?.id || "",
     });
 
-    // ✅ FIXED UPDATE FUNCTION
     function update(field, value) {
         setLocal(prev => ({ ...prev, [field]: value }));
     }
@@ -148,7 +214,6 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
                     Gerät bearbeiten
                 </h3>
 
-                {/* NAME */}
                 <input
                     value={local.name}
                     onChange={(e) => update("name", e.target.value)}
@@ -156,13 +221,11 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
                     placeholder="Name"
                 />
 
-                {/* ROLE */}
                 <select
                     value={local.role_id}
-                    onChange={(e) => update(
-                        "role_id",
-                        e.target.value ? Number(e.target.value) : ""
-                    )}
+                    onChange={(e) =>
+                        update("role_id", e.target.value ? Number(e.target.value) : "")
+                    }
                     className="w-full border rounded px-2 py-1 mb-3"
                 >
                     <option value="">Rolle</option>
@@ -173,7 +236,6 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
                     ))}
                 </select>
 
-                {/* MEASUREMENT */}
                 <select
                     value={local.measurement_type}
                     onChange={(e) => update("measurement_type", e.target.value)}
@@ -187,13 +249,11 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
                     ))}
                 </select>
 
-                {/* ROOM */}
                 <select
                     value={local.room}
-                    onChange={(e) => update(
-                        "room",
-                        e.target.value ? Number(e.target.value) : ""
-                    )}
+                    onChange={(e) =>
+                        update("room", e.target.value ? Number(e.target.value) : "")
+                    }
                     className="w-full border rounded px-2 py-1 mb-3"
                 >
                     <option value="">Raum</option>
@@ -204,13 +264,11 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
                     ))}
                 </select>
 
-                {/* FLOOR */}
                 <select
                     value={local.floor}
-                    onChange={(e) => update(
-                        "floor",
-                        e.target.value ? Number(e.target.value) : ""
-                    )}
+                    onChange={(e) =>
+                        update("floor", e.target.value ? Number(e.target.value) : "")
+                    }
                     className="w-full border rounded px-2 py-1 mb-3"
                 >
                     <option value="">Etage</option>
@@ -223,7 +281,6 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
 
                 <div className="flex justify-between mt-4">
 
-                    {/* DELETE */}
                     <button
                         onClick={remove}
                         className="text-red-600"
@@ -258,9 +315,9 @@ function DeviceSettingsModal({ device, onClose, refetch }) {
 /* =========================================================
    PAGE
 ========================================================= */
-export default function DashboardPage() {
+export default function DevicesPage() {
 
-    const [selectedDevice, setSelectedDevice] = useState(null);
+    const [chartDevice, setChartDevice] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
 
     const devicesQuery = useQuery({
@@ -299,7 +356,6 @@ export default function DashboardPage() {
 
     const grouped = merged
         .sort((a, b) => {
-            // zuerst nach Raum
             const roomA = a.config?.room?.name || "";
             const roomB = b.config?.room?.name || "";
 
@@ -307,7 +363,6 @@ export default function DashboardPage() {
                 return roomA.localeCompare(roomB);
             }
 
-            // dann nach Name
             return (a.display_name || "")
                 .localeCompare(b.display_name || "");
         })
@@ -322,7 +377,7 @@ export default function DashboardPage() {
         <div className="p-6 max-w-6xl">
 
             <h1 className="text-2xl font-semibold mb-6">
-                Dashboard
+                Geräte
             </h1>
 
             {Object.entries(grouped)
@@ -339,7 +394,7 @@ export default function DashboardPage() {
                                 <DeviceCard
                                     key={d.id}
                                     device={d}
-                                    onSelect={setSelectedDevice}
+                                    onSelect={setChartDevice}
                                     onEdit={setEditingDevice}
                                 />
                             ))}
@@ -353,6 +408,13 @@ export default function DashboardPage() {
                     device={editingDevice}
                     onClose={() => setEditingDevice(null)}
                     refetch={devicesQuery.refetch}
+                />
+            )}
+
+            {chartDevice && (
+                <DeviceChartModal
+                    device={chartDevice}
+                    onClose={() => setChartDevice(null)}
                 />
             )}
 

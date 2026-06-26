@@ -307,6 +307,18 @@ CELERY_BEAT_SCHEDULE = {
             "schedule": 5.0,  # alle 5 Sekunden
         },
 
+    # ✅ 1m Aggregation
+    "aggregate-1m": {
+        "task": "devices.tasks.run_1m_aggregation",
+        "schedule": 60.0,
+    },
+
+    # ✅ 5m Aggregation
+    "aggregate-5m": {
+        "task": "devices.tasks.run_5m_aggregation",
+        "schedule": 300.0,
+    },    
+
 }
 
 # =============================
