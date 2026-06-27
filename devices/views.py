@@ -67,28 +67,28 @@ def device_list(request):
 
 
 # ✅ Gerät konfigurieren
-@api_view(["PATCH"])
-@permission_classes([IsAuthenticated])
-def device_update(request, device_id):
+# @api_view(["PATCH"])
+# @permission_classes([IsAuthenticated])
+# def device_update(request, device_id):
 
-    try:
-        device = Device.objects.get(id=device_id, home__in=request.user.homes.all())
-    except Device.DoesNotExist:
-        return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+#     try:
+#         device = Device.objects.get(id=device_id, home__in=request.user.homes.all())
+#     except Device.DoesNotExist:
+#         return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    serializer = DeviceSerializer(device, data=request.data, partial=True)
+#     serializer = DeviceSerializer(device, data=request.data, partial=True)
 
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=400)
+#     if not serializer.is_valid():
+#         return Response(serializer.errors, status=400)
 
-    device = serializer.save()
+#     device = serializer.save()
 
-    # ✅ automatisch als konfiguriert markieren
-    if not device.configured:
-        device.configured = True
-        device.save(update_fields=["configured"])
+#     # ✅ automatisch als konfiguriert markieren
+#     if not device.configured:
+#         device.configured = True
+#         device.save(update_fields=["configured"])
 
-    return Response(DeviceSerializer(device).data)
+#     return Response(DeviceSerializer(device).data)
 
 
 # ✅ Device Metrics

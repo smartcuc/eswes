@@ -120,6 +120,11 @@ def configure_device(request, device_id):
     serializer.is_valid(raise_exception=True)
     serializer.save()
 
+    # ✅ ✅ ✅ HIER IST DER FIX
+    config.refresh_from_db()
+    device.configured = config.is_classified()
+    device.save(update_fields=["configured"])
+
     return Response({
         "status": "ok",
         "device": DeviceSerializer(device).data
