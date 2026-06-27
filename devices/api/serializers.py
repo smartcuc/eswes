@@ -40,7 +40,8 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
     # READ
     role = DeviceRoleSerializer(read_only=True)
-    )    room = RoomSerializer(read_only=True)
+    room = RoomSerializer(read_only=True)
+    floor = FloorSerializer(read_only=True)
 
     floor_id = serializers.PrimaryKeyRelatedField(
         queryset=Floor.objects.all(),
