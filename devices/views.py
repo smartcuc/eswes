@@ -145,23 +145,23 @@ def device_status_list(request):
     return Response(serializer.data)
 
 
-# ✅ DEVICE SETUP
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def configure_device(request, device_id):
+# # ✅ DEVICE SETUP
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# def configure_device(request, device_id):
 
-    device = Device.objects.get(id=device_id)
+#     device = Device.objects.get(id=device_id)
 
-    if device.home not in request.user.homes.all():
-        return Response({"error": "Forbidden"}, status=403)
+#     if device.home not in request.user.homes.all():
+#         return Response({"error": "Forbidden"}, status=403)
 
-    device.type = request.data.get("type")
-    device.metrics = request.data.get("metrics", [])
-    device.configured = True
+#     device.type = request.data.get("type")
+#     device.metrics = request.data.get("metrics", [])
+#     device.configured = True
 
-    device.save()
+#     device.save()
 
-    return Response({"status": "configured"})
+#     return Response({"status": "configured"})
 
 
 # ✅ SEND MQTT CONFIG BY MAIL
