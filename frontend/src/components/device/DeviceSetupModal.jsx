@@ -2,19 +2,26 @@
 # src/components/device/DeviceSetupModal.jsx
 */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUnconfiguredDevices } from "../../hooks/useUnconfiguredDevices";
 import { useSettings } from "../../hooks/useSettings";
 import { useStructure } from "../../hooks/useStructure";
-
 import { apiFetch } from "../../api/client";
 
+export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleDevice = null }) {
 
-export default function DeviceSetupModal({ open, onClose }) {
+    const isBulk = mode === "bulk";
 
     const query = useUnconfiguredDevices();
-    const devices = query?.data?.devices || [];
+    const bulkDevices = query?.data?.devices || [];
     const isLoading = query?.isLoading;
+
+    /* ✅ Gerätequelle */
+    const devices = isBulk
+        ? bulkDevices
+        : singleDevice
+            ? [singleDevice]
+            : [];
 
     const { settings } = useSettings();
     const homes = settings?.homes || [];
@@ -30,245 +37,280 @@ export default function DeviceSetupModal({ open, onClose }) {
     const [localValues, setLocalValues] = useState({});
     const [saving, setSaving] = useState({});
     const [saved, setSaved] = useState({});
-    const [page, setPage] = useState(0);
+    const [error, setError] = useState({});
 
-    const PAGE_SIZE = 5;
+    const debounceTimers = useRef({});
 
-    const paginatedDevices = devices.slice(
-        page * PAGE_SIZE,
-        (page + 1) * PAGE_SIZE
-    );
+    /* ================================
+       SAVE (Bulk = Auto, Single = Manual vorbereitet)
+    ================================= */
 
-    // ✅ ✅ ✅ FIXED CHANGE HANDLER
-    function handleChange(id, field, value) {
-        setLocalValues((prev) => ({
-            ...prev,
-            [id]: {
-                ...prev[id],
-                [field]: value,
-            },
-        }));
-    }
+    async function saveDevice(id, values) {
 
-    async function handleSave(device) {
-        const values = localValues[device.id];
-        if (!values) return;
+        if (!values || Object.keys(values).length === 0) return;
 
-        setSaving((prev) => ({ ...prev, [device.id]: true }));
+        const key = String(id);
 
-        await apiFetch(`/api/devices/${device.id}/`, {
-            method: "PATCH",
-            body: JSON.stringify(values),
+        setSaving(prev => {
+            const copy = { ...prev };
+            copy[key] = true;
+            return copy;
         });
 
-        setSaving((prev) => ({ ...prev, [device.id]: false }));
-        setSaved((prev) => ({ ...prev, [device.id]: true }));
+        setError(prev => {
+            const copy = { ...prev };
+            copy[key] = false;
+            return copy;
+        });
 
-        setTimeout(() => {
-            setSaved((prev) => ({ ...prev, [device.id]: false }));
-        }, 1200);
-
-        await query.refetch();
-    }
-
-    async function handleSaveAll() {
-        const updates = Object.entries(localValues);
-
-        for (const [id, values] of updates) {
-            if (!values) continue;
-
-            await apiFetch(`/api/devices/${id}/`, {
+        try {
+            await apiFetch("/api/devices/" + id + "/", {
                 method: "PATCH",
-                body: JSON.stringify(values),
+
+                body: JSON.stringify({
+                    display_name: values.display_name,
+                    role_id: values.role_id,
+                    measurement_type: values.measurement_type,
+                    room_id: values.room_id,
+                    floor_id: values.floor_id,
+                    home_id: values.home_id,
+                })
+
+            });
+
+            setSaving(prev => {
+                const copy = { ...prev };
+                copy[key] = false;
+                return copy;
+            });
+
+            setSaved(prev => {
+                const copy = { ...prev };
+                copy[key] = true;
+                return copy;
+            });
+
+            setTimeout(() => {
+                setSaved(prev => {
+                    const copy = { ...prev };
+                    copy[key] = false;
+                    return copy;
+                });
+            }, 1200);
+
+            /* ✅ Highlight reset nach Erfolg */
+            setLocalValues(prev => {
+                const copy = { ...prev };
+                delete copy[key];
+                return copy;
+            });
+
+        } catch (err) {
+            console.error("save failed", err);
+
+            setSaving(prev => {
+                const copy = { ...prev };
+                copy[key] = false;
+                return copy;
+            });
+
+            setError(prev => {
+                const copy = { ...prev };
+                copy[key] = true;
+                return copy;
             });
         }
-
-        await query.refetch();
     }
 
-    // ✅ RESET
+    /* ================================
+       CHANGE
+    ================================= */
+
+    function handleChange(id, field, value) {
+
+        const key = String(id);
+
+        setLocalValues(prev => {
+
+            const deviceValues = { ...(prev[key] || {}) };
+            deviceValues[field] = value;
+
+            const updated = { ...prev };
+            updated[key] = deviceValues;
+
+            /* ✅ Autosave nur im Bulk Mode */
+
+            if (isBulk) {
+
+                if (debounceTimers.current[key]) {
+                    clearTimeout(debounceTimers.current[key]);
+                }
+
+                debounceTimers.current[key] = setTimeout(() => {
+                    setLocalValues(prevState => {
+
+                        const values = prevState[key];
+
+                        if (values) {
+                            saveDevice(id, values);
+                        }
+
+                        return prevState;
+                    });
+
+                }, 600);
+            }
+            return updated;
+        });
+    }
+
+    function handleRetry(id) {
+        const key = String(id);
+        if (localValues[key]) {
+            saveDevice(id, localValues[key]);
+        }
+    }
+
+    /* ================================
+       SINGLE SAVE (vorbereitet)
+    ================================= */
+
+    async function handleSaveSingle() {
+        const ids = Object.keys(localValues);
+        for (let i = 0; i < ids.length; i++) {
+            const id = ids[i];
+            await saveDevice(id, localValues[id]);
+        }
+    }
+
+    /* ================================
+       RESET
+    ================================= */
+
     useEffect(() => {
         if (open) {
             setLocalValues({});
             setSaving({});
             setSaved({});
-            setPage(0);
+            setError({});
         }
     }, [open]);
-
-    // ✅ PROGRESS (neu korrekt!)
-    const completed = devices.filter(d => d.classified).length;
-    const total = devices.length;
-    const percent = total ? Math.round((completed / total) * 100) : 0;
-
-    // ✅ AUTO CLOSE
-    useEffect(() => {
-        if (!isLoading && total > 0 && completed === total) {
-            const t = setTimeout(() => onClose(), 900);
-            return () => clearTimeout(t);
-        }
-    }, [completed, total, isLoading, onClose]);
 
     if (!open) return null;
 
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-
             <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl p-6">
 
                 {/* HEADER */}
                 <div className="flex justify-between mb-4">
                     <div>
                         <h2 className="text-lg font-semibold">
-                            ⚡ Geräte konfigurieren
+                            {isBulk ? "⚡ Geräte konfigurieren" : "Gerät bearbeiten"}
                         </h2>
                         <p className="text-sm text-gray-500">
                             Funktion & Standort festlegen
                         </p>
                     </div>
-
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        ✕
-                    </button>
-                </div>
-
-                {/* PROGRESS */}
-                {!isLoading && total > 0 && (
-                    <div className="mb-4">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>{completed} / {total}</span>
-                            <span>{percent}%</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded overflow-hidden">
-                            <div
-                                className="h-2 bg-indigo-500 transition-all duration-500"
-                                style={{ width: `${percent}%` }}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* ACTIONS */}
-                <div className="flex justify-between mb-4">
-                    <span className="text-xs text-gray-400">
-                        Änderungen werden erst beim Speichern übernommen
-                    </span>
-
-                    <button
-                        onClick={handleSaveAll}
-                        className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
-                    >
-                        Save all
-                    </button>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                 </div>
 
                 {/* CONTENT */}
                 <div className="space-y-3 max-h-[450px] overflow-auto">
 
-                    {isLoading && (
-                        <div className="text-sm text-gray-500">
-                            Lade Geräte...
-                        </div>
-                    )}
+                    {!isLoading && devices.map((device) => {
 
-                    {!isLoading && paginatedDevices.map((device, index) => {
-
-                        const local = localValues[device.id] || {};
-
-                        const isComplete =
-                            (local.role_id || device.config?.role?.id) &&
-                            (local.measurement_type || device.config?.measurement_type) &&
-                            (local.room || local.floor ||
-                                device.config?.room?.id || device.config?.floor?.id);
+                        const key = String(device.id);
+                        const local = localValues[key] || {};
+                        const hasChanges = Object.keys(local).length > 0;
 
                         return (
-
                             <div
                                 key={device.id}
-                                className={`p-4 border rounded-lg transition hover:shadow ${isComplete
-                                    ? "bg-green-50 border-green-200"
-                                    : index % 2 === 0
-                                        ? "bg-gray-50"
-                                        : "bg-white"
-                                    }`}
+                                className={`p-4 border rounded-lg transition-all duration-300
+                                ${hasChanges ? "bg-yellow-50 border-yellow-200" : ""}
+                                ${saved[key] ? "bg-green-50 border-green-200 ring-1 ring-green-200" : ""}
+                            `}
                             >
 
-                                {/* NAME */}
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="text-sm font-medium">
+                                {/* HEADER */}
+                                <div className="flex justify-between items-center mb-3">
+
+                                    <div className="font-medium flex items-center">
                                         {device.display_name}
+
+                                        {hasChanges && !saving[key] && (
+                                            <span className="text-xs text-yellow-600 ml-2">
+                                                ● geändert
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <span className={`text-xs px-2 py-0.5 rounded-full ${isComplete
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-yellow-100 text-yellow-700"
-                                        }`}>
-                                        {isComplete ? "Fertig" : "Offen"}
-                                    </span>
-                                </div>
-
-                                {/* FUNKTION */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-
-                                    <select
-                                        value={local.role_id ?? device.config?.role?.id ?? ""}
-                                        onChange={(e) =>
-                                            handleChange(
-                                                device.id,
-                                                "role_id",
-                                                e.target.value ? Number(e.target.value) : null
-                                            )
-                                        }
-                                        className="border rounded px-2 py-1 text-sm w-full"
-                                    >
-                                        <option value="">🔁 Rolle</option>
-                                        {roles.map(r => (
-                                            <option key={r.id} value={r.id}>
-                                                {r.label}
-                                            </option>
-                                        ))}
-                                    </select>
-
-                                    <select
-                                        value={
-                                            local.measurement_type ??
-                                            device.config?.measurement_type ??
-                                            ""
-                                        }
-                                        onChange={(e) =>
-                                            handleChange(device.id, "measurement_type", e.target.value)
-                                        }
-                                        className="border rounded px-2 py-1 text-sm w-full"
-                                    >
-                                        <option value="">📏 Messart</option>
-                                        {measurementTypes.map(m => (
-                                            <option key={m.key} value={m.key}>
-                                                {m.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    {/* STATUS (wird bei Bulk direkt in der Zeile angezeigt) */}
+                                    {isBulk && (
+                                        <div className="text-sm flex items-center gap-2 min-w-[60px] justify-end">
+                                            {saving[key] && <span className="animate-pulse">⏳</span>}
+                                            {saved[key] && "✅"}
+                                            {error[key] && (
+                                                <span
+                                                    onClick={() => handleRetry(device.id)}
+                                                    className="cursor-pointer"
+                                                    title="Erneut versuchen"
+                                                >
+                                                    ❌
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
 
                                 </div>
+
+                                {/* NAME */}
+                                <input
+                                    value={local.display_name ?? device.display_name}
+                                    onChange={(e) =>
+                                        handleChange(device.id, "display_name", e.target.value)
+                                    }
+                                    className="border px-2 py-1 w-full mb-3 rounded"
+                                />
+
+                                {/* ROLE */}
+                                <select
+                                    value={local.role_id ?? device.config?.role?.id ?? ""}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "role_id",
+                                            e.target.value ? Number(e.target.value) : null
+                                        )
+                                    }
+                                    className="border px-2 py-1 w-full mb-3 rounded"
+                                >
+                                    <option value="">Rolle</option>
+                                    {roles.map(r => (
+                                        <option key={r.id} value={r.id}>{r.label}</option>
+                                    ))}
+                                </select>
+
 
                                 {/* LOCATION */}
                                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 
-                                    {/* ✅ HOME – nur wenn mehrere */}
+                                    {/* Zuhause-Auswahl */}
                                     {hasMultipleHomes && (
                                         <select
-                                            value={
-                                                local.home ??
-                                                device.config?.home?.id ??
-                                                device.home?.id ??
-                                                ""
-                                            }
+                                            value={local.home_id ?? device.config?.home?.id ?? ""}
                                             onChange={(e) =>
-                                                handleChange(device.id, "home", Number(e.target.value))
+                                                handleChange(
+                                                    device.id,
+                                                    "home_id",
+                                                    e.target.value ? Number(e.target.value) : null
+                                                )
                                             }
-                                            className="border rounded px-2 py-1 text-sm w-full"
+                                            className="border px-2 py-1 w-full rounded"
                                         >
                                             <option value="">🏠 Zuhause</option>
-                                            {homes.map((h) => (
+                                            {homes.map(h => (
                                                 <option key={h.id} value={h.id}>
                                                     {h.name}
                                                 </option>
@@ -276,54 +318,63 @@ export default function DeviceSetupModal({ open, onClose }) {
                                         </select>
                                     )}
 
+                                    {/* Etagen-Auswahl */}
                                     <select
-                                        value={local.floor ?? device.config?.floor?.id ?? ""}
+                                        value={local.floor_id ?? device.config?.floor?.id ?? ""}
                                         onChange={(e) =>
-                                            handleChange(device.id, "floor", Number(e.target.value))
+                                            handleChange(
+                                                device.id,
+                                                "floor_id",
+                                                e.target.value ? Number(e.target.value) : null
+                                            )
                                         }
-                                        className="border rounded px-2 py-1 text-sm w-full"
+                                        className="border px-2 py-1 w-full rounded"
                                     >
                                         <option value="">🏢 Etage</option>
-                                        {floors.map((f) => (
+                                        {floors.map(f => (
                                             <option key={f.id} value={f.id}>
                                                 {f.name}
                                             </option>
                                         ))}
                                     </select>
 
+                                    {/* Raum-Auswahl */}
                                     <select
-                                        value={local.room ?? device.config?.room?.id ?? ""}
+                                        value={local.room_id ?? device.config?.room?.id ?? ""}
                                         onChange={(e) =>
-                                            handleChange(device.id, "room", Number(e.target.value))
+                                            handleChange(
+                                                device.id,
+                                                "room_id",
+                                                e.target.value ? Number(e.target.value) : null
+                                            )
                                         }
-                                        className="border rounded px-2 py-1 text-sm w-full"
+                                        className="border px-2 py-1 w-full rounded"
                                     >
                                         <option value="">🚪 Raum</option>
-                                        {rooms.map((r) => (
+                                        {rooms.map(r => (
                                             <option key={r.id} value={r.id}>
                                                 {r.name}
                                             </option>
                                         ))}
                                     </select>
 
-                                    <button
-                                        onClick={() => handleSave(device)}
-                                        disabled={saving[device.id]}
-                                        className={`w-full px-3 py-1 text-sm rounded transition ${saving[device.id]
-                                            ? "bg-gray-200 text-gray-500"
-                                            : saved[device.id]
-                                                ? "bg-green-500 text-white"
-                                                : "bg-indigo-600 text-white hover:bg-indigo-700"
-                                            }`}
-                                    >
-                                        {saving[device.id]
-                                            ? "..."
-                                            : saved[device.id]
-                                                ? "✔"
-                                                : "Save"}
-                                    </button>
-
                                 </div>
+
+                                {/* INLINE-STATUS FÜR EINZELGERÄT */}
+                                {!isBulk && hasChanges && (
+                                    <div className="mt-3 flex justify-end items-center gap-2 text-sm text-gray-500">
+                                        {saving[key] && <span>⏳ Speichert im Hintergrund...</span>}
+                                        {saved[key] && <span className="text-green-600">✅ Gespeichert</span>}
+                                        {error[key] && (
+                                            <button
+                                                onClick={() => handleRetry(device.id)}
+                                                className="text-red-600 underline font-medium"
+                                            >
+                                                ❌ Fehler. Erneut versuchen?
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                             </div>
                         );
@@ -331,13 +382,13 @@ export default function DeviceSetupModal({ open, onClose }) {
 
                 </div>
 
-                {/* FOOTER */}
-                <div className="mt-6 flex justify-end">
+                {/* MODAL GLOBAL FOOTER */}
+                <div className="mt-6 flex justify-end gap-2 border-t pt-4">
                     <button
                         onClick={onClose}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition"
                     >
-                        Fertig
+                        {isBulk ? "Fertig" : "Schließen"}
                     </button>
                 </div>
 
@@ -345,3 +396,4 @@ export default function DeviceSetupModal({ open, onClose }) {
         </div>
     );
 }
+

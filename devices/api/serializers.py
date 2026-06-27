@@ -38,11 +38,13 @@ class FloorSerializer(serializers.ModelSerializer):
 
 class DeviceConfigSerializer(serializers.ModelSerializer):
 
+    # READ
     role = DeviceRoleSerializer(read_only=True)
+    )    room = RoomSerializer(read_only=True)
 
-    role_id = serializers.PrimaryKeyRelatedField(
-        queryset=DeviceRole.objects.all(),
-        source="role",
+    floor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Floor.objects.all(),
+        source="floor",
         write_only=True,
         allow_null=True,
         required=False
@@ -56,8 +58,30 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             "role_id",
             "measurement_type",
             "floor",
+            "floor_id",
             "room",
+            "room_id",
         )
+
+    floor = FloorSerializer(read_only=True)
+
+    # WRITE
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=DeviceRole.objects.all(),
+        source="role",
+        write_only=True,
+        allow_null=True,
+        required=False
+    )
+
+    room_id = serializers.PrimaryKeyRelatedField(
+        queryset=Room.objects.all(),
+        source="room",
+        write_only=True,
+        allow_null=True,
+        required=False
+    )
+
 
 
 # ============================================================

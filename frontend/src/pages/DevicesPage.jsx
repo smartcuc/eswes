@@ -6,15 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiFetch } from "../api/client";
 import { useStructure } from "../hooks/useStructure";
-
-import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer
-} from "recharts";
+import DeviceChartModal from "../components/device/DeviceChartModal";
+import DeviceSetupModal from "../components/device/DeviceSetupModal";
 
 
 /* =========================================================
@@ -99,217 +92,6 @@ function DeviceCard({ device, onSelect, onEdit }) {
     );
 }
 
-
-/* =========================================================
-   CHART MODAL ✅ NEU
-========================================================= */
-function DeviceChartModal({ device, onClose }) {
-
-    const { data } = useQuery({
-        queryKey: ["timeseries", device.id],
-        queryFn: () =>
-            apiFetch(`/api/devices/${device.id}/timeseries/?range=24h`)
-    });
-
-    const points = (data?.points || []).map(p => ({
-        time: new Date(p.t * 1000).toLocaleTimeString(),
-        value: p.v
-    }));
-
-    return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-
-            <div className="bg-white p-6 rounded-xl w-full max-w-2xl">
-
-                <h3 className="font-semibold mb-4">
-                    {device.display_name}
-                </h3>
-
-                <div style={{ width: "100%", height: 300 }}>
-
-                    <ResponsiveContainer>
-                        <LineChart data={points}>
-
-                            <XAxis dataKey="time" />
-                            <YAxis />
-                            <Tooltip />
-
-                            <Line
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#6366f1"
-                                dot={false}
-                            />
-
-                        </LineChart>
-                    </ResponsiveContainer>
-
-                </div>
-
-                <button
-                    onClick={onClose}
-                    className="mt-4 bg-gray-200 px-3 py-1 rounded"
-                >
-                    Schließen
-                </button>
-
-            </div>
-
-        </div>
-    );
-}
-
-
-/* =========================================================
-   SETTINGS MODAL
-========================================================= */
-function DeviceSettingsModal({ device, onClose, refetch }) {
-
-    const { data: structure } = useStructure();
-
-    const roles = structure?.roles || [];
-    const types = structure?.measurement_types || [];
-    const rooms = structure?.rooms || [];
-    const floors = structure?.floors || [];
-
-    const [local, setLocal] = useState({
-        name: device.config?.name || "",
-        role_id: device.config?.role?.id || "",
-        measurement_type: device.config?.measurement_type || "",
-        room: device.config?.room?.id || "",
-        floor: device.config?.floor?.id || "",
-    });
-
-    function update(field, value) {
-        setLocal(prev => ({ ...prev, [field]: value }));
-    }
-
-    async function save() {
-        await apiFetch(`/api/devices/${device.id}/`, {
-            method: "PATCH",
-            body: JSON.stringify(local),
-        });
-
-        await refetch();
-        onClose();
-    }
-
-    async function remove() {
-        if (!confirm("Gerät wirklich löschen?")) return;
-
-        await apiFetch(`/api/devices/${device.id}/`, {
-            method: "DELETE",
-        });
-
-        await refetch();
-        onClose();
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-
-            <div className="bg-white p-6 rounded-xl w-full max-w-md">
-
-                <h3 className="font-semibold mb-4">
-                    Gerät bearbeiten
-                </h3>
-
-                <input
-                    value={local.name}
-                    onChange={(e) => update("name", e.target.value)}
-                    className="w-full border rounded px-2 py-1 mb-3"
-                    placeholder="Name"
-                />
-
-                <select
-                    value={local.role_id}
-                    onChange={(e) =>
-                        update("role_id", e.target.value ? Number(e.target.value) : "")
-                    }
-                    className="w-full border rounded px-2 py-1 mb-3"
-                >
-                    <option value="">Rolle</option>
-                    {roles.map(r => (
-                        <option key={r.id} value={r.id}>
-                            {r.label}
-                        </option>
-                    ))}
-                </select>
-
-                <select
-                    value={local.measurement_type}
-                    onChange={(e) => update("measurement_type", e.target.value)}
-                    className="w-full border rounded px-2 py-1 mb-3"
-                >
-                    <option value="">Messart</option>
-                    {types.map(t => (
-                        <option key={t.key} value={t.key}>
-                            {t.name}
-                        </option>
-                    ))}
-                </select>
-
-                <select
-                    value={local.room}
-                    onChange={(e) =>
-                        update("room", e.target.value ? Number(e.target.value) : "")
-                    }
-                    className="w-full border rounded px-2 py-1 mb-3"
-                >
-                    <option value="">Raum</option>
-                    {rooms.map(r => (
-                        <option key={r.id} value={r.id}>
-                            {r.name}
-                        </option>
-                    ))}
-                </select>
-
-                <select
-                    value={local.floor}
-                    onChange={(e) =>
-                        update("floor", e.target.value ? Number(e.target.value) : "")
-                    }
-                    className="w-full border rounded px-2 py-1 mb-3"
-                >
-                    <option value="">Etage</option>
-                    {floors.map(f => (
-                        <option key={f.id} value={f.id}>
-                            {f.name}
-                        </option>
-                    ))}
-                </select>
-
-                <div className="flex justify-between mt-4">
-
-                    <button
-                        onClick={remove}
-                        className="text-red-600"
-                    >
-                        Löschen
-                    </button>
-
-                    <div className="flex gap-2">
-                        <button
-                            onClick={onClose}
-                            className="bg-gray-200 px-3 py-1 rounded"
-                        >
-                            Abbrechen
-                        </button>
-
-                        <button
-                            onClick={save}
-                            className="bg-indigo-600 text-white px-3 py-1 rounded"
-                        >
-                            Speichern
-                        </button>
-                    </div>
-
-                </div>
-
-            </div>
-        </div>
-    );
-}
 
 
 /* =========================================================
@@ -403,12 +185,13 @@ export default function DevicesPage() {
                     </div>
                 ))}
 
+
             {editingDevice && (
-                <DeviceSettingsModal
-                    device={editingDevice}
+                <DeviceSetupModal
+                    open={!!editingDevice}
                     onClose={() => setEditingDevice(null)}
-                    refetch={devicesQuery.refetch}
                 />
+
             )}
 
             {chartDevice && (
