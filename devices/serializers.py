@@ -6,6 +6,7 @@ from rest_framework import serializers
 from .models import Device, Home
 
 from devices.tasks import provision_home
+from devices.api.serializers import DeviceConfigSerializer
 from devices.services.device_health import device_status
 
 
@@ -33,13 +34,7 @@ class DeviceSerializer(serializers.ModelSerializer):
 
     def get_config(self, obj):
         if hasattr(obj, "config") and obj.config:
-            return {
-                "name": obj.config.name,
-                "measurement_type": obj.config.measurement_type,
-                "role": obj.config.role.id if obj.config.role else None,
-                "floor": obj.config.floor.id if obj.config.floor else None,
-                "room": obj.config.room.id if obj.config.room else None,
-            }
+            return DeviceConfigSerializer(obj.config).data
         return None
 
 
