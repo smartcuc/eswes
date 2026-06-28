@@ -5,10 +5,17 @@
 import { getCSRFToken } from "../lib/csrf";
 
 export async function apiFetch(url, options = {}) {
+
+    const isDemo = window.location.pathname.startsWith("/demo");
+
     // Standard-Header definieren
     const defaultHeaders = {
         "Content-Type": "application/json",
         "X-CSRFToken": getCSRFToken(),
+
+        // ✅ DEMO FLAG
+        "X-DEMO": isDemo ? "1" : "0",
+
     };
 
     const res = await fetch(url, {

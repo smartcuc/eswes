@@ -17,7 +17,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
 
     const config = device.config || {};
     const isOnline = device.status === "online";
-    const missing = !config.measurement_type;
+    const missing = !config.measurement_type || !config.role;
 
     function getIcon(roleKey) {
         switch (roleKey) {
@@ -63,13 +63,24 @@ function DeviceCard({ device, onSelect, onEdit }) {
                             e.stopPropagation();
                             onEdit(device);
                         }}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 hover:text-gray-600 relative group"
                     >
                         ⚙️
+                        <span className="absolute bottom-full mb-1 hidden group-hover:block text-xs bg-gray-800 text-white px-2 py-1 rounded whitespace-nowrap">
+                            Gerät bearbeiten
+                        </span>
                     </button>
 
-                    <div className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"
-                        }`} />
+                    <div className="relative group">
+                        <div
+                            className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"
+                                }`}
+                        />
+                        <span className="absolute bottom-full mb-1 hidden group-hover:block text-xs bg-gray-800 text-white px-2 py-1 rounded whitespace-nowrap">
+                            {isOnline ? "Online" : "Offline"}
+                        </span>
+                    </div>
+
                 </div>
             </div>
 
@@ -91,7 +102,6 @@ function DeviceCard({ device, onSelect, onEdit }) {
         </div>
     );
 }
-
 
 
 /* =========================================================
@@ -136,7 +146,13 @@ export default function DevicesPage() {
         };
     });
 
+    const unconfiguredDevices = merged.filter(d => {
+        const config = d.config || {};
+        return !config.measurement_type || !config.room;
+    });
+
     const grouped = merged
+        .slice()   // ✅ wichtig!
         .sort((a, b) => {
             const roomA = a.config?.room?.name || "";
             const roomB = b.config?.room?.name || "";
@@ -162,6 +178,23 @@ export default function DevicesPage() {
                 Geräte
             </h1>
 
+            {unconfiguredDevices.length > 0 && (
+                <div className="mb-6 p-4 rounded-lg border border-yellow-300 bg-yellow-50 flex items-center justify-between">
+
+                    <div className="text-yellow-800 text-sm">
+                        ⚠ {unconfiguredDevices.length} Gerät(e) sind noch nicht vollständig konfiguriert
+                    </div>
+
+                    <button
+                        onClick={() => setEditingDevice(null)}  // plus mode="bulk"
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-3 py-1 rounded"
+                    >
+                        Jetzt konfigurieren
+                    </button>
+
+                </div>
+            )}
+
             {Object.entries(grouped)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([room, devices]) => (
@@ -186,13 +219,16 @@ export default function DevicesPage() {
                 ))}
 
 
+
             {editingDevice && (
                 <DeviceSetupModal
                     open={!!editingDevice}
                     onClose={() => setEditingDevice(null)}
+                    mode="single"
+                    singleDevice={editingDevice}
                 />
-
             )}
+
 
             {chartDevice && (
                 <DeviceChartModal
