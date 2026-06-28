@@ -26,5 +26,9 @@ class EnergyConsumer(AsyncWebsocketConsumer):
     async def send_energy_update(self, event):
         await self.send(text_data=json.dumps(event["data"]))
 
+    
+    # ✅ ✅ ✅ NEU
+    async def send_device_update(self, event):
+        await self.send(text_data=json.dumps(event["data"]))
 
         

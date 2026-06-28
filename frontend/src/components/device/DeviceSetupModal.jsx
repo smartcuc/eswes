@@ -17,11 +17,17 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
     const isLoading = query?.isLoading;
 
     /* ✅ Gerätequelle */
-    const devices = isBulk
+
+    const getSortName = d =>
+        (d.display_name || d.identifier || "").toLowerCase().trim();
+
+    const devices = (isBulk
         ? bulkDevices
         : singleDevice
             ? [singleDevice]
-            : [];
+            : []
+    ).slice().sort((a, b) => getSortName(a).localeCompare(getSortName(b)));
+
 
     const { settings } = useSettings();
     const homes = settings?.homes || [];

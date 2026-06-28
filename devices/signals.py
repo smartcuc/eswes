@@ -5,6 +5,9 @@
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
+from devices.models import DeviceConfig
+from devices.serializers import DeviceSerializer
+
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
@@ -40,4 +43,30 @@ def send_metric_update(sender, instance, created, **kwargs):
             "data": data
         }
     )
+    
+
+@receiver(post_save, sender=DeviceConfig)
+def send_device_update(sender, instance, created, **kwargs):
+
+    # optional: nur wenn echte Felder gesetzt sind
+    if not instance.role and not instance.room and not instance.floor:
+        return
+
+    channel_layer = get_channel_layer()
+
+    device = instance.device
+
+    data = {
+        "type": "device_update",
+        "device": DeviceSerializer(device).data
+    }
+
+    async_to_sync(channel_layer.group_send)(
+        "devices",
+        {
+            "type": "send_device_update",
+            "data": data
+        }
+    )
+
     
