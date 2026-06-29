@@ -91,29 +91,34 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
         )
 
     # ✅ ✅ ✅ HIER IST DER FIX
+    def validate(self, data):
 
-def validate(self, data):
+        request = self.context.get("request")
+        user = request.user if request else None
 
-    request = self.context.get("request")
-    user = request.user if request else None
+        # ✅ FIELD EXISTENZ prüfen (WICHTIG)
+        if "home" in data:
+            home = data["home"]
 
-    # ❗ WICHTIG: None NICHT übernehmen
-    home = data.get("home")
+            # ❌ explizit null → NICHT erlauben
+            if home is None:
+                # stattdessen aktuelles behalten
+                home = getattr(self.instance, "home", None)
+        else:
+            # nicht gesendet → aktuelles behalten
+            home = getattr(self.instance, "home", None)
 
-    if home is None:
-        home = getattr(self.instance, "home", None)
+        # ✅ fallback: user default
+        if not home and user:
+            home = user.homes.first()
 
-    # ✅ DEFAULT setzen, wenn nichts existiert
-    if not home and user:
-        home = user.homes.first()
+        # 🚨 FINAL GUARANTEE
+        if not home:
+            raise serializers.ValidationError("Kein Zuhause verfügbar")
 
-    # 🚨 FINAL
-    if not home:
-        raise serializers.ValidationError("Kein Zuhause verfügbar")
+        data["home"] = home
 
-    data["home"] = home
-
-    return data
+        return data
 
 
 # ============================================================
