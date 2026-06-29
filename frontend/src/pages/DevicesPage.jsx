@@ -139,7 +139,7 @@ export default function DevicesPage() {
     // ✅ HOMES (Level 3)
     const homesQuery = useQuery({
         queryKey: ["homes"],
-        queryFn: () => apiFetch("/api/homes/"),
+        queryFn: () => apiFetch("/api/devices/homes/"),
     });
 
     const homes = homesQuery.data || [];
