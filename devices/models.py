@@ -188,7 +188,7 @@ class DeviceConfig(models.Model):
         return (
             self.role is not None
             and bool(self.measurement_type)
-            and (self.room or self.floor)
+            and bool(self.room or self.floor)
         )
 
     def __str__(self):
