@@ -12,13 +12,14 @@ from datetime import timedelta
 from django.utils import timezone
 
 from devices.models import DeviceMetric, MetricDefinition
-from devices.models import Device, DeviceConfig, DeviceRole, Room, Floor
+from devices.models import Device, DeviceConfig, DeviceRole, Room, Floor, Home
+
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
 
 from .serializers import (
     DeviceSerializer,
     DeviceConfigSerializer,
-#    DeviceRoleSerializer,
+    HomeSerializer
 #    RoomSerializer,
 #    FloorSerializer,
 )
@@ -369,3 +370,14 @@ def device_timeseries(request, device_id):
         "range": range_str,
         "points": points,
     })
+
+
+# ============================================================
+# ✅ HOME-LIST
+# ============================================================
+
+@api_view(["GET"])
+def list_homes(request):
+    homes = Home.objects.filter(user=request.user)
+    serializer = HomeSerializer(homes, many=True)
+    return Response(serializer.data)

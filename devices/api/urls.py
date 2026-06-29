@@ -12,6 +12,7 @@ from .views import (
     configure_device,
     device_timeseries,
     sankey_data,
+    list_homes,
 )
 
 urlpatterns = [
@@ -22,5 +23,6 @@ urlpatterns = [
     path("<int:device_id>/", configure_device),
     path("<int:device_id>/timeseries/", device_timeseries),
     path("sankey/", sankey_data),
+    path("homes/", list_homes),
 ]
 

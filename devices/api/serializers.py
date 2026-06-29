@@ -151,3 +151,13 @@ class DeviceSerializer(serializers.ModelSerializer):
         if hasattr(obj, "config") and obj.config:
             return obj.config.is_classified()
         return False
+    
+
+# ============================================================
+# ✅ DEVICE
+# ============================================================
+
+class HomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Home
+        fields = ("id", "name")

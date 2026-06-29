@@ -71,8 +71,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
 
                     <div className="relative group">
                         <div
-                            className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"
-                                }`}
+                            className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"}`}
                         />
                         <span className="absolute bottom-full mb-1 hidden group-hover:block text-xs bg-gray-800 text-white px-2 py-1 rounded whitespace-nowrap">
                             {isOnline ? "Online" : "Offline"}
@@ -113,6 +112,12 @@ export default function DevicesPage() {
     const [modalMode, setModalMode] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
 
+    /* ✅ FILTER STATE */
+    const [filterText, setFilterText] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all"); // chips
+    const [sortKey, setSortKey] = useState("name");
+    const [selectedHome, setSelectedHome] = useState("all");
+
     const devicesQuery = useQuery({
         queryKey: ["devices"],
         queryFn: () => apiFetch("/api/devices/"),
@@ -131,7 +136,16 @@ export default function DevicesPage() {
         retry: false,
     });
 
-    /* ✅ Daten vorbereiten (IMMER vor return!) */
+    // ✅ HOMES (Level 3)
+    const homesQuery = useQuery({
+        queryKey: ["homes"],
+        queryFn: () => apiFetch("/api/homes/"),
+    });
+
+    const homes = homesQuery.data || [];
+    const hasMultipleHomes = homes.length > 1;
+
+    /* ✅ DATA PREP */
 
     const devices = useMemo(() => {
         return (devicesQuery.data || [])
@@ -163,15 +177,63 @@ export default function DevicesPage() {
         }));
     }, [devices, statusMap, valueMap]);
 
-    const unconfiguredDevices = useMemo(() => {
-        return merged.filter(d => {
-            const config = d.config || {};
-            return !config.measurement_type || !config.room;
+    /* ✅ FILTER + SORT */
+
+    const filtered = useMemo(() => {
+
+        let list = [...merged];
+
+        // 🔍 SEARCH
+        if (filterText) {
+            const t = filterText.toLowerCase();
+            list = list.filter(d =>
+                (d.display_name || "").toLowerCase().includes(t) ||
+                (d.identifier || "").toLowerCase().includes(t)
+            );
+        }
+
+        // 🟢 STATUS CHIP FILTER
+        if (statusFilter === "online") {
+            list = list.filter(d => d.status === "online");
+        }
+
+        if (statusFilter === "offline") {
+            list = list.filter(d => d.status !== "online");
+        }
+
+        if (statusFilter === "missing") {
+            list = list.filter(d => {
+                const c = d.config || {};
+                return !c.role || !c.measurement_type;
+            });
+        }
+
+        // 🏠 MULTI HOME
+        if (selectedHome !== "all") {
+            list = list.filter(d => d.config?.home?.id === Number(selectedHome));
+        }
+
+        // 🔄 SORT
+        list.sort((a, b) => {
+
+            if (sortKey === "value") {
+                return (b.value ?? 0) - (a.value ?? 0);
+            }
+
+            if (sortKey === "status") {
+                return a.status.localeCompare(b.status);
+            }
+
+            return (a.display_name || "")
+                .localeCompare(b.display_name || "");
         });
-    }, [merged]);
+
+        return list;
+
+    }, [merged, filterText, statusFilter, sortKey, selectedHome]);
 
     const grouped = useMemo(() => {
-        return merged
+        return filtered
             .slice()
             .sort((a, b) => {
                 const roomA = a.config?.room?.name || "";
@@ -188,9 +250,9 @@ export default function DevicesPage() {
                 acc[room].push(d);
                 return acc;
             }, {});
-    }, [merged]);
+    }, [filtered]);
 
-    /* ✅ ERST DANACH returns */
+    /* ✅ RETURNS */
 
     if (devicesQuery.isLoading) {
         return (
@@ -215,25 +277,79 @@ export default function DevicesPage() {
                 Geräte
             </h1>
 
-            {/* Banner */}
-            {unconfiguredDevices.length > 0 && (
-                <div
-                    onClick={() => {
-                        setModalMode("bulk");
-                        setEditingDevice(null);
-                    }}
-                    className="mb-6 p-4 rounded-lg border border-yellow-300 bg-yellow-50 flex items-center justify-between cursor-pointer hover:bg-yellow-100"
-                >
-                    <div className="text-yellow-800 text-sm">
-                        ⚠ {unconfiguredDevices.length} Gerät(e) sind noch nicht vollständig konfiguriert
-                    </div>
+            {/* ✅ LEVEL 3 FILTER BAR */}
+            <div className="flex flex-wrap gap-3 mb-6 items-center">
 
-                    <span className="text-sm text-white bg-yellow-500 px-3 py-1 rounded">
-                        Jetzt konfigurieren
-                    </span>
+                {/* SEARCH */}
+                <input
+                    placeholder="Gerät suchen…"
+                    value={filterText}
+                    onChange={(e) => setFilterText(e.target.value)}
+                    className="border px-3 py-2 rounded w-52"
+                />
+
+                {/* FILTER CHIPS */}
+                <div className="flex gap-2">
+
+                    {["all", "online", "offline", "missing"].map(key => {
+
+                        const active = statusFilter === key;
+
+                        const labels = {
+                            all: "Alle",
+                            online: "Online",
+                            offline: "Offline",
+                            missing: "Unvollständig"
+                        };
+
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => setStatusFilter(key)}
+                                className={`
+                                    px-3 py-1 rounded-full text-sm border
+                                    ${active
+                                        ? "bg-indigo-600 text-white border-indigo-600"
+                                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"}
+                                `}
+                            >
+                                {labels[key]}
+                            </button>
+                        );
+                    })}
+
                 </div>
-            )}
 
+                {/* SORT */}
+                <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value)}
+                    className="border px-3 py-2 rounded"
+                >
+                    <option value="name">Name</option>
+                    <option value="value">Wert</option>
+                    <option value="status">Status</option>
+                </select>
+
+                {/* MULTI HOME */}
+                {hasMultipleHomes && (
+                    <select
+                        value={selectedHome}
+                        onChange={(e) => setSelectedHome(e.target.value)}
+                        className="border px-3 py-2 rounded"
+                    >
+                        <option value="all">Alle Homes</option>
+                        {homes.map(h => (
+                            <option key={h.id} value={h.id}>
+                                {h.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
+
+            </div>
+
+            {/* GRID */}
             {Object.entries(grouped)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([room, devices]) => (
