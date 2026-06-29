@@ -71,6 +71,7 @@ urlpatterns = [
         path("forecast/", include("forecast.urls")),
         path("devices/", include("devices.urls")),
         path("devices/", include("devices.api.urls")),
+        path("", include("homes.api.urls")), 
         path("api/public/", include("forecast.urls_public")),
     ])),
   
