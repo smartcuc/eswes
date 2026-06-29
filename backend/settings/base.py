@@ -166,7 +166,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 
-    "backend.demo_middleware.ReadOnlyDemoMiddleware",
+#    "backend.demo_middleware.ReadOnlyDemoMiddleware",
 ]
 
 

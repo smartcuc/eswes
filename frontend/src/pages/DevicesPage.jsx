@@ -3,12 +3,10 @@
 */
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { apiFetch } from "../api/client";
-import { useStructure } from "../hooks/useStructure";
 import DeviceChartModal from "../components/device/DeviceChartModal";
 import DeviceSetupModal from "../components/device/DeviceSetupModal";
-
 
 /* =========================================================
    DEVICE CARD
@@ -24,7 +22,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
             case "producer": return "⚡";
             case "consumer": return "🔌";
             case "battery": return "🔋";
-            default: return "📦";
+            default: return "🔧";
         }
     }
 
@@ -91,14 +89,16 @@ function DeviceCard({ device, onSelect, onEdit }) {
             <div className="text-xl font-bold text-indigo-600">
                 {device.value != null
                     ? `${device.value} ${device.unit || ""}`
-                    : "--"}
+                    : <span className="text-gray-400">keine Daten</span>
+                }
             </div>
 
             {missing && (
-                <div className="text-xs text-yellow-600 mt-2">
-                    ⚠ Messart fehlt
+                <div className="text-xs text-yellow-700 mt-2">
+                    ⚠ Unvollständig konfiguriert
                 </div>
             )}
+
         </div>
     );
 }
@@ -110,6 +110,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
 export default function DevicesPage() {
 
     const [chartDevice, setChartDevice] = useState(null);
+    const [modalMode, setModalMode] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
 
     const devicesQuery = useQuery({
@@ -130,46 +131,82 @@ export default function DevicesPage() {
         retry: false,
     });
 
-    const devices = devicesQuery.data || [];
+    /* ✅ Daten vorbereiten (IMMER vor return!) */
+
+    const devices = useMemo(() => {
+        return (devicesQuery.data || [])
+            .slice()
+            .sort((a, b) =>
+                (a.display_name || "").localeCompare(b.display_name || "")
+            );
+    }, [devicesQuery.data]);
+
     const statusList = statusQuery.data || [];
     const values = valuesQuery.data || [];
 
-    const merged = devices.map(d => {
-        const status = statusList.find(s => s.id === d.id);
-        const value = values.find(v => v.device === d.id);
+    const statusMap = useMemo(
+        () => Object.fromEntries(statusList.map(s => [s.id, s])),
+        [statusList]
+    );
 
-        return {
+    const valueMap = useMemo(
+        () => Object.fromEntries(values.map(v => [v.device, v])),
+        [values]
+    );
+
+    const merged = useMemo(() => {
+        return devices.map(d => ({
             ...d,
-            status: status?.status || "offline",
-            value: value?.value,
-            unit: value?.unit,
-        };
-    });
+            status: statusMap[d.id]?.status || "offline",
+            value: valueMap[d.id]?.value,
+            unit: valueMap[d.id]?.unit,
+        }));
+    }, [devices, statusMap, valueMap]);
 
-    const unconfiguredDevices = merged.filter(d => {
-        const config = d.config || {};
-        return !config.measurement_type || !config.room;
-    });
+    const unconfiguredDevices = useMemo(() => {
+        return merged.filter(d => {
+            const config = d.config || {};
+            return !config.measurement_type || !config.room;
+        });
+    }, [merged]);
 
-    const grouped = merged
-        .slice()   // ✅ wichtig!
-        .sort((a, b) => {
-            const roomA = a.config?.room?.name || "";
-            const roomB = b.config?.room?.name || "";
+    const grouped = useMemo(() => {
+        return merged
+            .slice()
+            .sort((a, b) => {
+                const roomA = a.config?.room?.name || "";
+                const roomB = b.config?.room?.name || "";
 
-            if (roomA !== roomB) {
-                return roomA.localeCompare(roomB);
-            }
+                if (roomA !== roomB) return roomA.localeCompare(roomB);
 
-            return (a.display_name || "")
-                .localeCompare(b.display_name || "");
-        })
-        .reduce((acc, d) => {
-            const room = d.config?.room?.name || "Ohne Raum";
-            acc[room] = acc[room] || [];
-            acc[room].push(d);
-            return acc;
-        }, {});
+                return (a.display_name || "")
+                    .localeCompare(b.display_name || "");
+            })
+            .reduce((acc, d) => {
+                const room = d.config?.room?.name || "Ohne Raum";
+                acc[room] = acc[room] || [];
+                acc[room].push(d);
+                return acc;
+            }, {});
+    }, [merged]);
+
+    /* ✅ ERST DANACH returns */
+
+    if (devicesQuery.isLoading) {
+        return (
+            <div className="p-6 text-gray-400 animate-pulse">
+                Lade Geräte...
+            </div>
+        );
+    }
+
+    if (!devices.length) {
+        return (
+            <div className="p-6 text-gray-500">
+                Noch keine Geräte vorhanden.
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 max-w-6xl">
@@ -178,20 +215,22 @@ export default function DevicesPage() {
                 Geräte
             </h1>
 
+            {/* Banner */}
             {unconfiguredDevices.length > 0 && (
-                <div className="mb-6 p-4 rounded-lg border border-yellow-300 bg-yellow-50 flex items-center justify-between">
-
+                <div
+                    onClick={() => {
+                        setModalMode("bulk");
+                        setEditingDevice(null);
+                    }}
+                    className="mb-6 p-4 rounded-lg border border-yellow-300 bg-yellow-50 flex items-center justify-between cursor-pointer hover:bg-yellow-100"
+                >
                     <div className="text-yellow-800 text-sm">
                         ⚠ {unconfiguredDevices.length} Gerät(e) sind noch nicht vollständig konfiguriert
                     </div>
 
-                    <button
-                        onClick={() => setEditingDevice(null)}  // plus mode="bulk"
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-3 py-1 rounded"
-                    >
+                    <span className="text-sm text-white bg-yellow-500 px-3 py-1 rounded">
                         Jetzt konfigurieren
-                    </button>
-
+                    </span>
                 </div>
             )}
 
@@ -210,7 +249,10 @@ export default function DevicesPage() {
                                     key={d.id}
                                     device={d}
                                     onSelect={setChartDevice}
-                                    onEdit={setEditingDevice}
+                                    onEdit={(dev) => {
+                                        setEditingDevice(dev);
+                                        setModalMode("single");
+                                    }}
                                 />
                             ))}
                         </div>
@@ -218,17 +260,15 @@ export default function DevicesPage() {
                     </div>
                 ))}
 
-
-
-            {editingDevice && (
-                <DeviceSetupModal
-                    open={!!editingDevice}
-                    onClose={() => setEditingDevice(null)}
-                    mode="single"
-                    singleDevice={editingDevice}
-                />
-            )}
-
+            <DeviceSetupModal
+                open={!!modalMode}
+                onClose={() => {
+                    setModalMode(null);
+                    setEditingDevice(null);
+                }}
+                mode={modalMode || "bulk"}
+                singleDevice={editingDevice}
+            />
 
             {chartDevice && (
                 <DeviceChartModal

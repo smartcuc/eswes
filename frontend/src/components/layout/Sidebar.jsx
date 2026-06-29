@@ -6,6 +6,7 @@ import { NavLink } from "react-router-dom";
 import { useUnconfiguredDevices } from "../../hooks/useUnconfiguredDevices";
 import { useState } from "react";
 import DeviceSetupModal from "../device/DeviceSetupModal";
+import AddDeviceModal from "../device/AddDeviceModal";
 
 const sections = [
     {
@@ -50,6 +51,7 @@ export default function Sidebar() {
     const isLoaded = query?.isSuccess;
     const count = query?.data?.count ?? 0;
     const [openSetup, setOpenSetup] = useState(false);
+    const [openAddDevice, setOpenAddDevice] = useState(false);
 
     return (
         <div className="w-64 bg-white border-r flex flex-col">
@@ -82,7 +84,7 @@ export default function Sidebar() {
                                 item.action === "add_device" ? (
 
                                     <button
-                                        key="add"
+                                        onClick={() => setOpenAddDevice(true)}  // ✅ HIER    key="add"
                                         className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded w-full text-left"
                                     >
                                         <span>{item.icon}</span>
@@ -135,6 +137,11 @@ export default function Sidebar() {
             <DeviceSetupModal
                 open={openSetup}
                 onClose={() => setOpenSetup(false)}
+            />
+
+            <AddDeviceModal
+                open={openAddDevice}
+                onClose={() => setOpenAddDevice(false)}
             />
 
         </div>

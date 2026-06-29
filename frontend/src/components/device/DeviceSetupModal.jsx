@@ -14,22 +14,26 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
 
     const query = useUnconfiguredDevices();
     const bulkDevices = query?.data?.devices || [];
-    const isLoading = query?.isLoading;
 
-    const getSortName = d =>
-        (d.display_name || d.identifier || "").toLowerCase().trim();
 
     const devices = (isBulk
         ? bulkDevices
         : singleDevice ? [singleDevice] : []
-    ).slice().sort((a, b) => getSortName(a).localeCompare(getSortName(b)));
+    ).slice().sort((a, b) =>
+        (a.display_name || "").localeCompare(b.display_name || "")
+    );
+
+    const [index, setIndex] = useState(0);
+
+    const device = isBulk
+        ? devices[index]
+        : singleDevice;
 
     const { settings } = useSettings();
     const homes = settings?.homes || [];
     const hasMultipleHomes = homes.length > 1;
 
     const { data: structure } = useStructure();
-
     const roles = structure?.roles || [];
     const measurementTypes = structure?.measurement_types || [];
     const floors = structure?.floors || [];
@@ -42,82 +46,93 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
     const [serverDevices, setServerDevices] = useState({});
 
     const debounceTimers = useRef({});
+    const autoTimer = useRef(null);
 
-    /* ================================
-       ✅ WEBSOCKET
-    ================================= */
+    /* RESET */
     useEffect(() => {
-        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const socket = new WebSocket(`${protocol}://${window.location.host}/ws/energy/`);
-
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-
-            if (data.type === "device_update" && data.device) {
-                setServerDevices(prev => ({
-                    ...prev,
-                    [data.device.id]: data.device
-                }));
-            }
-        };
-
-        return () => socket.close();
-    }, []);
-
-    /* ================================
-       ✅ ESC SUPPORT
-    ================================= */
-    useEffect(() => {
-        function onKey(e) {
-            if (e.key === "Escape") {
-                onClose();
-            }
+        if (open) {
+            setIndex(0);
+            setLocalValues({});
+            setSaving({});
+            setSaved({});
+            setError({});
+            setServerDevices({});
         }
+    }, [open]);
 
+    /* ESC */
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key === "Escape") onClose();
+        };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, [onClose]);
 
-    /* ================================
-       ✅ SAVE (FIXED)
-    ================================= */
+    /* SAVE */
     async function saveDevice(id, values) {
 
         if (!values || Object.keys(values).length === 0) return;
 
         const key = String(id);
 
-        setSaving(prev => ({
-            ...prev,
-            [key]: true
-        }));
+        setSaving(prev => ({ ...prev, [key]: true }));
+        setError(prev => ({ ...prev, [key]: false }));
 
-        setError(prev => ({
-            ...prev,
-            [key]: false
-        }));
+        let baseDevice =
+            serverDevices[key] ||
+            devices.find(d => d.id === id);
+
+        // 🔥 Fallback NUR wenn gar nichts da ist
+        if (!baseDevice && singleDevice) {
+            baseDevice = singleDevice;
+        }
+
+        const server = baseDevice;
 
         try {
+
+            const payload = {
+                display_name: values.display_name ?? server.display_name ?? "",
+                role_id: values.role_id ?? server.config?.role?.id ?? null,
+                measurement_type: values.measurement_type ?? server.config?.measurement_type ?? null,
+                room_id: values.room_id ?? server.config?.room?.id ?? null,
+                floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
+                home_id: values.home_id ?? server.config?.home?.id ?? null,
+            }
+            // ✅ FIX: Home aus room/floor ableiten, wenn es fehlt
+            if (!payload.home_id) {
+
+                let floorIdToCheck = payload.floor_id;
+
+                // ✅ wenn room gesetzt → zuerst floor daraus bestimmen
+                if (payload.room_id) {
+                    const room = rooms.find(r => r.id === payload.room_id);
+                    if (room?.floor?.id) {
+                        floorIdToCheck = room.floor.id;
+                    }
+                }
+
+                // ✅ dann home aus floor holen
+                if (floorIdToCheck) {
+                    const floor = floors.find(f => f.id === floorIdToCheck);
+                    if (floor?.home?.id) {
+                        payload.home_id = floor.home.id;
+                    }
+                }
+            }
+
             const data = await apiFetch(`/api/devices/${id}/`, {
                 method: "PATCH",
-                body: JSON.stringify({
-                    display_name: values.display_name,
-                    role_id: values.role_id,
-                    measurement_type: values.measurement_type,
-                    room_id: values.room_id,
-                    floor_id: values.floor_id,
-                    home_id: values.home_id,
-                })
+                body: JSON.stringify(payload)
             });
 
-            // ✅ Server-Update mergen
-            if (data && data.device) {
+            if (data?.device) {
                 setServerDevices(prev => ({
                     ...prev,
                     [data.device.id]: data.device
                 }));
 
-                // ✅ local zurücksetzen → entfernt gelben Zustand
                 setLocalValues(prev => {
                     const copy = { ...prev };
                     delete copy[key];
@@ -125,48 +140,38 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
                 });
             }
 
-            setSaving(prev => ({
-                ...prev,
-                [key]: false
-            }));
-
-            setSaved(prev => ({
-                ...prev,
-                [key]: true
-            }));
+            setSaving(prev => ({ ...prev, [key]: false }));
+            setSaved(prev => ({ ...prev, [key]: true }));
 
             setTimeout(() => {
-                setSaved(prev => ({
-                    ...prev,
-                    [key]: false
-                }));
-            }, 1200);
+                setSaved(prev => ({ ...prev, [key]: false }));
+            }, 1000);
 
-            // ✅ wichtig für "reopen zeigt alten Wert"-Bug
-            if (query?.refetch) {
-                query.refetch();
-            }
+            if (query?.refetch) query.refetch();
 
         } catch (err) {
+
             console.error("save failed", err);
 
-            setSaving(prev => ({
-                ...prev,
-                [key]: false
-            }));
+            setSaving(prev => ({ ...prev, [key]: false }));
+            setError(prev => ({ ...prev, [key]: true }));
+        }
 
-            setError(prev => ({
-                ...prev,
-                [key]: true
-            }));
+        // ✅ AUTO ADVANCE (unverändert korrekt)
+        if (
+            values.role_id &&
+            values.measurement_type &&
+            index < devices.length - 1
+        ) {
+            if (autoTimer.current) clearTimeout(autoTimer.current);
+
+            autoTimer.current = setTimeout(() => {
+                setIndex(i => i + 1);
+            }, 800);
         }
     }
 
-    /* ================================
-       ✅ CHANGE
-    ================================= */
     function handleChange(id, field, value) {
-
         const key = String(id);
 
         setLocalValues(prev => {
@@ -179,15 +184,12 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
             };
 
             if (field === "display_name") {
-
                 if (debounceTimers.current[key]) {
                     clearTimeout(debounceTimers.current[key]);
                 }
-
                 debounceTimers.current[key] = setTimeout(() => {
                     saveDevice(id, deviceValues);
                 }, 600);
-
             } else {
                 saveDevice(id, deviceValues);
             }
@@ -196,209 +198,210 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
         });
     }
 
-    function handleRetry(id) {
-        const key = String(id);
-        if (localValues[key]) {
-            saveDevice(id, localValues[key]);
-        }
-    }
+    if (!open || !device) return null;
 
-    /* ================================
-       RESET
-    ================================= */
+    const key = String(device.id);
+    const local = localValues[key] || {};
+    const server = serverDevices[key] || device;
 
-    useEffect(() => {
-        if (open) {
-            setLocalValues({});
-            setSaving({});
-            setSaved({});
-            setError({});
-            setServerDevices({});
-        }
-    }, [open]);
+    const displayName = local.display_name ?? server.display_name ?? "";
+    const roleId = local.role_id ?? server.config?.role?.id ?? "";
+    const measurementType = local.measurement_type ?? server.config?.measurement_type ?? "";
+    const homeId = local.home_id ?? server.config?.home?.id ?? "";
+    const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
+    const roomId = local.room_id ?? server.config?.room?.id ?? "";
 
-    if (!open) return null;
+    const progress = ((index + 1) / devices.length) * 100;
 
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl p-6">
+
+            <div className="bg-white w-full max-w-md p-6 rounded-xl shadow-lg">
 
                 {/* HEADER */}
-                <div className="flex justify-between mb-4">
+                <div className="mb-4">
+                    <div className="text-xs text-gray-400">
+                        Gerät {index + 1} von {devices.length}
+                    </div>
+
+                    <h2 className="text-xl font-semibold">
+                        Gerät einrichten
+                    </h2>
+
+                    <p className="text-sm text-gray-500">
+                        Lege Funktion und Messdaten fest – optional kannst du eine Position zuweisen
+                    </p>
+                </div>
+
+                {/* PROGRESS */}
+                <div className="w-full bg-gray-200 h-2 rounded mb-6">
+                    <div
+                        className="bg-indigo-600 h-2 rounded"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+
+                {/* FORM */}
+                <div className="space-y-4">
+
+                    {/* NAME */}
                     <div>
-                        <h2 className="text-lg font-semibold">
-                            {isBulk ? "⚡ Geräte konfigurieren" : "Gerät bearbeiten"}
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                            Funktion & Standort festlegen
+                        <label className="text-xs text-gray-400">Name</label>
+                        <input
+                            value={displayName}
+                            onChange={(e) =>
+                                handleChange(device.id, "display_name", e.target.value)
+                            }
+                            className="border px-3 py-2 w-full rounded"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Anzeige im Dashboard
                         </p>
                     </div>
-                    <button onClick={onClose}>✕</button>
-                </div>
 
-                {/* CONTENT */}
-                <div className="space-y-3 max-h-[450px] overflow-auto">
+                    {/* ROLE */}
+                    <div>
+                        <label className="text-xs text-gray-400">
+                            Funktion des Geräts *
+                        </label>
+                        <select
+                            value={roleId}
+                            onChange={(e) =>
+                                handleChange(device.id, "role_id", e.target.value ? Number(e.target.value) : null)
+                            }
+                            className={`border px-3 py-2 w-full rounded ${!roleId ? "border-red-300 bg-red-50" : ""}`}
+                        >
+                            <option value="">Bitte wählen</option>
+                            {roles.map(r => (
+                                <option key={r.id} value={r.id}>{r.label}</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Erzeuger, Verbraucher oder Speicher
+                        </p>
+                    </div>
 
-                    {!isLoading && devices.map(device => {
+                    {/* MEASUREMENT */}
+                    <div>
+                        <label className="text-xs text-gray-400">
+                            Messdaten *
+                        </label>
+                        <select
+                            value={measurementType}
+                            onChange={(e) =>
+                                handleChange(device.id, "measurement_type", e.target.value || null)
+                            }
+                            className={`border px-3 py-2 w-full rounded ${!measurementType ? "border-red-300 bg-red-50" : ""}`}
+                        >
+                            <option value="">Bitte wählen</option>
+                            {measurementTypes.map(m => (
+                                <option key={m.key || m.id} value={m.key || m.value}>
+                                    {m.label || m.name}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Welche Werte liefert dieses Gerät?
+                        </p>
+                    </div>
 
-                        const key = String(device.id);
-                        const local = localValues[key] || {};
-                        const server = serverDevices[key] || device;
+                    {/* LOCATION */}
+                    <div>
+                        <label className="text-xs text-gray-400">
+                            Position (optional)
+                        </label>
 
-                        const displayName =
-                            local.display_name ??
-                            server.display_name ??
-                            device.display_name ?? "";
+                        <div className="grid grid-cols-2 gap-3 mt-2">
 
-                        const roleId =
-                            local.role_id ??
-                            server.config?.role?.id ??
-                            device.config?.role?.id ?? "";
-
-                        const measurementType =
-                            local.measurement_type ??
-                            server.config?.measurement_type ??
-                            device.config?.measurement_type ?? "";
-
-                        const floorId =
-                            local.floor_id ??
-                            server.config?.floor?.id ??
-                            device.config?.floor?.id ?? "";
-
-                        const roomId =
-                            local.room_id ??
-                            server.config?.room?.id ??
-                            device.config?.room?.id ?? "";
-
-                        const homeId =
-                            local.home_id ??
-                            server.config?.home?.id ??
-                            device.config?.home?.id ?? "";
-
-                        const hasChanges = Object.keys(local).length > 0;
-
-                        return (
-                            <div
-                                key={key}
-                                className={`p-4 border rounded-lg
-                                ${hasChanges ? "bg-yellow-50 border-yellow-200" : ""}
-                                ${saved[key] ? "bg-green-50 border-green-200" : ""}
-                            `}>
-
-                                {/* HEADER */}
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="font-medium">{displayName}</div>
-                                    <div className="flex gap-2">
-                                        {saving[key] && <span>⏳</span>}
-                                        {saved[key] && <span>✅</span>}
-                                        {error[key] && (
-                                            <span onClick={() => handleRetry(device.id)} className="cursor-pointer">❌</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* NAME */}
-                                <input
-                                    value={displayName}
-                                    onChange={(e) =>
-                                        handleChange(device.id, "display_name", e.target.value)
-                                    }
-                                    className="border px-2 py-1 w-full mb-3 rounded"
-                                />
-
-                                {/* ROLE */}
+                            {hasMultipleHomes && (
                                 <select
-                                    value={roleId}
+                                    value={homeId}
                                     onChange={(e) =>
-                                        handleChange(device.id, "role_id", e.target.value ? Number(e.target.value) : null)
+                                        handleChange(device.id, "home_id", e.target.value ? Number(e.target.value) : null)
                                     }
-                                    className="border px-2 py-1 w-full mb-3 rounded"
+                                    className="border px-2 py-2 rounded"
                                 >
-                                    <option value="">Rolle</option>
-                                    {roles.map(r => (
-                                        <option key={r.id} value={r.id}>{r.label}</option>
+                                    <option value="">🏠 Zuhause</option>
+                                    {homes.map(h => (
+                                        <option key={h.id} value={h.id}>{h.name}</option>
                                     ))}
                                 </select>
+                            )}
 
-                                {/* MEASUREMENT */}
-                                <select
-                                    value={measurementType || ""}
-                                    onChange={(e) =>
-                                        handleChange(device.id, "measurement_type", e.target.value || null)
-                                    }
-                                    className="border px-2 py-1 w-full mb-3 rounded"
-                                >
-                                    <option value="">Messung</option>
-                                    {measurementTypes.map(m => (
-                                        <option key={m.key || m.id} value={m.key || m.value}>
-                                            {m.label || m.name}
-                                        </option>
-                                    ))}
-                                </select>
+                            <select
+                                value={floorId}
+                                onChange={(e) =>
+                                    handleChange(device.id, "floor_id", e.target.value ? Number(e.target.value) : null)
+                                }
+                                className="border px-2 py-2 rounded"
+                            >
+                                <option value="">🏢 Etage</option>
+                                {floors.map(f => (
+                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                ))}
+                            </select>
 
-                                {/* LOCATION */}
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <select
+                                value={roomId}
+                                onChange={(e) =>
+                                    handleChange(device.id, "room_id", e.target.value ? Number(e.target.value) : null)
+                                }
+                                className="border px-2 py-2 rounded"
+                            >
+                                <option value="">🚪 Raum</option>
+                                {rooms.map(r => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                            </select>
 
-                                    {hasMultipleHomes && (
-                                        <select
-                                            value={homeId}
-                                            onChange={(e) =>
-                                                handleChange(device.id, "home_id", e.target.value ? Number(e.target.value) : null)
-                                            }
-                                            className="border px-2 py-1 rounded"
-                                        >
-                                            <option value="">🏠 Zuhause</option>
-                                            {homes.map(h => (
-                                                <option key={h.id} value={h.id}>{h.name}</option>
-                                            ))}
-                                        </select>
-                                    )}
+                        </div>
 
-                                    <select
-                                        value={floorId}
-                                        onChange={(e) =>
-                                            handleChange(device.id, "floor_id", e.target.value ? Number(e.target.value) : null)
-                                        }
-                                        className="border px-2 py-1 rounded"
-                                    >
-                                        <option value="">🏢 Etage</option>
-                                        {floors.map(f => (
-                                            <option key={f.id} value={f.id}>{f.name}</option>
-                                        ))}
-                                    </select>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Hilft bei Auswertung und Visualisierung (z. B. Sankey)
+                        </p>
+                    </div>
 
-                                    <select
-                                        value={roomId}
-                                        onChange={(e) =>
-                                            handleChange(device.id, "room_id", e.target.value ? Number(e.target.value) : null)
-                                        }
-                                        className="border px-2 py-1 rounded"
-                                    >
-                                        <option value="">🚪 Raum</option>
-                                        {rooms.map(r => (
-                                            <option key={r.id} value={r.id}>{r.name}</option>
-                                        ))}
-                                    </select>
-
-                                </div>
-
-                            </div>
-                        );
-                    })}
+                    {/* STATUS */}
+                    <div className="text-sm">
+                        {saving[key] && <span>⏳ Speichern…</span>}
+                        {saved[key] && <span className="text-green-600">✅ Gespeichert</span>}
+                        {error[key] && <span className="text-red-600">❌ Fehler</span>}
+                    </div>
 
                 </div>
 
-                {/* FOOTER */}
-                <div className="mt-6 flex justify-end border-t pt-4">
+                {/* NAV */}
+                <div className="flex justify-end mt-6">
+
+                    {devices.length > 1 && (
+                        <button
+                            onClick={() => setIndex(i => Math.max(0, i - 1))}
+                            disabled={index === 0}
+                            className="px-4 py-2 border rounded disabled:opacity-30 mr-2"
+                        >
+                            ← Zurück
+                        </button>
+                    )}
+
                     <button
-                        onClick={onClose}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg"
+                        onClick={() => {
+                            if (devices.length <= 1 || index === devices.length - 1) {
+                                onClose();
+                            } else {
+                                setIndex(i => i + 1);
+                            }
+                        }}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded"
                     >
-                        {isBulk ? "Fertig" : "Schließen"}
+                        {devices.length <= 1 || index === devices.length - 1
+                            ? "Fertig"
+                            : "Weiter →"}
                     </button>
+
                 </div>
 
             </div>
+
         </div>
     );
 }

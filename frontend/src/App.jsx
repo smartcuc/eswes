@@ -30,8 +30,8 @@ export default function App() {
           {/* 🔐 ADMIN */}
           <Route path="/admin/*" element={<AdminApp />} />
 
-          {/* 🔓 DEMP */}
-          <Route path="/demo/*" element={<PrivateApp />} />
+          {/* 🔓 DEMO
+          <Route path="/demo/*" element={<PrivateApp />} /> */}
 
         </Routes>
 
