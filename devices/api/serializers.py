@@ -36,7 +36,6 @@ class FloorSerializer(serializers.ModelSerializer):
 # ✅ CONFIG
 # ============================================================
 
-
 class DeviceConfigSerializer(serializers.ModelSerializer):
 
     # READ
@@ -98,35 +97,19 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = request.user if request else None
 
-        room = data.get("room") or getattr(self.instance, "room", None)
-        floor = data.get("floor") or getattr(self.instance, "floor", None)
         home = data.get("home") or getattr(self.instance, "home", None)
 
-        # ✅ 1. Room → Floor ableiten
-        if room and not floor:
-            if room.floor:
-                floor = room.floor
-                data["floor"] = floor
-            else:
-                raise serializers.ValidationError("Room hat keine Etage")
-
-        # ✅ 2. Floor → Home ableiten (wenn kein home gesetzt)
-        if not home and floor:
-            if not floor.home:
-                raise serializers.ValidationError("Etage hat kein Zuhause")
-            home = floor.home
-
-        # ✅ 3. Fallback: User hat genau 1 Home
+        # ✅ DEFAULT HOME setzen
         if not home and user:
-            homes = user.homes.all()
-            if homes.count() == 1:
-                home = homes.first()
+            home = user.homes.first()
 
         # 🚨 FINAL: Muss IMMER gesetzt sein
         if not home:
-            raise serializers.ValidationError("Kein gültiges Zuhause ableitbar")
+            raise serializers.ValidationError("Kein Zuhause verfügbar")
 
         data["home"] = home
+
+        return data
 
 
 # ============================================================
