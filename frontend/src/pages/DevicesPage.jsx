@@ -30,16 +30,11 @@ function DeviceCard({ device, onSelect, onEdit }) {
         <div
             onClick={() => onSelect(device)}
             className={`
-                cursor-pointer
-                border rounded-xl p-4 shadow-sm transition hover:shadow-md
+                cursor-pointer border rounded-xl p-4 shadow-sm transition hover:shadow-md
                 hover:ring-2 hover:ring-indigo-200
-                ${missing
-                    ? "border-yellow-300 bg-yellow-50"
-                    : "border-gray-200 bg-white"
-                }
+                ${missing ? "border-yellow-300 bg-yellow-50" : "border-gray-200 bg-white"}
             `}
         >
-
             <div className="flex justify-between mb-2 items-start">
 
                 <div>
@@ -54,30 +49,18 @@ function DeviceCard({ device, onSelect, onEdit }) {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 h-full">
-
+                <div className="flex items-center gap-2">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onEdit(device);
                         }}
-                        className="text-gray-400 hover:text-gray-600 relative group"
+                        className="text-gray-400 hover:text-gray-600"
                     >
                         ⚙️
-                        <span className="absolute bottom-full mb-1 hidden group-hover:block text-xs bg-gray-800 text-white px-2 py-1 rounded whitespace-nowrap">
-                            Gerät bearbeiten
-                        </span>
                     </button>
 
-                    <div className="relative group">
-                        <div
-                            className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"}`}
-                        />
-                        <span className="absolute bottom-full mb-1 hidden group-hover:block text-xs bg-gray-800 text-white px-2 py-1 rounded whitespace-nowrap">
-                            {isOnline ? "Online" : "Offline"}
-                        </span>
-                    </div>
-
+                    <div className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"}`} />
                 </div>
             </div>
 
@@ -97,11 +80,9 @@ function DeviceCard({ device, onSelect, onEdit }) {
                     ⚠ Unvollständig konfiguriert
                 </div>
             )}
-
         </div>
     );
 }
-
 
 /* =========================================================
    PAGE
@@ -112,11 +93,19 @@ export default function DevicesPage() {
     const [modalMode, setModalMode] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
 
-    /* ✅ FILTER STATE */
     const [filterText, setFilterText] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all"); // chips
-    const [sortKey, setSortKey] = useState("name");
-    const [selectedHome, setSelectedHome] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("all");
+
+    // ✅ STRUCTURE TOGGLES
+    const [showFloors, setShowFloors] = useState(true);
+    const [showRooms, setShowRooms] = useState(true);
+
+    // ✅ ROLES (multi select)
+    const [activeRoles, setActiveRoles] = useState([
+        "producer",
+        "consumer",
+        "battery"
+    ]);
 
     const devicesQuery = useQuery({
         queryKey: ["devices"],
@@ -136,63 +125,50 @@ export default function DevicesPage() {
         retry: false,
     });
 
-    // ✅ HOMES (Level 3)
-    const homesQuery = useQuery({
-        queryKey: ["homes"],
-        queryFn: () => apiFetch("/api/devices/homes/"),
-    });
+    const devices = devicesQuery.data || [];
 
-    const homes = homesQuery.data || [];
-    const hasMultipleHomes = homes.length > 1;
-
-    /* ✅ DATA PREP */
-
-    const devices = useMemo(() => {
-        return (devicesQuery.data || [])
-            .slice()
-            .sort((a, b) =>
-                (a.display_name || "").localeCompare(b.display_name || "")
-            );
-    }, [devicesQuery.data]);
-
-    const statusList = statusQuery.data || [];
-    const values = valuesQuery.data || [];
-
-    const statusMap = useMemo(
-        () => Object.fromEntries(statusList.map(s => [s.id, s])),
-        [statusList]
-    );
-
-    const valueMap = useMemo(
-        () => Object.fromEntries(values.map(v => [v.device, v])),
-        [values]
-    );
+    const statusMap = Object.fromEntries((statusQuery.data || []).map(s => [s.id, s]));
+    const valueMap = Object.fromEntries((valuesQuery.data || []).map(v => [v.device, v]));
 
     const merged = useMemo(() => {
         return devices.map(d => ({
             ...d,
-            status: statusMap[d.id]?.status || "offline",
+            status: (statusMap[d.id]?.status || "offline").toLowerCase(),
             value: valueMap[d.id]?.value,
             unit: valueMap[d.id]?.unit,
         }));
     }, [devices, statusMap, valueMap]);
 
-    /* ✅ FILTER + SORT */
+    const roleLabels = {
+        producer: "⚡ Erzeuger",
+        consumer: "🔌 Verbraucher",
+        battery: "🔋 Speicher"
+    };
+
+    const roleStats = useMemo(() => {
+        const map = {};
+        merged.forEach(d => {
+            const key = d.config?.role?.key;
+            if (!key) return;
+            map[key] = (map[key] || 0) + 1;
+        });
+        return map;
+    }, [merged]);
+
+    /* ✅ FILTER */
 
     const filtered = useMemo(() => {
 
         let list = [...merged];
 
-        // 🔍 SEARCH
         if (filterText) {
-            const t = filterText.toLowerCase();
+            const t = filterText.trim().toLowerCase();
             list = list.filter(d =>
                 (d.display_name || "").toLowerCase().includes(t) ||
                 (d.identifier || "").toLowerCase().includes(t)
             );
         }
 
-        // 🟢 STATUS CHIP FILTER
         if (statusFilter === "online") {
             list = list.filter(d => d.status === "online");
         }
@@ -208,79 +184,58 @@ export default function DevicesPage() {
             });
         }
 
-        // 🏠 MULTI HOME
-        if (selectedHome !== "all") {
-            list = list.filter(d => d.config?.home?.id === Number(selectedHome));
-        }
-
-        // 🔄 SORT
-        list.sort((a, b) => {
-
-            if (sortKey === "value") {
-                return (b.value ?? 0) - (a.value ?? 0);
-            }
-
-            if (sortKey === "status") {
-                return a.status.localeCompare(b.status);
-            }
-
-            return (a.display_name || "")
-                .localeCompare(b.display_name || "");
+        list = list.filter(d => {
+            const role = d.config?.role?.key;
+            return role ? activeRoles.includes(role) : true;
         });
 
         return list;
 
-    }, [merged, filterText, statusFilter, sortKey, selectedHome]);
+    }, [merged, filterText, statusFilter, activeRoles]);
 
-    const grouped = useMemo(() => {
-        return filtered
-            .slice()
-            .sort((a, b) => {
-                const roomA = a.config?.room?.name || "";
-                const roomB = b.config?.room?.name || "";
+    /* ✅ BANNER */
 
-                if (roomA !== roomB) return roomA.localeCompare(roomB);
-
-                return (a.display_name || "")
-                    .localeCompare(b.display_name || "");
-            })
-            .reduce((acc, d) => {
-                const room = d.config?.room?.name || "Ohne Raum";
-                acc[room] = acc[room] || [];
-                acc[room].push(d);
-                return acc;
-            }, {});
+    const unconfiguredDevices = useMemo(() => {
+        return filtered.filter(d => {
+            const c = d.config || {};
+            return !c.role || !c.measurement_type;
+        });
     }, [filtered]);
 
-    /* ✅ RETURNS */
+    /* ✅ GROUPING */
+
+    const grouped = useMemo(() => {
+
+        return filtered.reduce((acc, d) => {
+
+            const floor = showFloors
+                ? (d.config?.floor?.name || "Ohne Etage")
+                : "Alle Geräte";
+
+            const room = showRooms
+                ? (d.config?.room?.name || "Ohne Raum")
+                : "__ALL__";
+
+            acc[floor] = acc[floor] || {};
+            acc[floor][room] = acc[floor][room] || [];
+            acc[floor][room].push(d);
+
+            return acc;
+
+        }, {});
+
+    }, [filtered, showFloors, showRooms]);
 
     if (devicesQuery.isLoading) {
-        return (
-            <div className="p-6 text-gray-400 animate-pulse">
-                Lade Geräte...
-            </div>
-        );
-    }
-
-    if (!devices.length) {
-        return (
-            <div className="p-6 text-gray-500">
-                Noch keine Geräte vorhanden.
-            </div>
-        );
+        return <div className="p-6">Lade Geräte…</div>;
     }
 
     return (
         <div className="p-6 max-w-6xl">
 
-            <h1 className="text-2xl font-semibold mb-6">
-                Geräte
-            </h1>
+            {/* FILTER BAR */}
+            <div className="flex flex-wrap gap-3 mb-6">
 
-            {/* ✅ LEVEL 3 FILTER BAR */}
-            <div className="flex flex-wrap gap-3 mb-6 items-center">
-
-                {/* SEARCH */}
                 <input
                     placeholder="Gerät suchen…"
                     value={filterText}
@@ -288,93 +243,115 @@ export default function DevicesPage() {
                     className="border px-3 py-2 rounded w-52"
                 />
 
-                {/* FILTER CHIPS */}
-                <div className="flex gap-2">
-
-                    {["all", "online", "offline", "missing"].map(key => {
-
-                        const active = statusFilter === key;
-
-                        const labels = {
-                            all: "Alle",
-                            online: "Online",
-                            offline: "Offline",
-                            missing: "Unvollständig"
-                        };
-
-                        return (
-                            <button
-                                key={key}
-                                onClick={() => setStatusFilter(key)}
-                                className={`
-                                    px-3 py-1 rounded-full text-sm border
-                                    ${active
-                                        ? "bg-indigo-600 text-white border-indigo-600"
-                                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"}
-                                `}
-                            >
-                                {labels[key]}
-                            </button>
-                        );
-                    })}
-
-                </div>
-
-                {/* SORT */}
-                <select
-                    value={sortKey}
-                    onChange={(e) => setSortKey(e.target.value)}
-                    className="border px-3 py-2 rounded"
-                >
-                    <option value="name">Name</option>
-                    <option value="value">Wert</option>
-                    <option value="status">Status</option>
-                </select>
-
-                {/* MULTI HOME */}
-                {hasMultipleHomes && (
-                    <select
-                        value={selectedHome}
-                        onChange={(e) => setSelectedHome(e.target.value)}
-                        className="border px-3 py-2 rounded"
+                {/* STATUS */}
+                {["all", "online", "offline", "missing"].map(k => (
+                    <button
+                        key={k}
+                        onClick={() => setStatusFilter(prev => prev === k ? "all" : k)}
+                        className={`px-3 py-1 rounded-full text-sm border ${statusFilter === k ? "bg-indigo-600 text-white" : "bg-white"
+                            }`}
                     >
-                        <option value="all">Alle Homes</option>
-                        {homes.map(h => (
-                            <option key={h.id} value={h.id}>
-                                {h.name}
-                            </option>
-                        ))}
-                    </select>
-                )}
+                        {k}
+                    </button>
+                ))}
+
+                {/* ROLE CHIPS */}
+                {["producer", "consumer", "battery"].map(role => {
+
+                    const active = activeRoles.includes(role);
+
+                    return (
+                        <button
+                            key={role}
+                            onClick={() => {
+                                setActiveRoles(prev =>
+                                    prev.includes(role)
+                                        ? prev.filter(r => r !== role)
+                                        : [...prev, role]
+                                );
+                            }}
+                            className={`px-3 py-1 rounded-full text-sm border ${active ? "bg-indigo-600 text-white" : "bg-white"
+                                }`}
+                        >
+                            {roleLabels[role]} ({roleStats[role] || 0})
+                        </button>
+                    );
+                })}
+
+                {/* STRUCTURE TOGGLES */}
+                <label className="flex items-center gap-1 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={showFloors}
+                        onChange={(e) => setShowFloors(e.target.checked)}
+                    />
+                    Etagen
+                </label>
+
+                <label className="flex items-center gap-1 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={showRooms}
+                        onChange={(e) => setShowRooms(e.target.checked)}
+                    />
+                    Räume
+                </label>
 
             </div>
 
-            {/* GRID */}
-            {Object.entries(grouped)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([room, devices]) => (
-                    <div key={room} className="mb-8">
-
-                        <h2 className="text-sm text-gray-500 mb-3">
-                            {room}
-                        </h2>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                            {devices.map(d => (
-                                <DeviceCard
-                                    key={d.id}
-                                    device={d}
-                                    onSelect={setChartDevice}
-                                    onEdit={(dev) => {
-                                        setEditingDevice(dev);
-                                        setModalMode("single");
-                                    }}
-                                />
-                            ))}
-                        </div>
-
+            {/* BANNER */}
+            {unconfiguredDevices.length > 0 && (
+                <div
+                    onClick={() => {
+                        setModalMode("bulk");
+                        setEditingDevice(null);
+                    }}
+                    className="mb-6 p-4 rounded-lg border border-yellow-300 bg-yellow-50 flex items-center justify-between cursor-pointer hover:bg-yellow-100"
+                >
+                    <div className="text-yellow-800 text-sm">
+                        ⚠ {unconfiguredDevices.length} Gerät(e) nicht vollständig konfiguriert
                     </div>
-                ))}
+
+                    <span className="text-sm text-white bg-yellow-500 px-3 py-1 rounded">
+                        Jetzt konfigurieren
+                    </span>
+                </div>
+            )}
+
+            {/* GRID */}
+            {Object.entries(grouped).map(([floor, rooms]) => (
+                <div key={floor} className="mb-6">
+
+                    {showFloors && (
+                        <h2 className="text-sm text-gray-500 mb-2">{floor}</h2>
+                    )}
+
+                    {Object.entries(rooms).map(([room, devices]) => (
+                        <div key={room} className="mb-4">
+
+                            {showRooms && room !== "__ALL__" && (
+                                <h3 className="text-xs text-gray-400 mb-2">{room}</h3>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                {devices.map(d => (
+                                    <DeviceCard
+                                        key={d.id}
+                                        device={d}
+                                        onSelect={setChartDevice}
+                                        onEdit={(dev) => {
+                                            setEditingDevice(dev);
+                                            setModalMode("single");
+                                        }}
+                                    />
+                                ))}
+                            </div>
+
+                        </div>
+                    ))}
+
+                </div>
+            ))}
 
             <DeviceSetupModal
                 open={!!modalMode}

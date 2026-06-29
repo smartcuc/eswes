@@ -8,6 +8,7 @@ import { useState } from "react";
 import DeviceSetupModal from "../device/DeviceSetupModal";
 import AddDeviceModal from "../device/AddDeviceModal";
 
+
 const sections = [
     {
         title: null,
@@ -44,7 +45,6 @@ const sections = [
 ];
 
 export default function Sidebar() {
-
 
     const query = useUnconfiguredDevices();
 
