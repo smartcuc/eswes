@@ -14,6 +14,7 @@ from .views import (
     restore_devices,
     trash_devices,
     purge_devices,
+    trash_count,
     sankey_data,
     list_homes,
 )
@@ -30,6 +31,7 @@ urlpatterns = [
     path("remove/", remove_devices),
     path("restore/", restore_devices),
     path("trash/", trash_devices),
+    path("trash/count/",trash_count),
     path("purge/", purge_devices),
 ]
 

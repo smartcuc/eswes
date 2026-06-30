@@ -8,6 +8,8 @@ import { useState } from "react";
 import DeviceSetupModal from "../device/DeviceSetupModal";
 import AddDeviceModal from "../device/AddDeviceModal";
 import RemoveDevicesModal from "../device/RemoveDevicesModal";
+import TrashBinModal from "../device/TrashBinModal";
+import { useTrashCount } from "../../hooks/useTrashDevices";
 
 
 const sections = [
@@ -29,7 +31,9 @@ const sections = [
             { name: "All Devices", path: "/app/devices", icon: "📟" },
             { name: "Add Device", action: "add_device", icon: "➕" },
             { name: "Remove Device", action: "remove_device", icon: "🗑️" },
+            { name: "Trash Bin", action: "trash_bin", icon: "♻️" },
         ],
+
     },
     {
         title: "Structure",
@@ -55,6 +59,11 @@ export default function Sidebar() {
     const [openSetup, setOpenSetup] = useState(false);
     const [openAddDevice, setOpenAddDevice] = useState(false);
     const [openRemoveDevice, setOpenRemoveDevice] = useState(false);
+    const [openTrashBin, setOpenTrashBin] = useState(false);
+
+    const trashQuery = useTrashCount();
+    const trashCount =
+        trashQuery?.data?.count ?? 0;
 
 
     return (
@@ -106,6 +115,23 @@ export default function Sidebar() {
                                         {item.name}
                                     </button>
 
+                                ) : item.action === "trash_bin" ? (
+                                    <button
+                                        key="trash"
+                                        onClick={() => setOpenTrashBin(true)}
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded w-full text-left"
+                                    >
+
+                                        <span>{item.icon}</span>
+
+                                        <span>{item.name}</span>
+
+                                        {trashCount > 0 && (
+                                            <span className="ml-auto text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                                {trashCount}
+                                            </span>
+                                        )}
+                                    </button>
                                 ) : (
                                     <NavLink
                                         key={item.path}
@@ -161,6 +187,11 @@ export default function Sidebar() {
             <RemoveDevicesModal
                 open={openRemoveDevice}
                 onClose={() => setOpenRemoveDevice(false)}
+            />
+
+            <TrashBinModal
+                open={openTrashBin}
+                onClose={() => setOpenTrashBin(false)}
             />
 
         </div>

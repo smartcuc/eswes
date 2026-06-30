@@ -489,3 +489,21 @@ def purge_devices(request):
         "deleted": deleted,
     })
 
+
+# ============================================================
+# ✅ TRASH COUNT
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def trash_count(request):
+
+    count = Device.objects.filter(
+        home__user=request.user,
+        pending_delete=True,
+    ).count()
+
+    return Response({
+        "count": count,
+    })
+

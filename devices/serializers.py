@@ -24,6 +24,8 @@ class DeviceSerializer(serializers.ModelSerializer):
             "identifier",
             "display_name",
             "configured",
+            "last_seen",
+            "delete_after",
             "config",
         ]
 
