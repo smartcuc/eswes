@@ -320,7 +320,14 @@ CELERY_BEAT_SCHEDULE = {
     "aggregate-5m": {
         "task": "devices.tasks.run_5m_aggregation",
         "schedule": 300.0,
-    },    
+    },
+
+    # ✅ Device purge
+    "purge-pending-devices": {
+            "task": "devices.tasks.purge_pending_devices",
+            "schedule": crontab(hour="*/6"),
+        }
+        
 
 }
 

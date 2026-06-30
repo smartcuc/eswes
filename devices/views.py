@@ -28,7 +28,11 @@ def device_list(request):
         if not home:
             return Response([], status=200)  # ✅ leer statt Fehler
 
-        devices = Device.objects.filter(home=home)
+        devices = Device.objects.filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
+        )
 
         return Response(
             DeviceSerializer(devices, many=True).data
@@ -58,37 +62,15 @@ def device_list(request):
         }, status=201)
 
     # 🔹 LIST
-    devices = Device.objects.filter(home=home)
+    devices = Device.objects.filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
+        )
 
     return Response(
         DeviceSerializer(devices, many=True).data
     )
-
-
-
-# ✅ Gerät konfigurieren
-# @api_view(["PATCH"])
-# @permission_classes([IsAuthenticated])
-# def device_update(request, device_id):
-
-#     try:
-#         device = Device.objects.get(id=device_id, home__in=request.user.homes.all())
-#     except Device.DoesNotExist:
-#         return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-
-#     serializer = DeviceSerializer(device, data=request.data, partial=True)
-
-#     if not serializer.is_valid():
-#         return Response(serializer.errors, status=400)
-
-#     device = serializer.save()
-
-#     # ✅ automatisch als konfiguriert markieren
-#     if not device.configured:
-#         device.configured = True
-#         device.save(update_fields=["configured"])
-
-#     return Response(DeviceSerializer(device).data)
 
 
 # ✅ Device Metrics
@@ -143,25 +125,6 @@ def device_status_list(request):
     serializer = DeviceStatusSerializer(devices, many=True)
 
     return Response(serializer.data)
-
-
-# # ✅ DEVICE SETUP
-# @api_view(["POST"])
-# @permission_classes([IsAuthenticated])
-# def configure_device(request, device_id):
-
-#     device = Device.objects.get(id=device_id)
-
-#     if device.home not in request.user.homes.all():
-#         return Response({"error": "Forbidden"}, status=403)
-
-#     device.type = request.data.get("type")
-#     device.metrics = request.data.get("metrics", [])
-#     device.configured = True
-
-#     device.save()
-
-#     return Response({"status": "configured"})
 
 
 # ✅ SEND MQTT CONFIG BY MAIL

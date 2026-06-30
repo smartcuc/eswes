@@ -69,7 +69,11 @@ def device_setup_options(request):
 @permission_classes([IsAuthenticated])
 def device_list(request):
 
-    devices = Device.objects.filter(home__user=request.user)
+    devices = Device.objects.filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
+        )
 
     return Response(DeviceSerializer(devices, many=True).data)
 
@@ -82,7 +86,11 @@ def device_list(request):
 @permission_classes([IsAuthenticated])
 def unconfigured_devices(request):
 
-    devices = Device.objects.filter(home__user=request.user)
+    devices = Device.objects.filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
+        )
 
     result = []
 
@@ -381,3 +389,103 @@ def list_homes(request):
     homes = Home.objects.filter(user=request.user)
     serializer = HomeSerializer(homes, many=True)
     return Response(serializer.data)
+
+
+# ============================================================
+# ✅ REMOVE DEVICES
+# ============================================================
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def remove_devices(request):
+
+    device_ids = request.data.get("device_ids", [])
+
+    if not device_ids:
+
+        return Response(
+            {"detail": "No devices selected"},
+            status=400,
+        )
+
+    delete_after = timezone.now() + timedelta(days=7)
+
+    updated = Device.objects.filter(
+        id__in=device_ids,
+        home__user=request.user,
+        active=True,
+    ).update(
+        active=False,
+        pending_delete=True,
+        delete_after=delete_after,
+    )
+
+    return Response({
+        "updated": updated,
+        "delete_after": delete_after,
+    })
+
+
+# ============================================================
+# ✅ RESTORE DEVICES
+# ============================================================
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def restore_devices(request):
+
+    device_ids = request.data.get("device_ids", [])
+
+    updated = Device.objects.filter(
+        id__in=device_ids,
+        home__user=request.user,
+        pending_delete=True,
+    ).update(
+        active=True,
+        pending_delete=False,
+        delete_after=None,
+    )
+
+    return Response({
+        "updated": updated,
+    })
+
+
+# ============================================================
+# ✅ TRASH BIN
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def trash_devices(request):
+
+    devices = Device.objects.filter(
+        home__user=request.user,
+        pending_delete=True,
+    )
+
+    return Response(
+        DeviceSerializer(devices, many=True).data
+    )
+
+
+# ============================================================
+# ✅ PURGE DEVICES
+# ============================================================
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def purge_devices(request):
+
+    device_ids = request.data.get("device_ids", [])
+
+    deleted, _ = Device.objects.filter(
+        id__in=device_ids,
+        home__user=request.user,
+        pending_delete=True,
+    ).delete()
+
+    return Response({
+        "deleted": deleted,
+    })
+

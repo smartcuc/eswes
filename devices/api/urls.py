@@ -10,6 +10,10 @@ from .views import (
     latest_device_values,
     configure_device,
     device_timeseries,
+    remove_devices,
+    restore_devices,
+    trash_devices,
+    purge_devices,
     sankey_data,
     list_homes,
 )
@@ -23,5 +27,9 @@ urlpatterns = [
     path("<int:device_id>/timeseries/", device_timeseries),
     path("sankey/", sankey_data),
     path("homes/", list_homes),
+    path("remove/", remove_devices),
+    path("restore/", restore_devices),
+    path("trash/", trash_devices),
+    path("purge/", purge_devices),
 ]
 

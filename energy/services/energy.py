@@ -11,19 +11,25 @@ def get_energy_data(user):
     signals = get_ems_signals(user)
     flow = calculate_energy_flow(signals)
 
-    unconfigured = Device.objects.filter(user=user, configured=False)
+    
+    unconfigured = Device.objects.filter(
+        home__user=user,
+        configured=False,
+        active=True,
+        pending_delete=False,
+    )
 
     return {
-        "signals": signals,
-        "flow": flow,
-        "devices": {
-            "unconfigured": [
-                {
-                    "id": d.id,
-                    "identifier": d.identifier,
-                    "name": d.name,
-                }
-                for d in unconfigured
-            ]
-        }
+    "signals": signals,
+    "flow": flow,
+    "devices": {
+        "unconfigured": [
+            {
+                "id": d.id,
+                "identifier": d.identifier,
+                "name": getattr(d.config, "name", d.identifier),
+            }
+            for d in unconfigured
+        ]
     }
+}

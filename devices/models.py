@@ -7,6 +7,7 @@ import secrets
 from django.core.cache import cache
 
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from channels.layers import get_channel_layer
@@ -110,6 +111,21 @@ class Device(models.Model):
     
     # ✅ NEU: technischer Status
     configured = models.BooleanField(default=False, db_index=True)
+    
+    active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+
+    pending_delete = models.BooleanField(
+        default=False,
+        db_index=True,
+    )
+
+    delete_after = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     # 🔥 Lifecycle
     first_seen = models.DateTimeField(auto_now_add=True)

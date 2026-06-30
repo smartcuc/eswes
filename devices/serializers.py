@@ -65,10 +65,27 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
         identifier = validated_data["identifier"]
         name = validated_data.get("name")
 
-        device, _ = Device.objects.get_or_create(
+        device, created = Device.objects.get_or_create(
             home=home,
-            identifier=identifier
+            identifier=identifier,
+            defaults={
+                "active": True,
+                "pending_delete": False,
+            },
         )
+
+        if not created:
+            device.active = True
+            device.pending_delete = False
+            device.delete_after = None
+            device.save(
+                update_fields=[
+                    "active",
+                    "pending_delete",
+                    "delete_after",
+                ]
+            )
+        
 
         # ✅ Name gehört in DeviceConfig
         if name:
@@ -86,6 +103,7 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
             provision_home.delay(home.id)
 
         return device
+
 
 # ✅ STATUS SERIALIZER (für Monitoring)
 class DeviceStatusSerializer(serializers.ModelSerializer):

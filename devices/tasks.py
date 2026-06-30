@@ -8,8 +8,9 @@ import logging
 
 from celery import shared_task
 from django.db import transaction
+from django.utils import timezone
 
-from .models import Home
+from .models import Home, Device
 from .mqtt import mqtt_cmd
 
 logger = logging.getLogger(__name__)
@@ -182,7 +183,6 @@ from devices.services.aggregation import (
     aggregate_5m,
 )
 
-
 @shared_task
 def run_1m_aggregation():
     aggregate_1m()
@@ -191,3 +191,24 @@ def run_1m_aggregation():
 @shared_task
 def run_5m_aggregation():
     aggregate_5m()
+
+
+# ============================================================
+# ✅ AUTO PURGE TRASH
+# ============================================================
+
+@shared_task
+def purge_pending_devices():
+
+    deleted, _ = Device.objects.filter(
+        pending_delete=True,
+        delete_after__lte=timezone.now(),
+    ).delete()
+
+    logger.info(
+        "devices.purge.success",
+        extra={"deleted": deleted},
+    )
+
+    return deleted
+
