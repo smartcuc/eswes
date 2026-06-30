@@ -77,9 +77,22 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
         home=home,
         identifier=device_identifier
     ).first()
-
+##
+    print(
+    f"MQTT DEBUG | topic={topic} "
+    f"device={device_identifier} "
+    f"found={bool(device)} "
+    f"auto_prov={auto_prov}"
+)
+##
     # ✅ AUTO-PROVISION FIRST
     if not device and auto_prov:
+####
+        print(
+                f"MQTT DEBUG | creating device {device_identifier}"
+            )  
+####
+
         device = Device.objects.create(
             home=home,
             identifier=device_identifier

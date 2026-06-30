@@ -60,7 +60,7 @@ export default function RemoveDevicesModal({
         }
 
         const confirmed = window.confirm(
-            `${selectedIds.length} Gerät(e) wirklich löschen?`
+            `${selectedIds.length} Gerät(e) in den Papierkorb verschieben?`
         );
 
         if (!confirmed) {
@@ -69,17 +69,18 @@ export default function RemoveDevicesModal({
 
         try {
 
-            await Promise.all(
-                selectedIds.map(id =>
-                    apiFetch(`/api/devices/${id}/`, {
-                        method: "DELETE",
-                    })
-                )
-            );
+            await apiFetch("/api/devices/remove/", {
+                method: "POST",
+                body: JSON.stringify({
+                    device_ids: selectedIds,
+                }),
+            });
 
             await queryClient.invalidateQueries({
                 queryKey: ["devices"],
             });
+
+            setSelectedIds([]);
 
             onClose();
 
@@ -87,7 +88,7 @@ export default function RemoveDevicesModal({
 
             console.error(err);
 
-            alert("Fehler beim Löschen.");
+            alert("Fehler beim Entfernen.");
         }
     }
 

@@ -1,6 +1,6 @@
-#
-#
-#
+#################################################
+# integrations\management\commands\mqtt_ingest.py
+#################################################
 
 import json
 import os
@@ -11,7 +11,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-import paho.mqtt.client as mqtt  # pip install paho-mqtt  【1-47859f】
+import paho.mqtt.client as mqtt  # pip install paho-mqtt
 
 from integrations.models import InboundWebhookEvent
 from integrations.tasks import process_inbound_webhook_event

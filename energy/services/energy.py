@@ -27,7 +27,11 @@ def get_energy_data(user):
             {
                 "id": d.id,
                 "identifier": d.identifier,
-                "name": getattr(d.config, "name", d.identifier),
+                "name": (
+                    d.config.name
+                    if hasattr(d, "config") and d.config.name
+                    else d.identifier
+                ),
             }
             for d in unconfigured
         ]
