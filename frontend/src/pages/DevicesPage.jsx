@@ -3,10 +3,11 @@
 */
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { apiFetch } from "../api/client";
 import DeviceChartModal from "../components/device/DeviceChartModal";
 import DeviceSetupModal from "../components/device/DeviceSetupModal";
+import useUserPreference from "../hooks/useUserPreference";
 
 /* =========================================================
    DEVICE CARD
@@ -94,18 +95,6 @@ export default function DevicesPage() {
     const [editingDevice, setEditingDevice] = useState(null);
 
     const [filterText, setFilterText] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
-
-    // ✅ STRUCTURE TOGGLES
-    const [showFloors, setShowFloors] = useState(true);
-    const [showRooms, setShowRooms] = useState(true);
-
-    // ✅ ROLES (multi select)
-    const [activeRoles, setActiveRoles] = useState([
-        "producer",
-        "consumer",
-        "battery"
-    ]);
 
     const devicesQuery = useQuery({
         queryKey: ["devices"],
@@ -125,10 +114,49 @@ export default function DevicesPage() {
         retry: false,
     });
 
-    const devices = devicesQuery.data || [];
+    const {
+        value: settings,
+        setValue: saveSettings,
+        isLoading: settingsLoading,
+    } = useUserPreference("devicepage");
 
-    const statusMap = Object.fromEntries((statusQuery.data || []).map(s => [s.id, s]));
-    const valueMap = Object.fromEntries((valuesQuery.data || []).map(v => [v.device, v]));
+    const showFloors = useMemo(
+        () => settings.showFloors ?? true,
+        [settings.showFloors]
+    );
+
+    const showRooms = useMemo(
+        () => settings.showRooms ?? true,
+        [settings.showRooms]
+    );
+
+    const statusFilter = useMemo(
+        () => settings.statusFilter ?? "all",
+        [settings.statusFilter]
+    );
+
+    const activeRoles = useMemo(
+        () =>
+            settings.roles ?? [
+                "producer",
+                "consumer",
+                "battery",
+            ],
+        [settings.roles]
+    );
+
+    const devices = useMemo(
+        () => devicesQuery.data ?? [],
+        [devicesQuery.data]
+    );
+
+    const statusMap = Object.fromEntries(
+        (statusQuery.data || []).map(s => [s.id, s])
+    );
+
+    const valueMap = Object.fromEntries(
+        (valuesQuery.data || []).map(v => [v.device, v])
+    );
 
     const merged = useMemo(() => {
         return devices.map(d => ({
@@ -142,16 +170,22 @@ export default function DevicesPage() {
     const roleLabels = {
         producer: "⚡ Erzeuger",
         consumer: "🔌 Verbraucher",
-        battery: "🔋 Speicher"
+        battery: "🔋 Speicher",
     };
 
     const roleStats = useMemo(() => {
         const map = {};
+
         merged.forEach(d => {
             const key = d.config?.role?.key;
-            if (!key) return;
+
+            if (!key) {
+                return;
+            }
+
             map[key] = (map[key] || 0) + 1;
         });
+
         return map;
     }, [merged]);
 
@@ -162,7 +196,9 @@ export default function DevicesPage() {
         let list = [...merged];
 
         if (filterText) {
+
             const t = filterText.trim().toLowerCase();
+
             list = list.filter(d =>
                 (d.display_name || "").toLowerCase().includes(t) ||
                 (d.identifier || "").toLowerCase().includes(t)
@@ -180,26 +216,42 @@ export default function DevicesPage() {
         if (statusFilter === "missing") {
             list = list.filter(d => {
                 const c = d.config || {};
+
                 return !c.role || !c.measurement_type;
             });
         }
 
         list = list.filter(d => {
             const role = d.config?.role?.key;
-            return role ? activeRoles.includes(role) : true;
+
+            return role
+                ? activeRoles.includes(role)
+                : true;
         });
 
         return list;
 
-    }, [merged, filterText, statusFilter, activeRoles]);
+    }, [
+        merged,
+        filterText,
+        statusFilter,
+        activeRoles,
+    ]);
 
     /* ✅ BANNER */
 
     const unconfiguredDevices = useMemo(() => {
+
         return filtered.filter(d => {
+
             const c = d.config || {};
-            return !c.role || !c.measurement_type;
+
+            return (
+                !c.role ||
+                !c.measurement_type
+            );
         });
+
     }, [filtered]);
 
     /* ✅ GROUPING */
@@ -224,9 +276,16 @@ export default function DevicesPage() {
 
         }, {});
 
-    }, [filtered, showFloors, showRooms]);
+    }, [
+        filtered,
+        showFloors,
+        showRooms,
+    ]);
 
-    if (devicesQuery.isLoading) {
+    if (
+        devicesQuery.isLoading ||
+        settingsLoading
+    ) {
         return <div className="p-6">Lade Geräte…</div>;
     }
 
@@ -247,7 +306,15 @@ export default function DevicesPage() {
                 {["all", "online", "offline", "missing"].map(k => (
                     <button
                         key={k}
-                        onClick={() => setStatusFilter(prev => prev === k ? "all" : k)}
+                        onClick={() =>
+                            saveSettings({
+                                ...settings,
+                                statusFilter:
+                                    statusFilter === k
+                                        ? "all"
+                                        : k,
+                            })
+                        }
                         className={`px-3 py-1 rounded-full text-sm border ${statusFilter === k ? "bg-indigo-600 text-white" : "bg-white"
                             }`}
                     >
@@ -264,11 +331,17 @@ export default function DevicesPage() {
                         <button
                             key={role}
                             onClick={() => {
-                                setActiveRoles(prev =>
-                                    prev.includes(role)
-                                        ? prev.filter(r => r !== role)
-                                        : [...prev, role]
-                                );
+
+                                const nextRoles =
+                                    activeRoles.includes(role)
+                                        ? activeRoles.filter(r => r !== role)
+                                        : [...activeRoles, role];
+
+                                saveSettings({
+                                    ...settings,
+                                    roles: nextRoles,
+                                });
+
                             }}
                             className={`px-3 py-1 rounded-full text-sm border ${active ? "bg-indigo-600 text-white" : "bg-white"
                                 }`}
@@ -283,7 +356,12 @@ export default function DevicesPage() {
                     <input
                         type="checkbox"
                         checked={showFloors}
-                        onChange={(e) => setShowFloors(e.target.checked)}
+                        onChange={(e) =>
+                            saveSettings({
+                                ...settings,
+                                showFloors: e.target.checked,
+                            })
+                        }
                     />
                     Etagen
                 </label>
@@ -292,7 +370,12 @@ export default function DevicesPage() {
                     <input
                         type="checkbox"
                         checked={showRooms}
-                        onChange={(e) => setShowRooms(e.target.checked)}
+                        onChange={(e) =>
+                            saveSettings({
+                                ...settings,
+                                showRooms: e.target.checked,
+                            })
+                        }
                     />
                     Räume
                 </label>

@@ -7,6 +7,7 @@ import { useUnconfiguredDevices } from "../../hooks/useUnconfiguredDevices";
 import { useState } from "react";
 import DeviceSetupModal from "../device/DeviceSetupModal";
 import AddDeviceModal from "../device/AddDeviceModal";
+import RemoveDevicesModal from "../device/RemoveDevicesModal";
 
 
 const sections = [
@@ -27,6 +28,7 @@ const sections = [
         items: [
             { name: "All Devices", path: "/app/devices", icon: "📟" },
             { name: "Add Device", action: "add_device", icon: "➕" },
+            { name: "Remove Device", action: "remove_device", icon: "🗑️" },
         ],
     },
     {
@@ -52,6 +54,8 @@ export default function Sidebar() {
     const count = query?.data?.count ?? 0;
     const [openSetup, setOpenSetup] = useState(false);
     const [openAddDevice, setOpenAddDevice] = useState(false);
+    const [openRemoveDevice, setOpenRemoveDevice] = useState(false);
+
 
     return (
         <div className="w-64 bg-white border-r flex flex-col">
@@ -91,8 +95,18 @@ export default function Sidebar() {
                                         {item.name}
                                     </button>
 
-                                ) : (
+                                ) : item.action === "remove_device" ? (
 
+                                    <button
+                                        key="remove"
+                                        onClick={() => setOpenRemoveDevice(true)}
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded w-full text-left"
+                                    >
+                                        <span>{item.icon}</span>
+                                        {item.name}
+                                    </button>
+
+                                ) : (
                                     <NavLink
                                         key={item.path}
                                         to={item.path}
@@ -142,6 +156,11 @@ export default function Sidebar() {
             <AddDeviceModal
                 open={openAddDevice}
                 onClose={() => setOpenAddDevice(false)}
+            />
+
+            <RemoveDevicesModal
+                open={openRemoveDevice}
+                onClose={() => setOpenRemoveDevice(false)}
             />
 
         </div>
