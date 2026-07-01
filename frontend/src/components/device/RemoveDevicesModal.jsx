@@ -2,7 +2,7 @@
 # src/components/device/RemoveDevicesModal.jsx
 */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "../../api/client";
@@ -13,6 +13,27 @@ export default function RemoveDevicesModal({
 }) {
 
     const queryClient = useQueryClient();
+
+    useEffect(() => {
+
+        if (!open) {
+            return;
+        }
+
+        function handleKeyDown(event) {
+
+            if (event.key === "Escape") {
+                onClose();
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+
+    }, [open, onClose]);
 
     const [selectedIds, setSelectedIds] = useState([]);
 
@@ -93,9 +114,14 @@ export default function RemoveDevicesModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
-
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+        <div
+            className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-xl shadow-xl w-full max-w-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
 
                 <div className="p-4 border-b flex justify-between items-center">
 

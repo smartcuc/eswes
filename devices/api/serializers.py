@@ -132,13 +132,26 @@ class DeviceSerializer(serializers.ModelSerializer):
     display_name = serializers.SerializerMethodField()
     classified = serializers.SerializerMethodField()
 
+    last_seen = serializers.DateTimeField(
+        read_only=True,
+        allow_null=True,
+    )
+
+    delete_after = serializers.DateTimeField(
+        read_only=True,
+        allow_null=True,
+    )
+
     class Meta:
         model = Device
+        
         fields = (
             "id",
             "identifier",
             "display_name",
             "classified",
+            "last_seen",
+            "delete_after",
             "config",
         )
 

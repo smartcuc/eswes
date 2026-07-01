@@ -62,12 +62,25 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
 
     /* ESC */
     useEffect(() => {
-        const onKey = (e) => {
-            if (e.key === "Escape") onClose();
+
+        if (!open) {
+            return;
+        }
+
+        function handleKeyDown(event) {
+
+            if (event.key === "Escape") {
+                onClose();
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
         };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onClose]);
+
+    }, [open, onClose]);
 
     /* SAVE */
     async function saveDevice(id, values) {
@@ -214,9 +227,14 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
     const progress = ((index + 1) / devices.length) * 100;
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-
-            <div className="bg-white w-full max-w-md p-6 rounded-xl shadow-lg">
+        <div
+            className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-xl shadow-xl w-full max-w-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
 
                 {/* HEADER */}
                 <div className="mb-4">
