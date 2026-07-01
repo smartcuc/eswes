@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "../../api/client";
 
+
 export default function TrashBinModal({
     open,
     onClose,
@@ -15,6 +16,8 @@ export default function TrashBinModal({
     const queryClient = useQueryClient();
 
     const [selectedIds, setSelectedIds] = useState([]);
+
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
 
@@ -25,6 +28,8 @@ export default function TrashBinModal({
         function handleKeyDown(event) {
 
             if (event.key === "Escape") {
+                setPage(1);
+                setSelectedIds([]);
                 onClose();
             }
         }
@@ -43,11 +48,32 @@ export default function TrashBinModal({
         enabled: open,
     });
 
+    const devices = [...(trashQuery.data ?? [])].sort(
+        (a, b) =>
+            a.display_name.localeCompare(
+                b.display_name,
+                "de",
+                { sensitivity: "base" }
+            )
+    );
+
+    const PAGE_SIZE = 3;
+
+    const pageCount = Math.max(
+        1,
+        Math.ceil(devices.length / PAGE_SIZE)
+    );
+
+    const safePage = Math.min(page, pageCount)
+
+    const pagedDevices = devices.slice(
+        (safePage - 1) * PAGE_SIZE,
+        safePage * PAGE_SIZE
+    );
+
     if (!open) {
         return null;
     }
-
-    const devices = trashQuery.data ?? [];
 
     const allSelected =
         devices.length > 0 &&
@@ -74,6 +100,13 @@ export default function TrashBinModal({
         );
     }
 
+    function closeModal() {
+
+        setPage(1);
+        setSelectedIds([]);
+        onClose();
+    }
+
     async function restoreSelected() {
 
         if (!selectedIds.length) {
@@ -97,11 +130,16 @@ export default function TrashBinModal({
                     queryKey: ["device-trash"],
                 }),
                 queryClient.invalidateQueries({
+                    queryKey: ["device-trash-count"],
+                }),
+                queryClient.invalidateQueries({
                     queryKey: ["unconfigured-devices"],
                 }),
             ]);
 
             setSelectedIds([]);
+
+            closeModal();
 
         } catch (err) {
 
@@ -140,6 +178,9 @@ export default function TrashBinModal({
                 queryClient.invalidateQueries({
                     queryKey: ["device-trash"],
                 }),
+                queryClient.invalidateQueries({
+                    queryKey: ["device-trash-count"],
+                }),
             ]);
 
             setSelectedIds([]);
@@ -154,19 +195,21 @@ export default function TrashBinModal({
     return (
         <div
             className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center"
-            onClick={onClose}
+            onClick={closeModal}
         >
             <div
                 className="
-                bg-white
-                rounded-xl
-                shadow-xl
-                w-full
-                max-w-2xl
-                h-[80vh]
-                flex
-                flex-col
-            "
+                    bg-white
+                    rounded-2xl
+                    shadow-xl
+                    w-full
+                    max-w-2xl
+                    h-[80vh]
+                    flex
+                    flex-col
+                    overflow-hidden
+                "
+
                 onClick={(e) => e.stopPropagation()}
             >
 
@@ -190,6 +233,9 @@ export default function TrashBinModal({
 
                                 <div className="text-xs text-gray-500">
                                     Entfernte Geräte verwalten
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    {devices.length} Geräte
                                 </div>
 
                             </div>
@@ -215,7 +261,7 @@ export default function TrashBinModal({
                             </div>
 
                             <button
-                                onClick={onClose}
+                                onClick={closeModal}
                                 className="text-gray-400 hover:text-gray-600 text-lg"
                             >
                                 ✕
@@ -251,6 +297,7 @@ export default function TrashBinModal({
 
                             </label>
 
+
                             <div className="space-y-2">
 
                                 {devices.length === 0 && (
@@ -259,18 +306,18 @@ export default function TrashBinModal({
                                     </div>
                                 )}
 
-                                {devices.map(device => (
+                                {pagedDevices.map(device => (
 
                                     <div
                                         key={device.id}
                                         className="
-                                        border rounded-xl
-                                        p-3
-                                        bg-white
-                                        shadow-sm
-                                        hover:shadow-md
-                                        transition-all
-                                    "
+                border rounded-xl
+                p-3
+                bg-white
+                shadow-sm
+                hover:shadow-md
+                transition-all
+            "
                                     >
 
                                         <div className="flex items-start gap-3">
@@ -299,29 +346,27 @@ export default function TrashBinModal({
                                                     </div>
 
                                                     <div className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">
-                                                        ♻ Vorgemerkt
+                                                        ♻ Zur Löschung vorgemerkt
                                                     </div>
 
                                                 </div>
 
-                                                <div className="mt-2 space-y-1 text-sm">
+                                                <div className="mt-2 space-y-1">
 
-                                                    <div className="flex items-center gap-2 text-gray-600">
-                                                        <span>🕒</span>
-                                                        <span>
-                                                            {device.last_seen
-                                                                ? new Date(device.last_seen).toLocaleString("de-DE")
-                                                                : "Keine Aktivität bekannt"}
-                                                        </span>
+                                                    <div className="text-sm text-gray-600">
+                                                        🕒{" "}
+                                                        {device.last_seen
+                                                            ? new Date(device.last_seen)
+                                                                .toLocaleString("de-DE")
+                                                            : "Keine Aktivität bekannt"}
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 text-orange-700">
-                                                        <span>🗑️</span>
-                                                        <span>
-                                                            {device.delete_after
-                                                                ? `Löschung geplant am ${new Date(device.delete_after).toLocaleString("de-DE")}`
-                                                                : "Kein Löschdatum"}
-                                                        </span>
+                                                    <div className="text-sm text-orange-700">
+                                                        🗑️{" "}
+                                                        {device.delete_after
+                                                            ? new Date(device.delete_after)
+                                                                .toLocaleString("de-DE")
+                                                            : "Kein Löschdatum"}
                                                     </div>
 
                                                 </div>
@@ -334,11 +379,57 @@ export default function TrashBinModal({
 
                                 ))}
 
+
+                                {pageCount > 1 && (
+
+                                    <div className="flex justify-center items-center gap-3 pt-2">
+
+                                        <button
+                                            onClick={() => setPage(
+                                                Math.max(1, safePage - 1)
+                                            )}
+                                            disabled={safePage === 1}
+                                            className="
+                px-3 py-1
+                border
+                rounded-lg
+                bg-white
+                disabled:opacity-40
+            "
+                                        >
+                                            ←
+                                        </button>
+
+                                        <span className="text-sm text-gray-600">
+                                            Seite {safePage} von {pageCount}
+                                        </span>
+
+                                        <button
+                                            onClick={() => setPage(
+                                                Math.min(pageCount, safePage + 1)
+                                            )}
+                                            disabled={safePage === pageCount}
+                                            className="
+                px-3 py-1
+                border
+                rounded-lg
+                bg-white
+                disabled:opacity-40
+            "
+                                        >
+                                            →
+                                        </button>
+
+                                    </div>
+
+                                )}
+
                             </div>
 
                         </>
 
                     )}
+
 
                 </div>
 
@@ -385,5 +476,5 @@ export default function TrashBinModal({
             </div>
 
         </div>
-    )
+    );
 }

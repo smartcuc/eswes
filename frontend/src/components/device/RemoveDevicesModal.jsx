@@ -14,6 +14,10 @@ export default function RemoveDevicesModal({
 
     const queryClient = useQueryClient();
 
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    const [page, setPage] = useState(1);
+
     useEffect(() => {
 
         if (!open) {
@@ -23,6 +27,8 @@ export default function RemoveDevicesModal({
         function handleKeyDown(event) {
 
             if (event.key === "Escape") {
+                setPage(1);
+                setSelectedIds([]);
                 onClose();
             }
         }
@@ -35,19 +41,54 @@ export default function RemoveDevicesModal({
 
     }, [open, onClose]);
 
-    const [selectedIds, setSelectedIds] = useState([]);
-
     const devicesQuery = useQuery({
         queryKey: ["devices"],
         queryFn: () => apiFetch("/api/devices/"),
         enabled: open,
     });
 
+    const statusQuery = useQuery({
+        queryKey: ["devices-status"],
+        queryFn: () => apiFetch("/api/devices/status/"),
+        enabled: open,
+    });
+
+    const devices = [...(devicesQuery.data ?? [])].sort(
+        (a, b) =>
+            a.display_name.localeCompare(
+                b.display_name,
+                "de",
+                { sensitivity: "base" }
+            )
+    );
+
+    const statusMap = Object.fromEntries(
+        (statusQuery.data ?? []).map(device => [
+            device.id,
+            device,
+        ])
+    );
+
+    const PAGE_SIZE = 4;
+
+    const pageCount = Math.max(
+        1,
+        Math.ceil(devices.length / PAGE_SIZE)
+    );
+
+    const safePage = Math.min(
+        page,
+        pageCount
+    );
+
+    const pagedDevices = devices.slice(
+        (safePage - 1) * PAGE_SIZE,
+        safePage * PAGE_SIZE
+    );
+
     if (!open) {
         return null;
     }
-
-    const devices = devicesQuery.data ?? [];
 
     const allSelected =
         devices.length > 0 &&
@@ -74,14 +115,36 @@ export default function RemoveDevicesModal({
         );
     }
 
+    function closeModal() {
+
+        setPage(1);
+        setSelectedIds([]);
+        onClose();
+    }
+
     async function handleDelete() {
 
         if (selectedIds.length === 0) {
             return;
         }
 
+        const hasOnlineDevice = selectedIds.some(
+            id => statusMap[id]?.status === "online"
+        );
+
         const confirmed = window.confirm(
-            `${selectedIds.length} Gerät(e) in den Papierkorb verschieben?`
+            hasOnlineDevice
+
+                ? `⚠ Mindestens ein ausgewähltes Gerät ist aktuell online.
+
+        Wenn MQTT, Home Assistant oder ioBroker weiterhin Daten senden,
+        kann das Gerät automatisch erneut erkannt werden.
+
+        Entfernen Sie nach Möglichkeit zuerst die Datenquelle.
+
+        Trotzdem in den Papierkorb verschieben?`
+
+                : `${selectedIds.length} Gerät(e) in den Papierkorb verschieben?`
         );
 
         if (!confirmed) {
@@ -97,13 +160,22 @@ export default function RemoveDevicesModal({
                 }),
             });
 
-            await queryClient.invalidateQueries({
-                queryKey: ["devices"],
-            });
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: ["devices"],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["device-trash"],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["device-trash-count"],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["unconfigured-devices"],
+                }),
+            ]);
 
-            setSelectedIds([]);
-
-            onClose();
+            closeModal();
 
         } catch (err) {
 
@@ -116,34 +188,96 @@ export default function RemoveDevicesModal({
     return (
         <div
             className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center"
-            onClick={onClose}
+            onClick={closeModal}
         >
             <div
-                className="bg-white rounded-xl shadow-xl w-full max-w-2xl"
+                className="
+                    bg-white
+                    rounded-2xl
+                    shadow-xl
+                    w-full
+                    max-w-2xl
+                    h-[80vh]
+                    flex
+                    flex-col
+                    overflow-hidden
+                "
                 onClick={(e) => e.stopPropagation()}
             >
 
-                <div className="p-4 border-b flex justify-between items-center">
+                {/* Header */}
 
-                    <h2 className="font-semibold text-lg">
-                        Geräte löschen
-                    </h2>
+                <div className="p-4 border-b bg-gradient-to-r from-red-50 to-orange-50">
 
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        ✕
-                    </button>
+                    <div className="flex justify-between items-center">
+
+                        <div className="flex items-center gap-3">
+
+                            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-xl shadow-sm">
+                                🗑️
+                            </div>
+
+                            <div>
+
+                                <h2 className="font-semibold text-lg text-gray-900">
+                                    Geräte entfernen
+                                </h2>
+
+                                <div className="text-xs text-gray-500">
+                                    Geräte in den Papierkorb verschieben
+                                </div>
+
+                                <div className="text-xs text-gray-500">
+                                    {devices.length} Geräte
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div className="flex items-center gap-3">
+
+                            <div
+                                title="Geräte werden nicht sofort gelöscht. Sie bleiben 7 Tage im Papierkorb. Wenn Home Assistant, ioBroker oder MQTT weiterhin Daten sendet, kann das Gerät automatisch erneut erkannt werden. Entfernen Sie daher zuerst die Datenquelle."
+                                className="
+                                w-8 h-8
+                                rounded-full
+                                bg-red-100
+                                text-red-700
+                                flex items-center justify-center
+                                cursor-help
+                                text-sm
+                                font-medium
+                            "
+                            >
+                                ℹ
+                            </div>
+
+                            <button
+                                onClick={closeModal}
+                                className="text-gray-400 hover:text-gray-600 text-lg"
+                            >
+                                ✕
+                            </button>
+
+                        </div>
+
+                    </div>
 
                 </div>
 
-                <div className="p-4">
+                {/* Content */}
+
+                <div className="flex-1 overflow-y-auto p-4">
 
                     {devicesQuery.isLoading ? (
+
                         <div>Lade Geräte...</div>
+
                     ) : (
+
                         <>
+
                             <label className="flex items-center gap-2 mb-4">
 
                                 <input
@@ -156,42 +290,160 @@ export default function RemoveDevicesModal({
 
                             </label>
 
-                            <div className="border rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+                            <div className="space-y-2">
 
-                                {devices.map(device => (
+                                {devices.length === 0 && (
+                                    <div className="p-6 text-center text-gray-500 border rounded-xl">
+                                        Keine Geräte vorhanden
+                                    </div>
+                                )}
 
-                                    <div
-                                        key={device.id}
-                                        className="border-b last:border-b-0 p-3 flex items-center gap-3"
-                                    >
+                                {pagedDevices.map(device => {
 
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.includes(device.id)}
-                                            onChange={() => toggleDevice(device.id)}
-                                        />
+                                    const status = statusMap[device.id];
 
-                                        <div>
+                                    return (
 
-                                            <div className="font-medium">
-                                                {device.display_name}
-                                            </div>
+                                        <div
+                                            key={device.id}
+                                            className="
+                                border rounded-xl
+                                p-3
+                                bg-white
+                                shadow-sm
+                                hover:shadow-md
+                                transition-all
+                            "
+                                        >
 
-                                            <div className="text-xs text-gray-500">
-                                                {device.identifier}
+                                            <div className="flex items-start gap-3">
+
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(device.id)}
+                                                    onChange={() => toggleDevice(device.id)}
+                                                    className="mt-1"
+                                                />
+
+                                                <div className="flex-1">
+
+                                                    <div className="flex items-start justify-between">
+
+                                                        <div>
+
+                                                            <div className="font-medium text-gray-900">
+                                                                {device.display_name}
+                                                            </div>
+
+                                                            <div className="text-xs text-gray-500">
+                                                                {device.identifier}
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">
+                                                            🗑 Papierkorb
+                                                        </div>
+
+                                                    </div>
+
+                                                    <div className="mt-2 space-y-1">
+
+                                                        {status?.status === "online" && (
+                                                            <div className="text-sm text-emerald-600 font-medium">
+                                                                🟢 Online
+                                                            </div>
+                                                        )}
+
+                                                        {status?.status === "offline" && (
+                                                            <div className="text-sm text-red-600 font-medium">
+                                                                🔴 Offline
+                                                            </div>
+                                                        )}
+
+                                                        {status?.status === "never_seen" && (
+                                                            <div className="text-sm text-gray-500 font-medium">
+                                                                ⚪ Nie aktiv
+                                                            </div>
+                                                        )}
+
+                                                    </div>
+
+                                                </div>
+
                                             </div>
 
                                         </div>
 
+                                    );
+
+                                })}
+
+                                {pageCount > 1 && (
+
+                                    <div className="flex justify-center items-center gap-3 pt-2">
+
+                                        <button
+                                            onClick={() =>
+                                                setPage(
+                                                    Math.max(
+                                                        1,
+                                                        safePage - 1
+                                                    )
+                                                )
+                                            }
+                                            disabled={safePage === 1}
+                                            className="
+                                px-3 py-1
+                                border
+                                rounded-lg
+                                bg-white
+                                disabled:opacity-40
+                            "
+                                        >
+                                            ←
+                                        </button>
+
+                                        <span className="text-sm text-gray-600">
+                                            Seite {safePage} von {pageCount}
+                                        </span>
+
+                                        <button
+                                            onClick={() =>
+                                                setPage(
+                                                    Math.min(
+                                                        pageCount,
+                                                        safePage + 1
+                                                    )
+                                                )
+                                            }
+                                            disabled={safePage === pageCount}
+                                            className="
+                                px-3 py-1
+                                border
+                                rounded-lg
+                                bg-white
+                                disabled:opacity-40
+                            "
+                                        >
+                                            →
+                                        </button>
+
                                     </div>
-                                ))}
+
+                                )}
+
                             </div>
+
                         </>
+
                     )}
 
                 </div>
 
-                <div className="border-t p-4 flex justify-between items-center">
+                {/* Footer */}
+
+                <div className="border-t p-4 flex justify-between items-center bg-gray-50">
 
                     <div className="text-sm text-gray-500">
                         {selectedIds.length} ausgewählt
@@ -200,7 +452,7 @@ export default function RemoveDevicesModal({
                     <div className="flex gap-2">
 
                         <button
-                            onClick={onClose}
+                            onClick={closeModal}
                             className="px-4 py-2 border rounded-lg"
                         >
                             Abbrechen
@@ -208,10 +460,15 @@ export default function RemoveDevicesModal({
 
                         <button
                             onClick={handleDelete}
-                            disabled={selectedIds.length === 0}
-                            className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:bg-gray-300"
+                            disabled={!selectedIds.length}
+                            className="
+                            px-4 py-2 rounded-lg
+                            bg-red-600 hover:bg-red-700
+                            text-white
+                            disabled:bg-gray-300
+                        "
                         >
-                            Löschen
+                            In Papierkorb verschieben
                         </button>
 
                     </div>

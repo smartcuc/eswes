@@ -190,6 +190,7 @@ export default function Sidebar() {
             />
 
             <TrashBinModal
+                key={openTrashBin ? "open" : "closed"}
                 open={openTrashBin}
                 onClose={() => setOpenTrashBin(false)}
             />
