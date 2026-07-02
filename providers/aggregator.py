@@ -27,15 +27,15 @@ def aggregate_signals(user, category="system"):
         "battery": {},
     }
 
-    for pid in provider_ids:
-        provider = PROVIDERS.get(pid)
-        if not provider:
-            continue
+    # for pid in provider_ids:
+    #     provider = PROVIDERS.get(pid)
+    #     if not provider:
+    #         continue
 
-        if provider.category != category:
-            continue
+    #     if provider.category != category:
+    #         continue
 
-        data = provider.fetch_signals(user)
-        result = merge_dicts(result, data)
+    #     data = provider.fetch_signals(user)
+    #     result = merge_dicts(result, data)
 
-    return result
+    # return result
