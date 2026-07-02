@@ -198,21 +198,21 @@ def build_live_sankey(user, flow):
 # solange flow noch leer ist
 #
 
-    if not links:
+    #if not links:
 
-        links.append({
+    links.append({
             "source": "pv",
             "target": "sum",
             "value": 3000,
         })
 
-        links.append({
+    links.append({
             "source": "battery",
             "target": "sum",
             "value": 1000,
         })
 
-        links.append({
+    links.append({
             "source": "grid",
             "target": "sum",
             "value": 500,
