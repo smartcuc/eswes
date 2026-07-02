@@ -1,5 +1,5 @@
 /*
-#
+# src/features/energy/components/EnergyKpis.jsx
 */
 
 export default function EnergyKpis({ devices }) {
