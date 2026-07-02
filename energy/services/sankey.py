@@ -8,7 +8,7 @@
 from devices.models import Device
 
 
-def build_live_sankey(user):
+def build_live_sankey(user, flow):
     """
     Erzeugt die Sankey-Struktur für das Live-Dashboard.
 
@@ -124,6 +124,16 @@ def build_live_sankey(user):
         #
 
         elif role_key == "consumer":
+
+            #
+            # Nur Leistungswerte ins Sankey
+            #
+
+            if config.measurement_type not in [
+                "power",
+                "active_power",
+            ]:
+                continue
 
             consumers.append((device, node_id))
 
