@@ -122,6 +122,9 @@ def build_live_sankey(user, flow):
         if role.key != "consumer":
             continue
 
+        if config.measurement_type != "power":
+            continue
+
         node_id = f"device_{device.id}"
 
         add_node(
@@ -190,98 +193,36 @@ def build_live_sankey(user, flow):
             "value": 1,
         })
 
+#
+# TEMPORÄR
+# solange flow noch leer ist
+#
 
-    
-    nodes = [
-            {
-                "id": "pv",
-                "label": "PV",
-            },
-            {
-                "id": "battery",
-                "label": "Batterie",
-            },
-            {
-                "id": "grid",
-                "label": "Netz",
-            },
-            {
-                "id": "sum",
-                "label": "Σ Energie",
-            },
-            {
-                "id": "consumer",
-                "label": "Verbraucher",
-            },
-        ]
+    if not links:
 
-    links = []
-
-        #
-        # solange keine echten Signale vorhanden sind
-        # Testwerte verwenden
-        #
-
-    links.append({
+        links.append({
             "source": "pv",
             "target": "sum",
             "value": 3000,
         })
 
-    links.append({
+        links.append({
             "source": "battery",
             "target": "sum",
             "value": 1000,
         })
 
-    links.append({
+        links.append({
             "source": "grid",
             "target": "sum",
             "value": 500,
         })
-
-    links.append({
-            "source": "sum",
-            "target": "consumer",
-            "value": 4500,
-        })
-
     return {
             "nodes": nodes,
             "links": links,
         }
 
 
-
-    #from pprint import pformat
-
-    # return {
-    #     "debug": {
-    #         "devices": [
-    #             {
-    #                 "id": d.id,
-    #                 "identifier": d.identifier,
-    #                 "role": getattr(d.config.role, "key", None),
-    #                 "measurement_type": getattr(
-    #                     d.config,
-    #                     "measurement_type",
-    #                     None,
-    #                 ),
-    #                 "floor": getattr(
-    #                     d.config.floor,
-    #                     "name",
-    #                     None,
-    #                 ) if d.config.floor else None,
-    #                 "room": getattr(
-    #                     d.config.room,
-    #                     "name",
-    #                     None,
-    #                 ) if d.config.room else None,
-    #             }
-    #             for d in devices
-    #         ]
-    #     }
-    # }
 
     # return {
     #     "nodes": [
