@@ -21,6 +21,15 @@ def get_latest_power(device):
     return metric.value if metric else 0
 
 
+def get_device_by_identifier(devices, identifier):
+
+    for device in devices:
+        if device.identifier == identifier:
+            return device
+
+    return None
+
+
 def build_live_sankey(user, flow):
 
     devices = (
@@ -37,6 +46,39 @@ def build_live_sankey(user, flow):
             "config__floor",
             "config__room",
         )
+    )
+
+    grid_device = get_device_by_identifier(
+        devices,
+        "grid_total_power",
+    )
+
+    battery_device = get_device_by_identifier(
+        devices,
+        "battery_power",
+    )
+
+    total_device = get_device_by_identifier(
+        devices,
+        "total_active_power",
+    )
+
+    grid_power = (
+        get_latest_power(grid_device)
+        if grid_device
+        else 0
+    )
+
+    battery_power = (
+        get_latest_power(battery_device)
+        if battery_device
+        else 0
+    )
+
+    total_consumption = (
+        get_latest_power(total_device)
+        if total_device
+        else 0
     )
 
     nodes = []
@@ -90,34 +132,6 @@ def build_live_sankey(user, flow):
     )
 
     #
-    # PRODUCER -> SUM
-    #
-
-    if flow.get("pv_to_load", 0) > 0:
-
-        links.append({
-            "source": "pv",
-            "target": "sum",
-            "value": flow["pv_to_load"],
-        })
-
-    if flow.get("battery_to_load", 0) > 0:
-
-        links.append({
-            "source": "battery",
-            "target": "sum",
-            "value": flow["battery_to_load"],
-        })
-
-    if flow.get("grid_to_load", 0) > 0:
-
-        links.append({
-            "source": "grid",
-            "target": "sum",
-            "value": flow["grid_to_load"],
-        })
-
-    #
     # CONSUMER
     #
 
@@ -149,17 +163,17 @@ def build_live_sankey(user, flow):
             or device.identifier
         )
 
-        add_node(
-            node_id,
-            label,
-            "consumer",
-        )
-
         power = get_latest_power(device)
 
         if power <= 0:
             continue
 
+        add_node(
+            node_id,
+            label,
+            "consumer",
+        )
+        
         consumers.append({
             "node_id": node_id,
             "floor": config.floor,
@@ -224,43 +238,33 @@ def build_live_sankey(user, flow):
 
         tracked_consumption += consumer["power"]
 
-#
-# TEMPORÄR
-# solange flow noch leer ist
-#
-
-    #if not links:
-
     links.append({
             "source": "pv",
             "target": "sum",
             "value": 3000,
         })
 
-    links.append({
+    if battery_power > 0:
+
+        links.append({
             "source": "battery",
             "target": "sum",
-            "value": 1000,
+            "value": battery_power,
         })
 
-    links.append({
+    if grid_power > 0:
+
+        links.append({
             "source": "grid",
             "target": "sum",
-            "value": 500,
+            "value": grid_power,
         })
-    
-    total_input = 4500
-    total_input = (
 
-    flow.get("pv_to_load", 0)
-    + flow.get("battery_to_load", 0)
-    + flow.get("grid_to_load", 0)
-    )
     
     untracked = max(
-        total_input - tracked_consumption,
+        total_consumption - tracked_consumption,
         0,
-    )
+    )  
     
     if untracked > 0:
 
@@ -280,47 +284,3 @@ def build_live_sankey(user, flow):
             "nodes": nodes,
             "links": links,
         }
-
-
-
-    # return {
-    #     "nodes": [
-    #         {
-    #             "id": "pv",
-    #             "label": "PV",
-    #             "type": "producer",
-    #         },
-    #         {
-    #             "id": "battery",
-    #             "label": "Batterie",
-    #             "type": "producer",
-    #         },
-    #         {
-    #             "id": "grid",
-    #             "label": "Netz",
-    #             "type": "producer",
-    #         },
-    #         {
-    #             "id": "sum",
-    #             "label": "Σ Energie",
-    #             "type": "sum",
-    #         },
-    #     ],
-    #     "links": [
-    #         {
-    #             "source": "pv",
-    #             "target": "sum",
-    #             "value": flow["pv_to_load"],
-    #         },
-    #         {
-    #             "source": "battery",
-    #             "target": "sum",
-    #             "value": flow["battery_to_load"],
-    #         },
-    #         {
-    #             "source": "grid",
-    #             "target": "sum",
-    #             "value": flow["grid_to_load"],
-    #         },
-    #     ],
-    # }
