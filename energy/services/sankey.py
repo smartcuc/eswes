@@ -191,37 +191,66 @@ def build_live_sankey(user, flow):
         })
 
 
-    return {
-        "nodes": [
+    
+    nodes = [
             {
                 "id": "pv",
                 "label": "PV",
-                "type": "producer",
+            },
+            {
+                "id": "battery",
+                "label": "Batterie",
+            },
+            {
+                "id": "grid",
+                "label": "Netz",
             },
             {
                 "id": "sum",
                 "label": "Σ Energie",
-                "type": "sum",
             },
             {
                 "id": "consumer",
-                "label": "Verbrauch",
-                "type": "consumer",
+                "label": "Verbraucher",
             },
-        ],
-        "links": [
-            {
-                "source": "pv",
-                "target": "sum",
-                "value": 1000,
-            },
-            {
-                "source": "sum",
-                "target": "consumer",
-                "value": 1000,
-            },
-        ],
-    }
+        ]
+
+    links = []
+
+        #
+        # solange keine echten Signale vorhanden sind
+        # Testwerte verwenden
+        #
+
+    links.append({
+            "source": "pv",
+            "target": "sum",
+            "value": 3000,
+        })
+
+    links.append({
+            "source": "battery",
+            "target": "sum",
+            "value": 1000,
+        })
+
+    links.append({
+            "source": "grid",
+            "target": "sum",
+            "value": 500,
+        })
+
+    links.append({
+            "source": "sum",
+            "target": "consumer",
+            "value": 4500,
+        })
+
+    return {
+            "nodes": nodes,
+            "links": links,
+        }
+
 
 
     #from pprint import pformat

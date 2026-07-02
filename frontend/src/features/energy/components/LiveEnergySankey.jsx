@@ -38,6 +38,10 @@ export default function LiveEnergySankey({ data }) {
                 nodeSpacing={24}
                 animate={true}
                 motionConfig="gentle"
+                labelPosition="outside"
+                labelOrientation="horizontal"
+                nodeOpacity={1}
+                linkOpacity={0.5}
                 margin={{
                     top: 20,
                     right: 40,
