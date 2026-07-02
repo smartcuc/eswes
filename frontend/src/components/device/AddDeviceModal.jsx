@@ -21,21 +21,6 @@ function safeCopy(text, setCopiedKey, key) {
     }
 }
 
-function Row({ label, value, copyKey, copiedKey, setCopiedKey }) {
-    return (
-        <div className="flex justify-between items-center mt-1">
-            <span><strong>{label}:</strong> {value}</span>
-
-            <button
-                onClick={() => safeCopy(value, setCopiedKey, copyKey)}
-                className="text-xs bg-gray-200 px-2 py-1 rounded"
-            >
-                {copiedKey === copyKey ? "✅" : "Copy"}
-            </button>
-        </div>
-    );
-}
-
 
 /* =========================================================
    MAIN MODAL
@@ -139,7 +124,6 @@ export default function AddDeviceModal({ open, onClose }) {
                     <StepConfig
                         device={device}
                         onClose={onClose}
-                        onBack={back}
                     />
                 )}
 
@@ -354,13 +338,12 @@ function StepName({
    STEP 3 (CONFIG + VERIFY)
 ========================================================= */
 
-function StepConfig({ device, onClose, onBack }) {
+function StepConfig({ device, onClose }) {
 
     const [copiedKey, setCopiedKey] = useState(null);
     const [showQR, setShowQR] = useState(false);
-    const [closing, setClosing] = useState(false);
 
-    const { data: devices, refetch } = useDeviceStatus();
+    const { data: devices } = useDeviceStatus();
 
     const topic = `home/${device.mqtt_token}/device/${device.identifier}`;
 
@@ -372,25 +355,23 @@ function StepConfig({ device, onClose, onBack }) {
 
     const waiting = !connected;
 
-    const [email, setEmail] = useState("");
     const [magicLoading, setMagicLoading] = useState(false);
     const [magicStatus, setMagicStatus] = useState(null);
 
     // ✅ AUTO CLOSE (nur einmal)
     useEffect(() => {
 
-        if (connected && !closing) {
-
-            setClosing(true);
-
-            const t = setTimeout(() => {
-                onClose();
-            }, 1200);
-
-            return () => clearTimeout(t);
+        if (!connected) {
+            return;
         }
 
-    }, [connected, closing, onClose]);
+        const t = setTimeout(() => {
+            onClose();
+        }, 1200);
+
+        return () => clearTimeout(t);
+
+    }, [connected, onClose]);
 
     return (
         <div>
@@ -427,11 +408,11 @@ function StepConfig({ device, onClose, onBack }) {
 
                     <div className="text-indigo-800 font-medium flex items-center gap-2">
                         <span className="animate-pulse">⏳</span>
-                        ⏳ Warte auf erste Messwerte
+                        Warte auf erste Messwerte
                     </div>
 
                     <div className="text-sm text-indigo-700 mt-1">
-                        Sobald Sharegy Messwerte von diesem Gerätes empfängt,
+                        Sobald Sharegy Messwerte von diesem Gerät empfängt,
                         wird das Fenster automatisch geschlossen.
                     </div>
 

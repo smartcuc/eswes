@@ -151,7 +151,7 @@ def send_device_config(request):
             "topic": topic,
         }
 
-        html_content = render_to_string("email/device_config.html", context)
+        html_content = render_to_string("emails/device_config.html", context)
 
         text_content = f"""
 MQTT Setup:
