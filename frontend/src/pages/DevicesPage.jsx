@@ -3,7 +3,7 @@
 */
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { apiFetch } from "../api/client";
 import DeviceChartModal from "../components/device/DeviceChartModal";
 import DeviceSetupModal from "../components/device/DeviceSetupModal";
@@ -88,6 +88,52 @@ function DeviceCard({ device, onSelect, onEdit }) {
 /* =========================================================
    PAGE
 ========================================================= */
+
+const statusOptions = [
+    {
+        key: "all",
+        icon: "🌐",
+        label: "Alle",
+        title: "Alle Geräte anzeigen",
+    },
+    {
+        key: "online",
+        icon: "🟢",
+        label: "Online",
+        title: "Nur Geräte mit aktuellen Daten",
+    },
+    {
+        key: "offline",
+        icon: "⚫",
+        label: "Offline",
+        title: "Geräte ohne aktuelle Daten",
+    },
+    {
+        key: "missing",
+        icon: "⚠️",
+        label: "Offen",
+        title: "Unvollständig konfigurierte Geräte",
+    },
+];
+
+const roleOptions = {
+    producer: {
+        icon: "⚡",
+        label: "Erzeuger",
+        title: "Energieerzeuger anzeigen",
+    },
+    consumer: {
+        icon: "🔌",
+        label: "Verbraucher",
+        title: "Energieverbraucher anzeigen",
+    },
+    battery: {
+        icon: "🔋",
+        label: "Speicher",
+        title: "Batteriespeicher anzeigen",
+    },
+};
+
 export default function DevicesPage() {
 
     const [chartDevice, setChartDevice] = useState(null);
@@ -166,12 +212,6 @@ export default function DevicesPage() {
             unit: valueMap[d.id]?.unit,
         }));
     }, [devices, statusMap, valueMap]);
-
-    const roleLabels = {
-        producer: "⚡ Erzeuger",
-        consumer: "🔌 Verbraucher",
-        battery: "🔋 Speicher",
-    };
 
     const roleStats = useMemo(() => {
         const map = {};
@@ -303,37 +343,54 @@ export default function DevicesPage() {
                 />
 
                 {/* STATUS */}
-                {["all", "online", "offline", "missing"].map(k => (
+
+                {statusOptions.map(option => (
+
                     <button
-                        key={k}
+                        key={option.key}
+                        title={option.title}
                         onClick={() =>
                             saveSettings({
                                 ...settings,
                                 statusFilter:
-                                    statusFilter === k
+                                    statusFilter === option.key
                                         ? "all"
-                                        : k,
+                                        : option.key,
                             })
                         }
-                        className={`px-3 py-1 rounded-full text-sm border ${statusFilter === k ? "bg-indigo-600 text-white" : "bg-white"
-                            }`}
+                        className={`
+                            px-3 py-1.5
+                            rounded-full
+                            text-sm
+                            border
+                            flex items-center gap-1
+                            transition
+                            ${statusFilter === option.key
+                                ? "bg-indigo-600 text-white border-indigo-600"
+                                : "bg-white hover:bg-gray-50 border-gray-200"}
+                        `}
                     >
-                        {k}
+                        <span>{option.icon}</span>
+                        <span>{option.label}</span>
                     </button>
+
                 ))}
 
                 {/* ROLE CHIPS */}
+
                 {["producer", "consumer", "battery"].map(role => {
 
                     const active = activeRoles.includes(role);
+                    const config = roleOptions[role];
 
                     return (
                         <button
                             key={role}
+                            title={config.title}
                             onClick={() => {
 
                                 const nextRoles =
-                                    activeRoles.includes(role)
+                                    active
                                         ? activeRoles.filter(r => r !== role)
                                         : [...activeRoles, role];
 
@@ -343,42 +400,74 @@ export default function DevicesPage() {
                                 });
 
                             }}
-                            className={`px-3 py-1 rounded-full text-sm border ${active ? "bg-indigo-600 text-white" : "bg-white"
-                                }`}
+                            className={`
+                                px-3 py-1.5
+                                rounded-full
+                                text-sm
+                                border
+                                flex items-center gap-1
+                                transition
+                                ${active
+                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                    : "bg-white hover:bg-gray-50 border-gray-200"}
+                            `}
                         >
-                            {roleLabels[role]} ({roleStats[role] || 0})
+                            <span>{config.icon}</span>
+                            <span>{config.label}</span>
+                            <span className="opacity-70">
+                                ({roleStats[role] || 0})
+                            </span>
                         </button>
                     );
+
                 })}
 
                 {/* STRUCTURE TOGGLES */}
-                <label className="flex items-center gap-1 text-sm">
-                    <input
-                        type="checkbox"
-                        checked={showFloors}
-                        onChange={(e) =>
-                            saveSettings({
-                                ...settings,
-                                showFloors: e.target.checked,
-                            })
-                        }
-                    />
-                    Etagen
-                </label>
+                <button
+                    title="Geräte nach Etagen gruppieren"
+                    onClick={() =>
+                        saveSettings({
+                            ...settings,
+                            showFloors: !showFloors,
+                        })
+                    }
+                    className={`
+                        px-3 py-1.5
+                        rounded-full
+                        text-sm
+                        border
+                        flex items-center gap-1
+                        transition
+                        ${showFloors
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white hover:bg-gray-50 border-gray-200"}
+                    `}
+                >
+                    🏢 Etagen
+                </button>
 
-                <label className="flex items-center gap-1 text-sm">
-                    <input
-                        type="checkbox"
-                        checked={showRooms}
-                        onChange={(e) =>
-                            saveSettings({
-                                ...settings,
-                                showRooms: e.target.checked,
-                            })
-                        }
-                    />
-                    Räume
-                </label>
+                <button
+                    title="Geräte nach Räumen gruppieren"
+                    onClick={() =>
+                        saveSettings({
+                            ...settings,
+                            showRooms: !showRooms,
+                        })
+                    }
+                    className={`
+                        px-3 py-1.5
+                        rounded-full
+                        text-sm
+                        border
+                        flex items-center gap-1
+                        transition
+                        ${showRooms
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white hover:bg-gray-50 border-gray-200"}
+                    `}
+                >
+                    🚪 Räume
+                </button>
 
             </div>
 
@@ -402,39 +491,51 @@ export default function DevicesPage() {
             )}
 
             {/* GRID */}
-            {Object.entries(grouped).map(([floor, rooms]) => (
-                <div key={floor} className="mb-6">
+            {Object.entries(grouped)
+                .sort(([a], [b]) => a.localeCompare(b, "de"))
+                .map(([floor, rooms]) => (
 
-                    {showFloors && (
-                        <h2 className="text-sm text-gray-500 mb-2">{floor}</h2>
-                    )}
+                    <div key={floor} className="mb-6">
 
-                    {Object.entries(rooms).map(([room, devices]) => (
-                        <div key={room} className="mb-4">
+                        {showFloors && (
+                            <h2 className="text-sm text-gray-500 mb-2">{floor}</h2>
+                        )}
 
-                            {showRooms && room !== "__ALL__" && (
-                                <h3 className="text-xs text-gray-400 mb-2">{room}</h3>
-                            )}
+                        {Object.entries(rooms)
+                            .sort(([a], [b]) => a.localeCompare(b, "de"))
+                            .map(([room, devices]) => (
+                                <div key={room} className="mb-4">
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                {devices.map(d => (
-                                    <DeviceCard
-                                        key={d.id}
-                                        device={d}
-                                        onSelect={setChartDevice}
-                                        onEdit={(dev) => {
-                                            setEditingDevice(dev);
-                                            setModalMode("single");
-                                        }}
-                                    />
-                                ))}
-                            </div>
+                                    {showRooms && room !== "__ALL__" && (
+                                        <h3 className="text-xs text-gray-400 mb-2">{room}</h3>
+                                    )}
 
-                        </div>
-                    ))}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                        {[...devices]
+                                            .sort((a, b) =>
+                                                (a.display_name || "").localeCompare(
+                                                    b.display_name || "",
+                                                    "de"
+                                                )
+                                            )
+                                            .map(d => (
+                                                <DeviceCard
+                                                    key={d.id}
+                                                    device={d}
+                                                    onSelect={setChartDevice}
+                                                    onEdit={(dev) => {
+                                                        setEditingDevice(dev);
+                                                        setModalMode("single");
+                                                    }}
+                                                />
+                                            ))}
+                                    </div>
 
-                </div>
-            ))}
+                                </div>
+                            ))}
+
+                    </div>
+                ))}
 
             <DeviceSetupModal
                 open={!!modalMode}
