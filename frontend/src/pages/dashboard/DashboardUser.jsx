@@ -3,7 +3,6 @@
 */
 
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
-import AddDeviceModal from "../../components/device/AddDeviceModal";
 import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
 import DeviceSetupModal from "../../components/device/DeviceSetupModal";
 import KPI from "../../components/ui/KPI";
@@ -12,11 +11,21 @@ import Button from "../../components/ui/Button";
 
 import { useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../../api/client";
+
+import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey";
+
 
 export default function DashboardUser() {
 
-    const [modalOpen, setModalOpen] = useState(false);
     const [openSetup, setOpenSetup] = useState(false);
+
+    const energyQuery = useQuery({
+        queryKey: ["energy-dashboard"],
+        queryFn: () =>
+            apiFetch("/api/energy/dashboard/me/"),
+    });
 
     return (
         <DashboardLayout>
@@ -66,20 +75,19 @@ export default function DashboardUser() {
                 <span className="text-gray-600">
                     Starte mit deinem ersten Energiegerät
                 </span>
-
-                <Button
-                    onClick={() => setModalOpen(true)}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
-                >
-                    Gerät hinzufügen
-                </Button>
             </Card>
 
-            {/* ✅ Modal gehört HIER hin */}
-            <AddDeviceModal
-                open={modalOpen}
-                onClose={() => setModalOpen(false)}
-            />
+            <Card>
+
+                <h2 className="text-lg font-semibold mb-4">
+                    Live Energiefluss
+                </h2>
+
+                <LiveEnergySankey
+                    data={energyQuery.data?.sankey}
+                />
+
+            </Card>
 
         </DashboardLayout>
     );
