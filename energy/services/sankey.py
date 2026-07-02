@@ -190,16 +190,45 @@ def build_live_sankey(user, flow):
             "value": 1,
         })
 
-    return {
-        "sankey": {
-            "version": "V2",
-            "flow": {
-            "pv_to_load": 0,
-            "pv_to_battery": 0,
-            "pv_to_grid": 0,
-            "battery_to_load": 0,
-            "grid_to_load": 0
-            }
-        }
-        }
 
+    return {
+        "nodes": [
+            {
+                "id": "pv",
+                "label": "PV",
+                "type": "producer",
+            },
+            {
+                "id": "battery",
+                "label": "Batterie",
+                "type": "producer",
+            },
+            {
+                "id": "grid",
+                "label": "Netz",
+                "type": "producer",
+            },
+            {
+                "id": "sum",
+                "label": "Σ Energie",
+                "type": "sum",
+            },
+        ],
+        "links": [
+            {
+                "source": "pv",
+                "target": "sum",
+                "value": flow["pv_to_load"],
+            },
+            {
+                "source": "battery",
+                "target": "sum",
+                "value": flow["battery_to_load"],
+            },
+            {
+                "source": "grid",
+                "target": "sum",
+                "value": flow["grid_to_load"],
+            },
+        ],
+    }
