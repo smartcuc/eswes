@@ -2,39 +2,18 @@
 # energy/services/sankey.py
 ###########################
 
-
-# energy/services/sankey.py
-
 from devices.models import Device
 
 
 def build_live_sankey(user, flow):
-    """
-    Erzeugt die Sankey-Struktur für das Live-Dashboard.
-
-    Regeln:
-
-    Links:
-        - Producer
-        - Batterie nur bei Entladung
-
-    Mitte:
-        - SUM
-        - optional Etage
-        - optional Raum
-
-    Rechts:
-        - Consumer
-        - Batterie nur bei Netzladung
-    """
 
     devices = (
         Device.objects
         .filter(
             home__user=user,
+            configured=True,
             active=True,
             pending_delete=False,
-            configured=True,
         )
         .select_related(
             "config",
@@ -49,20 +28,43 @@ def build_live_sankey(user, flow):
 
     known_nodes = set()
 
-    def add_node(node_id, label, kind):
+    def add_node(node_id, label, node_type):
+
         if node_id in known_nodes:
             return
 
         nodes.append({
             "id": node_id,
             "label": label,
-            "type": kind,
+            "type": node_type,
         })
 
         known_nodes.add(node_id)
 
     #
-    # zentrale Summe
+    # PRODUCER
+    #
+
+    add_node(
+        "pv",
+        "PV",
+        "producer",
+    )
+
+    add_node(
+        "battery",
+        "Batterie",
+        "producer",
+    )
+
+    add_node(
+        "grid",
+        "Netz",
+        "producer",
+    )
+
+    #
+    # SUM
     #
 
     add_node(
@@ -72,13 +74,35 @@ def build_live_sankey(user, flow):
     )
 
     #
-    # Producer links
+    # PRODUCER -> SUM
     #
 
-    producers = []
+    if flow.get("pv_to_load", 0) > 0:
+
+        links.append({
+            "source": "pv",
+            "target": "sum",
+            "value": flow["pv_to_load"],
+        })
+
+    if flow.get("battery_to_load", 0) > 0:
+
+        links.append({
+            "source": "battery",
+            "target": "sum",
+            "value": flow["battery_to_load"],
+        })
+
+    if flow.get("grid_to_load", 0) > 0:
+
+        links.append({
+            "source": "grid",
+            "target": "sum",
+            "value": flow["grid_to_load"],
+        })
 
     #
-    # Consumer rechts
+    # CONSUMER
     #
 
     consumers = []
@@ -95,80 +119,32 @@ def build_live_sankey(user, flow):
         if not role:
             continue
 
-        role_key = role.key
+        if role.key != "consumer":
+            continue
 
         node_id = f"device_{device.id}"
 
         add_node(
             node_id,
             config.display_name(),
-            "device",
+            "consumer",
         )
 
-        #
-        # PRODUCER
-        #
-
-        if role_key == "producer":
-
-            producers.append(node_id)
-
-            links.append({
-                "source": node_id,
-                "target": "sum",
-                "value": 1,
-            })
-
-        #
-        # CONSUMER
-        #
-
-        elif role_key == "consumer":
-
-            #
-            # Nur Leistungswerte ins Sankey
-            #
-
-            if config.measurement_type not in [
-                "power",
-                "active_power",
-            ]:
-                continue
-
-            consumers.append((device, node_id))
-
-        #
-        # BATTERY
-        #
-
-        elif role_key == "battery":
-
-            #
-            # V1:
-            # später anhand aktueller Leistung
-            # entscheiden:
-            #
-            #   Entladung -> links
-            #   Netzladung -> rechts
-            #
-            pass
+        consumers.append({
+            "node_id": node_id,
+            "floor": config.floor,
+            "room": config.room,
+        })
 
     #
-    # Verbraucher-Seite
+    # SUM -> FLOOR -> ROOM -> DEVICE
     #
 
-    for device, node_id in consumers:
-
-        config = device.config
-
-        floor = config.floor
-        room = config.room
+    for consumer in consumers:
 
         current_target = "sum"
 
-        #
-        # Etage
-        #
+        floor = consumer["floor"]
 
         if floor:
 
@@ -188,9 +164,7 @@ def build_live_sankey(user, flow):
 
             current_target = floor_id
 
-        #
-        # Raum
-        #
+        room = consumer["room"]
 
         if room:
 
@@ -210,13 +184,9 @@ def build_live_sankey(user, flow):
 
             current_target = room_id
 
-        #
-        # Gerät
-        #
-
         links.append({
             "source": current_target,
-            "target": node_id,
+            "target": consumer["node_id"],
             "value": 1,
         })
 
