@@ -20,7 +20,7 @@ def merge_dicts(base, new):
 def aggregate_signals(user, category="system"):
 #    provider_ids = getattr(user.usersettings, "providers", [])
 
-    result = {
+    return {
         "grid": {},
         "load": {},
         "pv": {},
