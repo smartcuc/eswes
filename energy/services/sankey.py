@@ -155,11 +155,16 @@ def build_live_sankey(user, flow):
             "consumer",
         )
 
+        power = get_latest_power(device)
+
+        if power <= 0:
+            continue
+
         consumers.append({
             "node_id": node_id,
             "floor": config.floor,
             "room": config.room,
-            "power": 1,  # später echte Leistung
+            "power": power,
         })
 
     #
@@ -186,7 +191,7 @@ def build_live_sankey(user, flow):
             links.append({
                 "source": "sum",
                 "target": floor_id,
-                "value": 1,
+                "value": consumer["power"],
             })
 
             current_target = floor_id
@@ -206,7 +211,7 @@ def build_live_sankey(user, flow):
             links.append({
                 "source": current_target,
                 "target": room_id,
-                "value": 1,
+                "value": consumer["power"],
             })
 
             current_target = room_id
