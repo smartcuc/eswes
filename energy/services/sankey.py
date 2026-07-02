@@ -3,6 +3,22 @@
 ###########################
 
 from devices.models import Device
+from devices.models import DeviceMetric
+
+
+def get_latest_power(device):
+
+    metric = (
+        DeviceMetric.objects
+        .filter(
+            device=device,
+            metric_key="power",
+        )
+        .order_by("-timestamp")
+        .first()
+    )
+
+    return metric.value if metric else 0
 
 
 def build_live_sankey(user, flow):
@@ -200,6 +216,8 @@ def build_live_sankey(user, flow):
             "target": consumer["node_id"],
             "value": consumer["power"],
         })
+
+        tracked_consumption += consumer["power"]
 
 #
 # TEMPORÄR

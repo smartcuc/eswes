@@ -173,6 +173,18 @@ class DeviceConfig(models.Model):
         blank=True
     )
 
+    energy_source = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+    )
+
+    energy_group = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+    )
+
     # ✅ Location (frei!)
     home = models.ForeignKey(
         Home,
