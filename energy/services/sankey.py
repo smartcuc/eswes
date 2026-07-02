@@ -7,8 +7,6 @@ from devices.models import Device
 
 def build_live_sankey(user, flow):
 
-    raise Exception("SANKEY NEW")
-
     devices = (
         Device.objects
         .filter(

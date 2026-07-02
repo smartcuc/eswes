@@ -28,6 +28,7 @@ def get_energy_data(user):
     )
 
     return {
+        "test": "energy.py läuft",
         "signals": signals,
         "flow": flow,
         "sankey": sankey,
