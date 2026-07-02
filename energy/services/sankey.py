@@ -241,7 +241,7 @@ def build_live_sankey(user, flow):
     links.append({
             "source": "pv",
             "target": "sum",
-            "value": 3000,
+            "value": 20,
         })
 
     if battery_power > 0:
