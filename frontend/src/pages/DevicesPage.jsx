@@ -3,11 +3,28 @@
 */
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { apiFetch } from "../api/client";
 import DeviceChartModal from "../components/device/DeviceChartModal";
 import DeviceSetupModal from "../components/device/DeviceSetupModal";
 import useUserPreference from "../hooks/useUserPreference";
+
+
+function ensureOrder(items, storedOrder) {
+
+    const itemIds = items.map(item => item.id);
+
+    const existing = storedOrder.filter(id =>
+        itemIds.includes(id)
+    );
+
+    const missing = itemIds.filter(id =>
+        !existing.includes(id)
+    );
+
+    return [...existing, ...missing];
+}
+
 
 /* =========================================================
    DEVICE CARD
@@ -91,12 +108,6 @@ function DeviceCard({ device, onSelect, onEdit }) {
 
 const statusOptions = [
     {
-        key: "all",
-        icon: "🌐",
-        label: "Alle",
-        title: "Alle Geräte anzeigen",
-    },
-    {
         key: "online",
         icon: "🟢",
         label: "Online",
@@ -177,7 +188,7 @@ export default function DevicesPage() {
     );
 
     const statusFilter = useMemo(
-        () => settings.statusFilter ?? "all",
+        () => settings.statusFilter ?? null,
         [settings.statusFilter]
     );
 
@@ -189,6 +200,21 @@ export default function DevicesPage() {
                 "battery",
             ],
         [settings.roles]
+    );
+
+    const floorOrder = useMemo(
+        () => settings.floorOrder ?? [],
+        [settings.floorOrder]
+    );
+
+    const roomOrder = useMemo(
+        () => settings.roomOrder ?? [],
+        [settings.roomOrder]
+    );
+
+    const deviceOrder = useMemo(
+        () => settings.deviceOrder ?? [],
+        [settings.deviceOrder]
     );
 
     const devices = useMemo(
@@ -213,6 +239,7 @@ export default function DevicesPage() {
         }));
     }, [devices, statusMap, valueMap]);
 
+
     const roleStats = useMemo(() => {
         const map = {};
 
@@ -227,6 +254,33 @@ export default function DevicesPage() {
         });
 
         return map;
+    }, [merged]);
+
+    const statusStats = useMemo(() => {
+
+        return {
+
+            online: merged.filter(
+                d => d.status === "online"
+            ).length,
+
+            offline: merged.filter(
+                d => d.status !== "online"
+            ).length,
+
+            missing: merged.filter(d => {
+
+                const c = d.config || {};
+
+                return (
+                    !c.role ||
+                    !c.measurement_type
+                );
+
+            }).length,
+
+        };
+
     }, [merged]);
 
     /* ✅ FILTER */
@@ -322,6 +376,112 @@ export default function DevicesPage() {
         showRooms,
     ]);
 
+    const allFloorIds = useMemo(() => {
+
+        const floors = {};
+
+        merged.forEach(d => {
+
+            const floor = d.config?.floor;
+
+            if (floor?.id) {
+                floors[floor.id] = floor.name;
+            }
+
+        });
+
+        return Object.entries(floors)
+            .sort(([, a], [, b]) =>
+                a.localeCompare(b, "de")
+            )
+            .map(([id]) => Number(id));
+
+    }, [merged]);
+
+    const allRoomIds = useMemo(() => {
+
+        const rooms = {};
+
+        merged.forEach(d => {
+
+            const room = d.config?.room;
+
+            if (room?.id) {
+                rooms[room.id] = room.name;
+            }
+
+        });
+
+        return Object.entries(rooms)
+            .sort(([, a], [, b]) =>
+                a.localeCompare(b, "de")
+            )
+            .map(([id]) => Number(id));
+
+    }, [merged]);
+
+    const allDeviceIds = useMemo(() => {
+
+        return [...merged]
+            .sort((a, b) =>
+                (a.display_name || "").localeCompare(
+                    b.display_name || "",
+                    "de"
+                )
+            )
+            .map(d => d.id);
+
+    }, [merged]);
+
+    useEffect(() => {
+
+        if (!merged.length) {
+            return;
+        }
+
+        const nextFloorOrder = ensureOrder(
+            allFloorIds.map(id => ({ id })),
+            floorOrder
+        );
+
+        const nextRoomOrder = ensureOrder(
+            allRoomIds.map(id => ({ id })),
+            roomOrder
+        );
+
+        const nextDeviceOrder = ensureOrder(
+            allDeviceIds.map(id => ({ id })),
+            deviceOrder
+        );
+
+        const changed =
+            JSON.stringify(nextFloorOrder) !== JSON.stringify(floorOrder) ||
+            JSON.stringify(nextRoomOrder) !== JSON.stringify(roomOrder) ||
+            JSON.stringify(nextDeviceOrder) !== JSON.stringify(deviceOrder);
+
+        if (!changed) {
+            return;
+        }
+
+        saveSettings({
+            ...settings,
+            floorOrder: nextFloorOrder,
+            roomOrder: nextRoomOrder,
+            deviceOrder: nextDeviceOrder,
+        });
+
+    }, [
+        merged,
+        floorOrder,
+        roomOrder,
+        deviceOrder,
+        allFloorIds,
+        allRoomIds,
+        allDeviceIds,
+        settings,
+        saveSettings,
+    ]);
+
     if (
         devicesQuery.isLoading ||
         settingsLoading
@@ -333,17 +493,20 @@ export default function DevicesPage() {
         <div className="p-6 max-w-6xl">
 
             {/* FILTER BAR */}
-            <div className="flex flex-wrap gap-3 mb-6">
+            <div className="mb-3">
 
                 <input
-                    placeholder="Gerät suchen…"
+                    placeholder="🔍 Gerät suchen..."
                     value={filterText}
                     onChange={(e) => setFilterText(e.target.value)}
-                    className="border px-3 py-2 rounded w-52"
+                    className="border px-3 py-2 rounded w-64"
                 />
 
-                {/* STATUS */}
+            </div>
 
+            <div className="flex flex-wrap gap-2 mb-6">
+
+                {/* STATUS */}
                 {statusOptions.map(option => (
 
                     <button
@@ -354,14 +517,15 @@ export default function DevicesPage() {
                                 ...settings,
                                 statusFilter:
                                     statusFilter === option.key
-                                        ? "all"
+                                        ? null
                                         : option.key,
                             })
                         }
+
                         className={`
-                            px-3 py-1.5
+                            px-2.5 py-1
                             rounded-full
-                            text-sm
+                            text-xs
                             border
                             flex items-center gap-1
                             transition
@@ -372,12 +536,15 @@ export default function DevicesPage() {
                     >
                         <span>{option.icon}</span>
                         <span>{option.label}</span>
+                        <span className="opacity-70">
+                            ({statusStats[option.key] || 0})
+                        </span>
+
                     </button>
 
                 ))}
 
                 {/* ROLE CHIPS */}
-
                 {["producer", "consumer", "battery"].map(role => {
 
                     const active = activeRoles.includes(role);
@@ -401,9 +568,9 @@ export default function DevicesPage() {
 
                             }}
                             className={`
-                                px-3 py-1.5
+                                px-2.5 py-1
                                 rounded-full
-                                text-sm
+                                text-xs
                                 border
                                 flex items-center gap-1
                                 transition
@@ -423,6 +590,7 @@ export default function DevicesPage() {
                 })}
 
                 {/* STRUCTURE TOGGLES */}
+
                 <button
                     title="Geräte nach Etagen gruppieren"
                     onClick={() =>
@@ -432,9 +600,9 @@ export default function DevicesPage() {
                         })
                     }
                     className={`
-                        px-3 py-1.5
+                        px-2.5 py-1
                         rounded-full
-                        text-sm
+                        text-xs
                         border
                         flex items-center gap-1
                         transition
@@ -455,9 +623,9 @@ export default function DevicesPage() {
                         })
                     }
                     className={`
-                        px-3 py-1.5
+                        px-2.5 py-1
                         rounded-full
-                        text-sm
+                        text-xs
                         border
                         flex items-center gap-1
                         transition
