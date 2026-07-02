@@ -98,6 +98,13 @@ function DeviceChartModal({ device, onClose }) {
             : rawPoints
     ), [rawPoints, zoom]);
 
+    const unit = device.unit || "";
+
+    const currentPoint =
+        points.length > 0
+            ? points[points.length - 1]
+            : null;
+
     /* ✅ Y-BEREICH */
     const { minVal, maxVal } = useMemo(() => {
         if (!points.length) return { minVal: 0, maxVal: 1 };
@@ -128,208 +135,283 @@ function DeviceChartModal({ device, onClose }) {
         };
     }, [points]);
 
-
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            onClick={onClose}
+        >
 
-            <div className="bg-white p-6 rounded-xl w-full max-w-3xl">
+            <div
+                className="
+                bg-white
+                rounded-2xl
+                shadow-xl
+                w-full
+                max-w-5xl
+                h-[80vh]
+                flex
+                flex-col
+                overflow-hidden
+            "
+                onClick={(e) => e.stopPropagation()}
+            >
 
                 {/* HEADER */}
-                <div className="flex justify-between items-center mb-4">
 
-                    <h3 className="font-semibold">
-                        {device.display_name}
-                    </h3>
+                <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex justify-between items-center">
 
-                        <select
-                            value={range}
-                            onChange={(e) => {
-                                setRange(e.target.value);
-                                setLive(false);
-                                setZoom({
-                                    refStart: null,
-                                    refEnd: null,
-                                    start: null,
-                                    end: null
-                                });
-                            }}
-                            className="border rounded px-2 py-1 text-sm"
-                        >
-                            <option value="1h">1h</option>
-                            <option value="6h">6h</option>
-                            <option value="24h">24h</option>
-                            <option value="7d">7d</option>
-                        </select>
+                        <div>
 
-                        <button
-                            onClick={() => setLive(v => !v)}
-                            className={`px-3 py-1 text-sm rounded ${live ? "bg-green-500 text-white" : "bg-gray-200"
-                                }`}
-                        >
-                            ● LIVE
-                        </button>
+                            <div className="text-xs text-gray-500">
+                                Zeitreihe analysieren
+                            </div>
 
-                        <button
-                            onClick={() =>
-                                setZoom({
-                                    refStart: null,
-                                    refEnd: null,
-                                    start: null,
-                                    end: null
-                                })
-                            }
-                            className="px-2 py-1 text-sm bg-gray-100 rounded"
-                        >
-                            Reset
-                        </button>
+                            <h3 className="font-semibold text-lg text-gray-900">
+                                📈 {device.display_name}
+                            </h3>
 
-                        <button
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            ✕
-                        </button>
+                            <div className="text-xs text-gray-500">
+                                {device.identifier}
+                            </div>
+
+
+                            {currentPoint && (
+                                <div className="text-sm font-medium text-indigo-600 mt-1">
+                                    Aktuell: {currentPoint.value.toFixed(2)} {unit}
+                                </div>
+                            )}
+
+                        </div>
+
+                        <div className="flex items-center gap-2">
+
+                            <select
+                                value={range}
+                                onChange={(e) => {
+                                    setRange(e.target.value);
+                                    setLive(false);
+                                    setZoom({
+                                        refStart: null,
+                                        refEnd: null,
+                                        start: null,
+                                        end: null
+                                    });
+                                }}
+                                className="border rounded px-2 py-1 text-sm"
+                            >
+                                <option value="1h">1h</option>
+                                <option value="6h">6h</option>
+                                <option value="24h">24h</option>
+                                <option value="7d">7d</option>
+                            </select>
+
+                            <button
+                                onClick={() => setLive(v => !v)}
+                                className={`px-3 py-1 text-sm rounded ${live
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-200"
+                                    }`}
+                            >
+                                ● LIVE
+                            </button>
+
+                            <button
+                                onClick={() =>
+                                    setZoom({
+                                        refStart: null,
+                                        refEnd: null,
+                                        start: null,
+                                        end: null
+                                    })
+                                }
+                                className="px-2 py-1 text-sm bg-gray-100 rounded"
+                            >
+                                Reset
+                            </button>
+
+                            <button
+                                onClick={onClose}
+                                className="text-gray-400 hover:text-gray-600 text-lg"
+                            >
+                                ✕
+                            </button>
+
+                        </div>
 
                     </div>
 
                 </div>
 
-
                 {/* CHART */}
-                <div style={{ width: "100%", height: 350 }}>
 
-                    <ResponsiveContainer>
+                <div className="flex-1 p-4">
 
-                        <LineChart
-                            data={points}
-                            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                    <div className="w-full h-full">
 
-                            onMouseDown={(e) => {
-                                if (e?.activeLabel) {
-                                    setZoom(z => ({
-                                        ...z,
-                                        refStart: e.activeLabel,
-                                        refEnd: null
-                                    }));
-                                }
-                            }}
-
-                            onMouseMove={(e) => {
-                                if (zoom.refStart && e?.activeLabel) {
-                                    setZoom(z => ({
-                                        ...z,
-                                        refEnd: e.activeLabel
-                                    }));
-                                }
-                            }}
-
-                            onMouseUp={() => {
-                                if (zoom.refStart && zoom.refEnd) {
-                                    setZoom(z => ({
-                                        ...z,
-                                        start: z.refStart,
-                                        end: z.refEnd,
-                                        refStart: null,
-                                        refEnd: null
-                                    }));
-                                }
-                            }}
-
-                            onDoubleClick={() =>
-                                setZoom({
-                                    refStart: null,
-                                    refEnd: null,
-                                    start: null,
-                                    end: null
-                                })
-                            }
-
-                            style={{ cursor: "crosshair" }}
+                        <ResponsiveContainer
+                            width="100%"
+                            height="100%"
                         >
 
-                            {/* ZOOM */}
-                            {zoom.refStart && zoom.refEnd && (
-                                <ReferenceArea
-                                    x1={zoom.refStart}
-                                    x2={zoom.refEnd}
-                                    strokeOpacity={0.3}
-                                />
-                            )}
-
-                            <CartesianGrid stroke="#f3f4f6" />
-
-                            <XAxis
-                                dataKey="time"
-                                tick={{ fontSize: 12 }}
-                                stroke="#9ca3af"
-                            />
-
-                            <YAxis
-                                domain={[minVal * 1.1, maxVal * 1.1]}
-                                tickFormatter={(v) => Math.round(v)}
-                                tick={{ fontSize: 12 }}
-                                stroke="#9ca3af"
-                            />
-
-                            <Tooltip
-                                formatter={(value) => value?.toFixed(2)}
-                                contentStyle={{
-                                    backgroundColor: "#fff",
-                                    borderRadius: "8px",
-                                    border: "1px solid #e5e7eb"
+                            <LineChart
+                                data={points}
+                                margin={{
+                                    top: 10,
+                                    right: 20,
+                                    left: 0,
+                                    bottom: 0
                                 }}
-                            />
 
-                            {/* MIN LINIE */}
-                            {minPoint && (
-                                <ReferenceLine
-                                    y={minPoint.value}
-                                    stroke="#16a34a"
-                                    strokeDasharray="3 3"
-                                    label={{
-                                        value: `Min ${Math.round(minPoint.value)}`,
-                                        position: "left",
-                                        fill: "#16a34a",
-                                        fontSize: 12
+                                onMouseDown={(e) => {
+                                    if (e?.activeLabel) {
+                                        setZoom(z => ({
+                                            ...z,
+                                            refStart: e.activeLabel,
+                                            refEnd: null
+                                        }));
+                                    }
+                                }}
+
+                                onMouseMove={(e) => {
+                                    if (zoom.refStart && e?.activeLabel) {
+                                        setZoom(z => ({
+                                            ...z,
+                                            refEnd: e.activeLabel
+                                        }));
+                                    }
+                                }}
+
+                                onMouseUp={() => {
+                                    if (zoom.refStart && zoom.refEnd) {
+                                        setZoom(z => ({
+                                            ...z,
+                                            start: z.refStart,
+                                            end: z.refEnd,
+                                            refStart: null,
+                                            refEnd: null
+                                        }));
+                                    }
+                                }}
+
+                                onDoubleClick={() =>
+                                    setZoom({
+                                        refStart: null,
+                                        refEnd: null,
+                                        start: null,
+                                        end: null
+                                    })
+                                }
+
+                                style={{ cursor: "crosshair" }}
+                            >
+
+
+                                {/* ZOOM */}
+                                {zoom.refStart && zoom.refEnd && (
+                                    <ReferenceArea
+                                        x1={zoom.refStart}
+                                        x2={zoom.refEnd}
+                                        strokeOpacity={0.3}
+                                    />
+                                )}
+
+                                <CartesianGrid stroke="#f3f4f6" />
+
+                                <XAxis
+                                    dataKey="time"
+                                    tick={{ fontSize: 12 }}
+                                    stroke="#9ca3af"
+                                />
+
+                                <YAxis
+                                    domain={[minVal * 1.1, maxVal * 1.1]}
+                                    tickFormatter={(v) => Math.round(v)}
+                                    tick={{ fontSize: 12 }}
+                                    stroke="#9ca3af"
+                                />
+
+                                <Tooltip
+                                    formatter={(value) =>
+                                        `${Number(value).toFixed(2)} ${unit}`
+                                    }
+
+                                    contentStyle={{
+                                        backgroundColor: "#fff",
+                                        borderRadius: "8px",
+                                        border: "1px solid #e5e7eb"
                                     }}
                                 />
-                            )}
 
-                            {/* MAX LINIE */}
-                            {maxPoint && (
-                                <ReferenceLine
-                                    y={maxPoint.value}
+                                {/* NULL-LINIE */}
+
+                                {minVal < 0 && maxVal > 0 && (
+                                    <ReferenceLine
+                                        y={0}
+                                        stroke="#6b7280"
+                                        strokeDasharray="4 4"
+                                        label={{
+                                            value: "0",
+                                            position: "left",
+                                            fill: "#6b7280",
+                                            fontSize: 12
+                                        }}
+                                    />
+                                )}
+
+                                {/* MIN LINIE */}
+                                {minPoint && (
+                                    <ReferenceLine
+                                        y={minPoint.value}
+                                        stroke="#16a34a"
+                                        strokeDasharray="3 3"
+                                        label={{
+                                            value: `Min ${Math.round(minPoint.value)} ${unit}`,
+                                            position: "left",
+                                            fill: "#16a34a",
+                                            fontSize: 12
+                                        }}
+                                    />
+                                )}
+
+                                {/* MAX LINIE */}
+                                {maxPoint && (
+                                    <ReferenceLine
+                                        y={maxPoint.value}
+                                        stroke="#2563eb"
+                                        strokeDasharray="3 3"
+                                        label={{
+                                            value: `Max ${Math.round(maxPoint.value)} ${unit}`,
+                                            position: "left",
+                                            fill: "#2563eb",
+                                            fontSize: 12
+                                        }}
+                                    />
+                                )}
+
+                                {/* ✅ EINE SAUBERE LINIE */}
+                                <Line
+                                    type="monotone"
+                                    dataKey="value"
                                     stroke="#2563eb"
-                                    strokeDasharray="3 3"
-                                    label={{
-                                        value: `Max ${Math.round(maxPoint.value)}`,
-                                        position: "left",
-                                        fill: "#2563eb",
-                                        fontSize: 12
-                                    }}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                 />
-                            )}
 
-                            {/* ✅ EINE SAUBERE LINIE */}
-                            <Line
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#2563eb"
-                                strokeWidth={2}
-                                dot={false}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
 
-                        </LineChart>
+                            </LineChart>
 
-                    </ResponsiveContainer>
+                        </ResponsiveContainer>
+
+                    </div>
 
                 </div>
 
             </div>
+
         </div>
     );
 }

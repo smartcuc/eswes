@@ -232,191 +232,369 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-xl shadow-xl w-full max-w-2xl"
+                className="
+                    bg-white
+                    rounded-2xl
+                    shadow-xl
+                    w-full
+                    max-w-2xl
+                    h-[80vh]
+                    flex
+                    flex-col
+                    overflow-hidden
+                "
                 onClick={(e) => e.stopPropagation()}
             >
 
                 {/* HEADER */}
-                <div className="mb-4">
-                    <div className="text-xs text-gray-400">
-                        Gerät {index + 1} von {devices.length}
-                    </div>
 
-                    <h2 className="text-xl font-semibold">
-                        Gerät einrichten
-                    </h2>
+                <div className="p-4 border-b bg-gradient-to-r from-indigo-50 to-blue-50">
 
-                    <p className="text-sm text-gray-500">
-                        Lege Funktion und Messdaten fest – optional kannst du eine Position zuweisen
-                    </p>
-                </div>
+                    <div className="flex justify-between items-start">
 
-                {/* PROGRESS */}
-                <div className="w-full bg-gray-200 h-2 rounded mb-6">
-                    <div
-                        className="bg-indigo-600 h-2 rounded"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
+                        <div>
 
-                {/* FORM */}
-                <div className="space-y-4">
+                            <div className="text-xs text-gray-500">
+                                Gerät {index + 1} von {devices.length}
+                            </div>
 
-                    {/* NAME */}
-                    <div>
-                        <label className="text-xs text-gray-400">Name</label>
-                        <input
-                            value={displayName}
-                            onChange={(e) =>
-                                handleChange(device.id, "display_name", e.target.value)
-                            }
-                            className="border px-3 py-2 w-full rounded"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                            Anzeige im Dashboard
-                        </p>
-                    </div>
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                ⚙️ Gerät einrichten
+                            </h2>
 
-                    {/* ROLE */}
-                    <div>
-                        <label className="text-xs text-gray-400">
-                            Funktion des Geräts *
-                        </label>
-                        <select
-                            value={roleId}
-                            onChange={(e) =>
-                                handleChange(device.id, "role_id", e.target.value ? Number(e.target.value) : null)
-                            }
-                            className={`border px-3 py-2 w-full rounded ${!roleId ? "border-red-300 bg-red-50" : ""}`}
-                        >
-                            <option value="">Bitte wählen</option>
-                            {roles.map(r => (
-                                <option key={r.id} value={r.id}>{r.label}</option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-gray-400 mt-1">
-                            Erzeuger, Verbraucher oder Speicher
-                        </p>
-                    </div>
-
-                    {/* MEASUREMENT */}
-                    <div>
-                        <label className="text-xs text-gray-400">
-                            Messdaten *
-                        </label>
-                        <select
-                            value={measurementType}
-                            onChange={(e) =>
-                                handleChange(device.id, "measurement_type", e.target.value || null)
-                            }
-                            className={`border px-3 py-2 w-full rounded ${!measurementType ? "border-red-300 bg-red-50" : ""}`}
-                        >
-                            <option value="">Bitte wählen</option>
-                            {measurementTypes.map(m => (
-                                <option key={m.key || m.id} value={m.key || m.value}>
-                                    {m.label || m.name}
-                                </option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-gray-400 mt-1">
-                            Welche Werte liefert dieses Gerät?
-                        </p>
-                    </div>
-
-                    {/* LOCATION */}
-                    <div>
-                        <label className="text-xs text-gray-400">
-                            Position (optional)
-                        </label>
-
-                        <div className="grid grid-cols-2 gap-3 mt-2">
-
-                            {hasMultipleHomes && (
-                                <select
-                                    value={homeId}
-                                    onChange={(e) =>
-                                        handleChange(device.id, "home_id", e.target.value ? Number(e.target.value) : null)
-                                    }
-                                    className="border px-2 py-2 rounded"
-                                >
-                                    <option value="">🏠 Zuhause</option>
-                                    {homes.map(h => (
-                                        <option key={h.id} value={h.id}>{h.name}</option>
-                                    ))}
-                                </select>
-                            )}
-
-                            <select
-                                value={floorId}
-                                onChange={(e) =>
-                                    handleChange(device.id, "floor_id", e.target.value ? Number(e.target.value) : null)
-                                }
-                                className="border px-2 py-2 rounded"
-                            >
-                                <option value="">🏢 Etage</option>
-                                {floors.map(f => (
-                                    <option key={f.id} value={f.id}>{f.name}</option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={roomId}
-                                onChange={(e) =>
-                                    handleChange(device.id, "room_id", e.target.value ? Number(e.target.value) : null)
-                                }
-                                className="border px-2 py-2 rounded"
-                            >
-                                <option value="">🚪 Raum</option>
-                                {rooms.map(r => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                ))}
-                            </select>
+                            <div className="text-sm text-gray-500">
+                                Funktion, Messdaten und Position festlegen
+                            </div>
 
                         </div>
 
-                        <p className="text-xs text-gray-400 mt-1">
-                            Hilft bei Auswertung und Visualisierung (z. B. Sankey)
-                        </p>
-                    </div>
-
-                    {/* STATUS */}
-                    <div className="text-sm">
-                        {saving[key] && <span>⏳ Speichern…</span>}
-                        {saved[key] && <span className="text-green-600">✅ Gespeichert</span>}
-                        {error[key] && <span className="text-red-600">❌ Fehler</span>}
-                    </div>
-
-                </div>
-
-                {/* NAV */}
-                <div className="flex justify-end mt-6">
-
-                    {devices.length > 1 && (
                         <button
-                            onClick={() => setIndex(i => Math.max(0, i - 1))}
-                            disabled={index === 0}
-                            className="px-4 py-2 border rounded disabled:opacity-30 mr-2"
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-gray-600 text-lg"
                         >
-                            ← Zurück
+                            ✕
                         </button>
-                    )}
 
-                    <button
-                        onClick={() => {
-                            if (devices.length <= 1 || index === devices.length - 1) {
-                                onClose();
-                            } else {
-                                setIndex(i => i + 1);
-                            }
-                        }}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded"
-                    >
-                        {devices.length <= 1 || index === devices.length - 1
-                            ? "Fertig"
-                            : "Weiter →"}
-                    </button>
+                    </div>
+
+                    <div className="w-full bg-gray-200 h-2 rounded mt-4">
+
+                        <div
+                            className="bg-indigo-600 h-2 rounded"
+                            style={{ width: `${progress}%` }}
+                        />
+
+                    </div>
 
                 </div>
+
+                {/* CONTENT */}
+
+                <div className="flex-1 overflow-y-auto">
+
+                    <div className="max-w-xl mx-auto p-6 space-y-4">
+
+                        {/* NAME */}
+
+                        <div>
+
+                            <label className="text-xs text-gray-400">
+                                Name
+                            </label>
+
+                            <input
+                                value={displayName}
+                                onChange={(e) =>
+                                    handleChange(
+                                        device.id,
+                                        "display_name",
+                                        e.target.value
+                                    )
+                                }
+                                className="border px-3 py-2 w-full rounded"
+                            />
+
+                            <p className="text-xs text-gray-400 mt-1">
+                                Anzeige im Dashboard
+                            </p>
+
+                        </div>
+
+                        {/* ROLE */}
+
+                        <div>
+
+                            <label className="text-xs text-gray-400">
+                                Funktion des Geräts *
+                            </label>
+
+                            <select
+                                value={roleId}
+                                onChange={(e) =>
+                                    handleChange(
+                                        device.id,
+                                        "role_id",
+                                        e.target.value
+                                            ? Number(e.target.value)
+                                            : null
+                                    )
+                                }
+                                className={`border px-3 py-2 w-full rounded ${!roleId
+                                    ? "border-red-300 bg-red-50"
+                                    : ""
+                                    }`}
+                            >
+                                <option value="">
+                                    Bitte wählen
+                                </option>
+
+                                {roles.map(r => (
+                                    <option
+                                        key={r.id}
+                                        value={r.id}
+                                    >
+                                        {r.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <p className="text-xs text-gray-400 mt-1">
+                                Erzeuger, Verbraucher oder Speicher
+                            </p>
+
+                        </div>
+
+                        {/* MEASUREMENT */}
+
+                        <div>
+
+                            <label className="text-xs text-gray-400">
+                                Messdaten *
+                            </label>
+
+                            <select
+                                value={measurementType}
+                                onChange={(e) =>
+                                    handleChange(
+                                        device.id,
+                                        "measurement_type",
+                                        e.target.value || null
+                                    )
+                                }
+                                className={`border px-3 py-2 w-full rounded ${!measurementType
+                                    ? "border-red-300 bg-red-50"
+                                    : ""
+                                    }`}
+                            >
+                                <option value="">
+                                    Bitte wählen
+                                </option>
+
+                                {measurementTypes.map(m => (
+                                    <option
+                                        key={m.key || m.id}
+                                        value={m.key || m.value}
+                                    >
+                                        {m.label || m.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <p className="text-xs text-gray-400 mt-1">
+                                Welche Werte liefert dieses Gerät?
+                            </p>
+
+                        </div>
+
+                        {/* LOCATION */}
+
+                        <div>
+
+                            <label className="text-xs text-gray-400">
+                                Position (optional)
+                            </label>
+
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+
+                                {hasMultipleHomes && (
+
+                                    <select
+                                        value={homeId}
+                                        onChange={(e) =>
+                                            handleChange(
+                                                device.id,
+                                                "home_id",
+                                                e.target.value
+                                                    ? Number(e.target.value)
+                                                    : null
+                                            )
+                                        }
+                                        className="border px-2 py-2 rounded"
+                                    >
+                                        <option value="">
+                                            🏠 Zuhause
+                                        </option>
+
+                                        {homes.map(h => (
+                                            <option
+                                                key={h.id}
+                                                value={h.id}
+                                            >
+                                                {h.name}
+                                            </option>
+                                        ))}
+
+                                    </select>
+
+                                )}
+
+                                <select
+                                    value={floorId}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "floor_id",
+                                            e.target.value
+                                                ? Number(e.target.value)
+                                                : null
+                                        )
+                                    }
+                                    className="border px-2 py-2 rounded"
+                                >
+                                    <option value="">
+                                        🏢 Etage
+                                    </option>
+
+                                    {floors.map(f => (
+                                        <option
+                                            key={f.id}
+                                            value={f.id}
+                                        >
+                                            {f.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <select
+                                    value={roomId}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "room_id",
+                                            e.target.value
+                                                ? Number(e.target.value)
+                                                : null
+                                        )
+                                    }
+                                    className="border px-2 py-2 rounded"
+                                >
+                                    <option value="">
+                                        🚪 Raum
+                                    </option>
+
+                                    {rooms.map(r => (
+                                        <option
+                                            key={r.id}
+                                            value={r.id}
+                                        >
+                                            {r.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                            </div>
+
+                            <p className="text-xs text-gray-400 mt-1">
+                                Hilft bei Auswertung und Visualisierung
+                                (z. B. Sankey)
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                {/* FOOTER */}
+
+                <div className="border-t p-4 flex justify-between items-center bg-gray-50">
+
+                    <div className="text-sm">
+
+                        {saving[key] && (
+                            <span>
+                                ⏳ Speichern...
+                            </span>
+                        )}
+
+                        {saved[key] && (
+                            <span className="text-green-600">
+                                ✅ Gespeichert
+                            </span>
+                        )}
+
+                        {error[key] && (
+                            <span className="text-red-600">
+                                ❌ Fehler
+                            </span>
+                        )}
+
+                    </div>
+
+                    <div className="flex gap-2">
+
+                        {devices.length > 1 && (
+
+                            <button
+                                onClick={() =>
+                                    setIndex(i =>
+                                        Math.max(0, i - 1)
+                                    )
+                                }
+                                disabled={index === 0}
+                                className="
+                    px-4 py-2
+                    border
+                    rounded-lg
+                    disabled:opacity-30
+                "
+                            >
+                                ← Zurück
+                            </button>
+
+                        )}
+
+                        <button
+                            onClick={() => {
+
+                                if (
+                                    devices.length <= 1 ||
+                                    index === devices.length - 1
+                                ) {
+                                    onClose();
+                                } else {
+                                    setIndex(i => i + 1);
+                                }
+
+                            }}
+                            className="
+                px-4 py-2
+                rounded-lg
+                bg-indigo-600
+                hover:bg-indigo-700
+                text-white
+            "
+                        >
+                            {devices.length <= 1 ||
+                                index === devices.length - 1
+                                ? "Fertig"
+                                : "Weiter →"}
+                        </button>
+
+                    </div>
+
+                </div>
+
 
             </div>
 
