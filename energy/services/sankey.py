@@ -6,19 +6,21 @@ from devices.models import Device
 from devices.models import DeviceMetric
 
 
+
 def get_latest_power(device):
 
     metric = (
         DeviceMetric.objects
         .filter(
             device=device,
-            metric_key="power",
+            metric_key="value",
         )
         .order_by("-timestamp")
         .first()
     )
 
     return metric.value if metric else 0
+
 
 
 def get_device_by_identifier(devices, identifier):
@@ -279,6 +281,10 @@ def build_live_sankey(user, flow):
             "target": "untracked",
             "value": untracked,
         })
+
+
+    if tracked_consumption > total_consumption:
+        tracked_consumption = total_consumption
 
     return {
             "nodes": nodes,
