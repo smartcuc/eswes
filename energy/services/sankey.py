@@ -191,6 +191,15 @@ def build_live_sankey(user, flow):
         })
 
     return {
-        "nodes": nodes,
-        "links": links,
-    }
+        "sankey": {
+            "version": "V2",
+            "flow": {
+            "pv_to_load": 0,
+            "pv_to_battery": 0,
+            "pv_to_grid": 0,
+            "battery_to_load": 0,
+            "grid_to_load": 0
+            }
+        }
+        }
+

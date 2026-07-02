@@ -9,9 +9,15 @@ from energy.flow_engine import calculate_energy_flow
 from energy.services.sankey import build_live_sankey
 
 
+
 def get_energy_data(user):
 
-    
+    signals = get_ems_signals(user)
+
+    flow = calculate_energy_flow(signals)
+
+    sankey = build_live_sankey(user, flow)
+
     return {
-            "test": "ICH BIN ENERGY.PY"
-        }
+        "sankey": sankey,
+    }
