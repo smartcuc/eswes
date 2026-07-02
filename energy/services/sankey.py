@@ -126,10 +126,16 @@ def build_live_sankey(user, flow):
             continue
 
         node_id = f"device_{device.id}"
+        
+        label = (
+            config.name
+            or getattr(device, "name", None)
+            or device.identifier
+        )
 
         add_node(
             node_id,
-            config.display_name(),
+            label,
             "consumer",
         )
 
@@ -137,11 +143,13 @@ def build_live_sankey(user, flow):
             "node_id": node_id,
             "floor": config.floor,
             "room": config.room,
+            "power": 1,  # später echte Leistung
         })
 
     #
     # SUM -> FLOOR -> ROOM -> DEVICE
     #
+    tracked_consumption = 0
 
     for consumer in consumers:
 
@@ -190,7 +198,7 @@ def build_live_sankey(user, flow):
         links.append({
             "source": current_target,
             "target": consumer["node_id"],
-            "value": 1,
+            "value": consumer["power"],
         })
 
 #
@@ -217,6 +225,34 @@ def build_live_sankey(user, flow):
             "target": "sum",
             "value": 500,
         })
+    
+    total_input = 4500
+    total_input = (
+
+    flow.get("pv_to_load", 0)
+    + flow.get("battery_to_load", 0)
+    + flow.get("grid_to_load", 0)
+    )
+    
+    untracked = max(
+        total_input - tracked_consumption,
+        0,
+    )
+    
+    if untracked > 0:
+
+        add_node(
+            "untracked",
+            "Nicht erfasst",
+            "consumer",
+        )
+
+        links.append({
+            "source": "sum",
+            "target": "untracked",
+            "value": untracked,
+        })
+
     return {
             "nodes": nodes,
             "links": links,
