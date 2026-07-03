@@ -12,7 +12,7 @@ from .models import (
     AssetMeter,
     SmartEnergySettings,
 )
-
+from energy.models import EMSSignalSource
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
@@ -103,4 +103,17 @@ class SmartEnergySettingsAdmin(admin.ModelAdmin):
     list_filter = ("optimization_mode", "allow_direct_control")
     raw_id_fields = ("tenant", "owner_user", "owner_membership")
 
-    
+
+@admin.register(EMSSignalSource)
+class EMSSignalSourceAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "home",
+        "signal_type",
+        "device",
+        "created_at",
+    )
+
+    list_filter = (
+        "signal_type",
+    )

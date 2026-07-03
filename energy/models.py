@@ -6,6 +6,8 @@ import uuid
 from django.db import models
 from django.db.models import Q
 
+from .ems.models import EMSSignalSource
+
 
 # ---------------------------------------------------------------------
 # Helper: wiederverwendbare Check-Constraints pro Model (unique names!)

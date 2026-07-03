@@ -13,6 +13,7 @@ from devices.models import (
     Home,
 )
 
+from energy.models import EMSSignalSource
 
 # ============================================================
 # ✅ ROLE
@@ -54,6 +55,18 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             allow_blank=True,
         )
 
+    is_pv_source = serializers.SerializerMethodField()
+    is_grid_source = serializers.SerializerMethodField()
+
+    is_pv_source_write = serializers.BooleanField(
+        write_only=True,
+        required=False,
+    )
+
+    is_grid_source_write = serializers.BooleanField(
+        write_only=True,
+        required=False,
+    )
 
     # READ
     role = DeviceRoleSerializer(read_only=True)
@@ -107,7 +120,28 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             "floor",
             "floor_id",
             "home_id",
+            "is_pv_source",
+            "is_grid_source",
+            "is_pv_source_write",
+            "is_grid_source_write",
         )
+
+
+    def get_is_pv_source(self, obj):
+
+        return EMSSignalSource.objects.filter(
+            device=obj.device,
+            signal_type="pv",
+        ).exists()
+
+
+    def get_is_grid_source(self, obj):
+
+        return EMSSignalSource.objects.filter(
+            device=obj.device,
+            signal_type="grid",
+        ).exists()
+    
 
     # ✅ ✅ ✅ HIER IST DER FIX
     def validate(self, data):
@@ -139,6 +173,63 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
         return data
 
+    def update(self, instance, validated_data):
+
+            pv_selected = validated_data.pop(
+                "is_pv_source_write",
+                None,
+            )
+
+            grid_selected = validated_data.pop(
+                "is_grid_source_write",
+                None,
+            )
+
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+
+            instance.save()
+
+            #
+            # PV
+            #
+
+            if pv_selected is not None:
+
+                EMSSignalSource.objects.filter(
+                    device=instance.device,
+                    signal_type="pv",
+                ).delete()
+
+                if pv_selected:
+
+                    EMSSignalSource.objects.create(
+                        home=instance.home,
+                        device=instance.device,
+                        signal_type="pv",
+                    )
+
+            #
+            # GRID
+            #
+
+            if grid_selected is not None:
+
+                EMSSignalSource.objects.filter(
+                    device=instance.device,
+                    signal_type="grid",
+                ).delete()
+
+                if grid_selected:
+
+                    EMSSignalSource.objects.create(
+                        home=instance.home,
+                        device=instance.device,
+                        signal_type="grid",
+                    )
+
+            return instance
+    
 
 # ============================================================
 # ✅ DEVICE
