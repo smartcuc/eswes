@@ -19,7 +19,7 @@ class DeviceConfigAdmin(admin.ModelAdmin):
         "name",
         "role",
         "energy_source_ref",
-        "energy_group_ref",,
+        "energy_group_ref",
     )
 
     list_filter = (
