@@ -19,8 +19,6 @@ from devices.models import (
     Room,
     Floor,
     Home,
-    EnergySource,
-    EnergyGroup,
 )
 
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
@@ -46,9 +44,6 @@ def device_setup_options(request):
     rooms = Room.objects.all()
     floors = Floor.objects.all()
 
-    energy_sources = EnergySource.objects.all()
-    energy_groups = EnergyGroup.objects.all()
-
     # ✅ wenn du measurement types brauchst:
     from devices.models import MetricDefinition
     metrics = MetricDefinition.objects.all()
@@ -69,22 +64,6 @@ def device_setup_options(request):
         "measurement_types": [
             {"key": m.key, "name": m.name}
             for m in metrics
-        ],
-        "energy_sources": [
-            {
-                "id": e.id,
-                "key": e.key,
-                "label": e.label,
-            }
-            for e in energy_sources
-        ],
-        "energy_groups": [
-            {
-                "id": e.id,
-                "key": e.key,
-                "label": e.label,
-            }
-            for e in energy_groups
         ],
     })
 

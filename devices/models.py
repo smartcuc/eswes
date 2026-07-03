@@ -95,22 +95,6 @@ class MetricDefinition(models.Model):
         return self.name
 
 
-class EnergySource(models.Model):
-    key = models.CharField(max_length=50, unique=True)
-    label = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.label
-
-
-class EnergyGroup(models.Model):
-    key = models.CharField(max_length=50, unique=True)
-    label = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.label
-
-
 # ============================================================
 # ✅ DEVICE (NUR TECHNISCH!)
 # ============================================================
@@ -187,32 +171,6 @@ class DeviceConfig(models.Model):
     measurement_type = models.CharField(
         max_length=50,
         blank=True
-    )
-
-    energy_source = models.CharField(
-        max_length=50,
-        blank=True,
-        default="",
-    )
-
-    energy_group = models.CharField(
-        max_length=50,
-        blank=True,
-        default="",
-    )
-
-    energy_source_ref = models.ForeignKey(
-        EnergySource,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-    )
-
-    energy_group_ref = models.ForeignKey(
-        EnergyGroup,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
     )
 
     # ✅ Location (frei!)

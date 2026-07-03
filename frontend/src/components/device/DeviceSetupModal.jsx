@@ -23,7 +23,6 @@ export default function DeviceSetupModal({
     const query = useUnconfiguredDevices();
     const bulkDevices = query?.data?.devices || [];
 
-
     const devices = (isBulk
         ? bulkDevices
         : singleDevice ? [singleDevice] : []
@@ -46,6 +45,22 @@ export default function DeviceSetupModal({
     const measurementTypes = structure?.measurement_types || [];
     const floors = structure?.floors || [];
     const rooms = structure?.rooms || [];
+
+    const sortedRoles = [...roles].sort((a, b) =>
+        a.label.localeCompare(b.label, "de")
+    );
+
+    const sortedMeasurementTypes = [...measurementTypes].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "", "de")
+    );
+
+    const sortedRooms = [...rooms].sort((a, b) =>
+        a.name.localeCompare(b.name, "de")
+    );
+
+    const sortedFloors = [...floors].sort((a, b) =>
+        a.name.localeCompare(b.name, "de")
+    );
 
     const [localValues, setLocalValues] = useState({});
     const [saving, setSaving] = useState({});
@@ -120,9 +135,6 @@ export default function DeviceSetupModal({
                 room_id: values.room_id ?? server.config?.room?.id ?? null,
                 floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
                 home_id: values.home_id ?? server.config?.home?.id ?? null,
-                energy_source: values.energy_source ?? server.config?.energy_source ?? "",
-                energy_group: values.energy_group ?? server.config?.energy_group ?? "",
-
             }
             // ✅ FIX: Home aus room/floor ableiten, wenn es fehlt
             if (!payload.home_id) {
@@ -238,9 +250,6 @@ export default function DeviceSetupModal({
     const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
     const roomId = local.room_id ?? server.config?.room?.id ?? "";
 
-    const energySource = local.energy_source ?? server.config?.energy_source ?? "";
-    const energyGroup = local.energy_group ?? server.config?.energy_group ?? "";
-
     const progress = ((index + 1) / devices.length) * 100;
 
     return (
@@ -255,7 +264,7 @@ export default function DeviceSetupModal({
                     shadow-xl
                     w-full
                     max-w-2xl
-                    h-[80vh]
+                    h-[70vh]
                     flex
                     flex-col
                     overflow-hidden
@@ -337,149 +346,93 @@ export default function DeviceSetupModal({
 
                         </div>
 
-                        {/* ROLE */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* ROLE */}
 
-                        <div>
+                            <div>
 
-                            <label className="text-xs text-gray-400">
-                                Funktion des Geräts *
-                            </label>
+                                <label className="text-xs text-gray-400">
+                                    Funktion des Geräts *
+                                </label>
 
-                            <select
-                                value={roleId}
-                                onChange={(e) =>
-                                    handleChange(
-                                        device.id,
-                                        "role_id",
-                                        e.target.value
-                                            ? Number(e.target.value)
-                                            : null
-                                    )
-                                }
-                                className={`border px-3 py-2 w-full rounded ${!roleId
-                                    ? "border-red-300 bg-red-50"
-                                    : ""
-                                    }`}
-                            >
-                                <option value="">
-                                    Bitte wählen
-                                </option>
+                                <select
+                                    value={roleId}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "role_id",
+                                            e.target.value
+                                                ? Number(e.target.value)
+                                                : null
+                                        )
+                                    }
+                                    className={`border px-3 py-2 w-full rounded ${!roleId
+                                        ? "border-red-300 bg-red-50"
+                                        : ""
+                                        }`}
+                                >
 
-                                {roles.map(r => (
-                                    <option
-                                        key={r.id}
-                                        value={r.id}
-                                    >
-                                        {r.label}
+                                    <option value="">
+                                        ⚡ Funktion
                                     </option>
-                                ))}
-                            </select>
 
-                            <p className="text-xs text-gray-400 mt-1">
-                                Erzeuger, Verbraucher oder Speicher
-                            </p>
+                                    {sortedRoles.map(r => (
+                                        <option
+                                            key={r.id}
+                                            value={r.id}
+                                        >
+                                            {r.label}
+                                        </option>
+                                    ))}
+                                </select>
 
-                        </div>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Erzeuger, Verbraucher oder Speicher
+                                </p>
 
-                        {/* MEASUREMENT */}
+                            </div>
 
-                        <div>
+                            {/* MEASUREMENT */}
 
-                            <label className="text-xs text-gray-400">
-                                Messdaten *
-                            </label>
+                            <div>
 
-                            <select
-                                value={measurementType}
-                                onChange={(e) =>
-                                    handleChange(
-                                        device.id,
-                                        "measurement_type",
-                                        e.target.value || null
-                                    )
-                                }
-                                className={`border px-3 py-2 w-full rounded ${!measurementType
-                                    ? "border-red-300 bg-red-50"
-                                    : ""
-                                    }`}
-                            >
-                                <option value="">
-                                    Bitte wählen
-                                </option>
+                                <label className="text-xs text-gray-400">
+                                    Messdaten *
+                                </label>
 
-                                {measurementTypes.map(m => (
-                                    <option
-                                        key={m.key || m.id}
-                                        value={m.key || m.value}
-                                    >
-                                        {m.label || m.name}
+                                <select
+                                    value={measurementType}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "measurement_type",
+                                            e.target.value || null
+                                        )
+                                    }
+                                    className={`border px-3 py-2 w-full rounded ${!measurementType
+                                        ? "border-red-300 bg-red-50"
+                                        : ""
+                                        }`}
+                                >
+                                    <option value="">
+                                        📊 Messwert
                                     </option>
-                                ))}
-                            </select>
 
-                            <p className="text-xs text-gray-400 mt-1">
-                                Welche Werte liefert dieses Gerät?
-                            </p>
+                                    {sortedMeasurementTypes.map(m => (
+                                        <option
+                                            key={m.key || m.id}
+                                            value={m.key || m.value}
+                                        >
+                                            {m.label || m.name}
+                                        </option>
+                                    ))}
+                                </select>
 
-                        </div>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Welche Werte liefert dieses Gerät?
+                                </p>
 
-                        <div>
-
-                            <label className="text-xs text-gray-400">
-                                Energiequelle
-                            </label>
-
-                            <select
-                                value={energySource}
-                                onChange={(e) =>
-                                    handleChange(
-                                        device.id,
-                                        "energy_source",
-                                        e.target.value
-                                    )
-                                }
-                                className="border px-3 py-2 w-full rounded"
-                            >
-                                <option value="">Bitte wählen</option>
-
-                                <option value="grid">Netz</option>
-                                <option value="pv">PV</option>
-                                <option value="battery">Batterie</option>
-                                <option value="heatpump">Wärmepumpe</option>
-                                <option value="ev">Wallbox</option>
-                                <option value="household">Haushalt</option>
-                                <option value="other">Sonstige</option>
-                            </select>
-
-                        </div>
-
-                        <div>
-
-                            <label className="text-xs text-gray-400">
-                                Energiegruppe
-                            </label>
-
-                            <select
-                                value={energyGroup}
-                                onChange={(e) =>
-                                    handleChange(
-                                        device.id,
-                                        "energy_group",
-                                        e.target.value
-                                    )
-                                }
-                                className="border px-3 py-2 w-full rounded"
-                            >
-                                <option value="">Bitte wählen</option>
-
-                                <option value="grid">Netz</option>
-                                <option value="generation">Erzeugung</option>
-                                <option value="storage">Speicher</option>
-                                <option value="heating">Heizung</option>
-                                <option value="mobility">Mobilität</option>
-                                <option value="household">Haushalt</option>
-                                <option value="other">Sonstige</option>
-                            </select>
+                            </div>
 
                         </div>
 
@@ -542,7 +495,7 @@ export default function DeviceSetupModal({
                                         🏢 Etage
                                     </option>
 
-                                    {floors.map(f => (
+                                    {sortedFloors.map(f => (
                                         <option
                                             key={f.id}
                                             value={f.id}
@@ -569,7 +522,7 @@ export default function DeviceSetupModal({
                                         🚪 Raum
                                     </option>
 
-                                    {rooms.map(r => (
+                                    {sortedRooms.map(r => (
                                         <option
                                             key={r.id}
                                             value={r.id}
@@ -675,6 +628,6 @@ export default function DeviceSetupModal({
 
             </div>
 
-        </div>
+        </div >
     );
 }
