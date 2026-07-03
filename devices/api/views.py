@@ -107,7 +107,7 @@ def unconfigured_devices(request):
 # ✅ CONFIGURE DEVICE
 # ============================================================
 
-@@api_view(["PATCH"])
+@api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def configure_device(request, device_id):
 
