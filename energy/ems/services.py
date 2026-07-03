@@ -2,7 +2,7 @@
 # energy/ems/services.py
 ########################
 
-from devices.models import DeviceMetric
+from devices.models import DeviceMetric, Device
 from energy.models import EMSSignalSource
 
 
@@ -91,4 +91,53 @@ def build_device_signals(user):
         signals["grid"]["import"] = 0
         signals["grid"]["export"] = abs(grid_power)
 
+
+    #
+    # BATTERY
+    #
+
+    battery_devices = (
+        Device.objects
+        .filter(
+            home__user=user,
+            active=True,
+            pending_delete=False,
+            config__role__key="battery",
+        )
+    )
+
+    battery_power = sum(
+        get_latest_power(device)
+        for device in battery_devices
+    )
+
+    if battery_power >= 0:
+
+        signals["battery"]["discharge"] = battery_power
+        signals["battery"]["charge"] = 0
+
+    else:
+
+        signals["battery"]["discharge"] = 0
+        signals["battery"]["charge"] = abs(battery_power)
+
+
+    #
+    # LOAD
+    #
+
+    consumption = (
+        signals["pv"]["production"]
+        + signals["battery"]["discharge"]
+        + signals["grid"]["import"]
+        - signals["battery"]["charge"]
+        - signals["grid"]["export"]
+    )
+
+    signals["load"]["consumption"] = max(
+        consumption,
+        0,
+    )
+
     return signals
+
