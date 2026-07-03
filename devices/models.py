@@ -95,6 +95,22 @@ class MetricDefinition(models.Model):
         return self.name
 
 
+class EnergySource(models.Model):
+    key = models.CharField(max_length=50, unique=True)
+    label = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.label
+
+
+class EnergyGroup(models.Model):
+    key = models.CharField(max_length=50, unique=True)
+    label = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.label
+
+
 # ============================================================
 # ✅ DEVICE (NUR TECHNISCH!)
 # ============================================================

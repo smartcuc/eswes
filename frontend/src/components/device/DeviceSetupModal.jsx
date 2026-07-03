@@ -8,7 +8,15 @@ import { useSettings } from "../../hooks/useSettings";
 import { useStructure } from "../../hooks/useStructure";
 import { apiFetch } from "../../api/client";
 
-export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleDevice = null }) {
+
+export default function DeviceSetupModal({
+    open,
+    onClose,
+    onDeviceUpdated,
+    mode = "bulk",
+    singleDevice = null
+}) {
+
 
     const isBulk = mode === "bulk";
 
@@ -144,6 +152,9 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
             });
 
             if (data?.device) {
+
+                onDeviceUpdated?.(data.device);
+
                 setServerDevices(prev => ({
                     ...prev,
                     [data.device.id]: data.device

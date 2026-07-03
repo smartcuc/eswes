@@ -2,7 +2,7 @@
 # src/pages/DevicesPage.jsx
 */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { apiFetch } from "../api/client";
 import DeviceChartModal from "../components/device/DeviceChartModal";
@@ -147,9 +147,21 @@ const roleOptions = {
 
 export default function DevicesPage() {
 
+    const queryClient = useQueryClient();
+
     const [chartDevice, setChartDevice] = useState(null);
     const [modalMode, setModalMode] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
+
+    function handleDeviceUpdated(device) {
+
+        queryClient.setQueryData(
+            ["devices"],
+            old => old?.map(d =>
+                d.id === device.id ? device : d
+            ) || []
+        );
+    }
 
     const [filterText, setFilterText] = useState("");
 
@@ -711,6 +723,7 @@ export default function DevicesPage() {
                     setModalMode(null);
                     setEditingDevice(null);
                 }}
+                onDeviceUpdated={handleDeviceUpdated}
                 mode={modalMode || "bulk"}
                 singleDevice={editingDevice}
             />
