@@ -3,7 +3,18 @@
 ############################
 
 from rest_framework import serializers
-from devices.models import Device, DeviceConfig, DeviceRole, Room, Floor, Home
+
+from devices.models import (
+    Device,
+    DeviceConfig,
+    DeviceRole,
+    Room,
+    Floor,
+    Home,
+    EnergySource,
+    EnergyGroup,
+)
+
 
 
 # ============================================================
@@ -33,6 +44,21 @@ class FloorSerializer(serializers.ModelSerializer):
 
 
 # ============================================================
+# ✅ENERGY
+# ============================================================
+
+class EnergySourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EnergySource
+        fields = ("id", "key", "label")
+
+
+class EnergyGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EnergyGroup
+        fields = ("id", "key", "label")
+
+# ============================================================
 # ✅ CONFIG
 # ============================================================
 
@@ -50,6 +76,9 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
     role = DeviceRoleSerializer(read_only=True)
     room = RoomSerializer(read_only=True)
     floor = FloorSerializer(read_only=True)
+    
+    energy_source_ref = EnergySourceSerializer(read_only=True)
+    energy_group_ref = EnergyGroupSerializer(read_only=True)
 
     # WRITE
     role_id = serializers.PrimaryKeyRelatedField(
@@ -84,13 +113,35 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
         required=False
     )
 
+    energy_source_ref_id = serializers.PrimaryKeyRelatedField(
+        queryset=EnergySource.objects.all(),
+        source="energy_source_ref",
+        write_only=True,
+        allow_null=True,
+        required=False,
+    )
+
+    energy_group_ref_id = serializers.PrimaryKeyRelatedField(
+        queryset=EnergyGroup.objects.all(),
+        source="energy_group_ref",
+        write_only=True,
+        allow_null=True,
+        required=False,
+    )
+
     class Meta:
         model = DeviceConfig
+
         fields = (
             "display_name",
             "measurement_type",
+
             "energy_source_ref",
+            "energy_source_ref_id",
+
             "energy_group_ref",
+            "energy_group_ref_id",
+
             "role",
             "role_id",
             "room",
