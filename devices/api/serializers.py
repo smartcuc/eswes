@@ -39,11 +39,11 @@ class FloorSerializer(serializers.ModelSerializer):
 class DeviceConfigSerializer(serializers.ModelSerializer):
 
     
-    # display_name = serializers.CharField(
-    #         source="name",
-    #         required=False,
-    #         allow_blank=True,
-    #     )
+    display_name = serializers.CharField(
+            source="name",
+            required=False,
+            allow_blank=True,
+        )
 
 
     # READ
