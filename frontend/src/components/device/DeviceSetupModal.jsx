@@ -135,6 +135,8 @@ export default function DeviceSetupModal({
                 room_id: values.room_id ?? server.config?.room?.id ?? null,
                 floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
                 home_id: values.home_id ?? server.config?.home?.id ?? null,
+                is_pv_source_write: values.is_pv_source_write,
+                is_grid_source_write: values.is_grid_source_write,
             }
             // ✅ FIX: Home aus room/floor ableiten, wenn es fehlt
             if (!payload.home_id) {
@@ -250,6 +252,15 @@ export default function DeviceSetupModal({
     const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
     const roomId = local.room_id ?? server.config?.room?.id ?? "";
 
+    const selectedRole = roles.find(
+        r => Number(r.id) === Number(roleId)
+    );
+
+    console.log({
+        roleId,
+        selectedRole,
+        roles,
+    });
     const progress = ((index + 1) / devices.length) * 100;
 
     return (
@@ -389,6 +400,58 @@ export default function DeviceSetupModal({
                                 <p className="text-xs text-gray-400 mt-1">
                                     Erzeuger, Verbraucher oder Speicher
                                 </p>
+
+                                {selectedRole?.key === "producer" && (
+
+                                    <div className="flex gap-6 mt-2">
+
+                                        <label className="flex items-center gap-2">
+
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    local.is_pv_source_write ??
+                                                    server.config?.is_pv_source ??
+                                                    false
+                                                }
+                                                onChange={(e) =>
+                                                    handleChange(
+                                                        device.id,
+                                                        "is_pv_source_write",
+                                                        e.target.checked
+                                                    )
+                                                }
+                                            />
+
+                                            ☀️ PV-Erzeugung
+
+                                        </label>
+
+                                        <label className="flex items-center gap-2">
+
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    local.is_grid_source_write ??
+                                                    server.config?.is_grid_source ??
+                                                    false
+                                                }
+                                                onChange={(e) =>
+                                                    handleChange(
+                                                        device.id,
+                                                        "is_grid_source_write",
+                                                        e.target.checked
+                                                    )
+                                                }
+                                            />
+
+                                            🔌 Netzanschluss
+
+                                        </label>
+
+                                    </div>
+                                )}
+
 
                             </div>
 

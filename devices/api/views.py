@@ -26,7 +26,8 @@ from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
 from .serializers import (
     DeviceSerializer,
     DeviceConfigSerializer,
-    HomeSerializer
+    HomeSerializer,
+    DeviceRoleSerializer,
 #    RoomSerializer,
 #    FloorSerializer,
 )
@@ -49,18 +50,21 @@ def device_setup_options(request):
     metrics = MetricDefinition.objects.all()
 
     return Response({
-        "roles": [
-            {"id": r.id, "label": r.label}
-            for r in roles
-        ],
+        "roles": DeviceRoleSerializer(
+            roles,
+            many=True,
+        ).data,
+
         "rooms": [
             {"id": r.id, "name": r.name}
             for r in rooms
         ],
+
         "floors": [
             {"id": f.id, "name": f.name}
             for f in floors
         ],
+
         "measurement_types": [
             {"key": m.key, "name": m.name}
             for m in metrics
