@@ -6,18 +6,6 @@ from .registry import PROVIDERS
 
 from energy.ems.services import build_device_signals
 
-# EMS - SANKEY
-def aggregate_signals(user, category="system"):
-
-    if category == "device":
-        return build_device_signals(user)
-
-    return {
-        "grid": {},
-        "load": {},
-        "pv": {},
-        "battery": {},
-    }
 
 def merge_dicts(base, new):
     for key, value in new.items():
@@ -32,7 +20,9 @@ def merge_dicts(base, new):
 
 
 def aggregate_signals(user, category="system"):
-#    provider_ids = getattr(user.usersettings, "providers", [])
+
+    if category == "device":
+        return build_device_signals(user)
 
     return {
         "grid": {},
@@ -41,15 +31,3 @@ def aggregate_signals(user, category="system"):
         "battery": {},
     }
 
-    # for pid in provider_ids:
-    #     provider = PROVIDERS.get(pid)
-    #     if not provider:
-    #         continue
-
-    #     if provider.category != category:
-    #         continue
-
-    #     data = provider.fetch_signals(user)
-    #     result = merge_dicts(result, data)
-
-    # return result
