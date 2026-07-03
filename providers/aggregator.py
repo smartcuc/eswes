@@ -4,6 +4,20 @@
 
 from .registry import PROVIDERS
 
+from energy.ems.services import build_device_signals
+
+# EMS - SANKEY
+def aggregate_signals(user, category="system"):
+
+    if category == "device":
+        return build_device_signals(user)
+
+    return {
+        "grid": {},
+        "load": {},
+        "pv": {},
+        "battery": {},
+    }
 
 def merge_dicts(base, new):
     for key, value in new.items():
