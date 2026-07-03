@@ -18,14 +18,14 @@ class DeviceConfigAdmin(admin.ModelAdmin):
         "device",
         "name",
         "role",
-        "energy_source",
-        "energy_group",
+        "energy_source_ref",
+        "energy_group_ref",,
     )
 
     list_filter = (
         "role",
-        "energy_source",
-        "energy_group",
+        "energy_source_ref",
+        "energy_group_ref",
         "home",
     )
 

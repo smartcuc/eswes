@@ -89,8 +89,8 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
         fields = (
             "display_name",
             "measurement_type",
-            "energy_source",
-            "energy_group",
+            "energy_source_ref",
+            "energy_group_ref",
             "role",
             "role_id",
             "room",
