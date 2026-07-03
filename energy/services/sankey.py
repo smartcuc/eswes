@@ -243,7 +243,7 @@ def build_live_sankey(user, flow):
     links.append({
             "source": "pv",
             "target": "sum",
-            "value": 20,
+            "value": flow["pv_to_load"],
         })
 
     if battery_power > 0:
@@ -251,7 +251,7 @@ def build_live_sankey(user, flow):
         links.append({
             "source": "battery",
             "target": "sum",
-            "value": battery_power,
+            "value": flow["battery_to_load"],
         })
 
     if grid_power > 0:
@@ -259,7 +259,7 @@ def build_live_sankey(user, flow):
         links.append({
             "source": "grid",
             "target": "sum",
-            "value": grid_power,
+            "value": flow["grid_to_load"],
         })
 
     
