@@ -84,7 +84,7 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
 
     /* SAVE */
     async function saveDevice(id, values) {
-
+        console.log("SAVE VALUES", values);
         if (!values || Object.keys(values).length === 0) return;
 
         const key = String(id);
@@ -112,6 +112,9 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
                 room_id: values.room_id ?? server.config?.room?.id ?? null,
                 floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
                 home_id: values.home_id ?? server.config?.home?.id ?? null,
+                energy_source: values.energy_source ?? server.config?.energy_source ?? "",
+                energy_group: values.energy_group ?? server.config?.energy_group ?? "",
+
             }
             // ✅ FIX: Home aus room/floor ableiten, wenn es fehlt
             if (!payload.home_id) {
@@ -186,7 +189,7 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
 
     function handleChange(id, field, value) {
         const key = String(id);
-
+        console.log("CHANGE", field, value);
         setLocalValues(prev => {
             const deviceValues = { ...(prev[key] || {}) };
             deviceValues[field] = value;
@@ -223,6 +226,9 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
     const homeId = local.home_id ?? server.config?.home?.id ?? "";
     const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
     const roomId = local.room_id ?? server.config?.room?.id ?? "";
+
+    const energySource = local.energy_source ?? server.config?.energy_source ?? "";
+    const energyGroup = local.energy_group ?? server.config?.energy_group ?? "";
 
     const progress = ((index + 1) / devices.length) * 100;
 
@@ -403,6 +409,66 @@ export default function DeviceSetupModal({ open, onClose, mode = "bulk", singleD
                             <p className="text-xs text-gray-400 mt-1">
                                 Welche Werte liefert dieses Gerät?
                             </p>
+
+                        </div>
+
+                        <div>
+
+                            <label className="text-xs text-gray-400">
+                                Energiequelle
+                            </label>
+
+                            <select
+                                value={energySource}
+                                onChange={(e) =>
+                                    handleChange(
+                                        device.id,
+                                        "energy_source",
+                                        e.target.value
+                                    )
+                                }
+                                className="border px-3 py-2 w-full rounded"
+                            >
+                                <option value="">Bitte wählen</option>
+
+                                <option value="grid">Netz</option>
+                                <option value="pv">PV</option>
+                                <option value="battery">Batterie</option>
+                                <option value="heatpump">Wärmepumpe</option>
+                                <option value="ev">Wallbox</option>
+                                <option value="household">Haushalt</option>
+                                <option value="other">Sonstige</option>
+                            </select>
+
+                        </div>
+
+                        <div>
+
+                            <label className="text-xs text-gray-400">
+                                Energiegruppe
+                            </label>
+
+                            <select
+                                value={energyGroup}
+                                onChange={(e) =>
+                                    handleChange(
+                                        device.id,
+                                        "energy_group",
+                                        e.target.value
+                                    )
+                                }
+                                className="border px-3 py-2 w-full rounded"
+                            >
+                                <option value="">Bitte wählen</option>
+
+                                <option value="grid">Netz</option>
+                                <option value="generation">Erzeugung</option>
+                                <option value="storage">Speicher</option>
+                                <option value="heating">Heizung</option>
+                                <option value="mobility">Mobilität</option>
+                                <option value="household">Haushalt</option>
+                                <option value="other">Sonstige</option>
+                            </select>
 
                         </div>
 

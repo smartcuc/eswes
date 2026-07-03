@@ -79,8 +79,10 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceConfig
         fields = (
-            "name",
+            "display_name",
             "measurement_type",
+            "energy_source",
+            "energy_group",
             "role",
             "role_id",
             "room",
