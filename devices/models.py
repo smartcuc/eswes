@@ -201,6 +201,20 @@ class DeviceConfig(models.Model):
         default="",
     )
 
+    energy_source_ref = models.ForeignKey(
+        EnergySource,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    energy_group_ref = models.ForeignKey(
+        EnergyGroup,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
     # ✅ Location (frei!)
     home = models.ForeignKey(
         Home,

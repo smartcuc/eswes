@@ -13,8 +13,21 @@ class DeviceAdmin(admin.ModelAdmin):
 
 @admin.register(DeviceConfig)
 class DeviceConfigAdmin(admin.ModelAdmin):
-    list_display = ("id", "device", "name", "role")
-    list_filter = ("role", "home")
+    list_display = (
+        "id",
+        "device",
+        "name",
+        "role",
+        "energy_source",
+        "energy_group",
+    )
+
+    list_filter = (
+        "role",
+        "energy_source",
+        "energy_group",
+        "home",
+    )
 
 
 @admin.register(DeviceMetric)
@@ -47,3 +60,16 @@ class DeviceRoleAdmin(admin.ModelAdmin):
 @admin.register(MetricDefinition)
 class MetricDefinitionAdmin(admin.ModelAdmin):
     list_display = ("id", "key", "name", "unit")
+
+
+@admin.register(EnergySource)
+class EnergySourceAdmin(admin.ModelAdmin):
+    list_display = ("id", "key", "label")
+    search_fields = ("key", "label")
+
+
+@admin.register(EnergyGroup)
+class EnergyGroupAdmin(admin.ModelAdmin):
+    list_display = ("id", "key", "label")
+    search_fields = ("key", "label")
+    
