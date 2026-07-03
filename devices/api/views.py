@@ -107,13 +107,23 @@ def unconfigured_devices(request):
 # ✅ CONFIGURE DEVICE
 # ============================================================
 
-@api_view(["PATCH"])
+@@api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def configure_device(request, device_id):
 
+    print("\n================================")
+    print("PATCH CALLED")
+    print("DEVICE:", device_id)
+    print("DATA:", request.data)
+    print("================================\n")
+
     user = request.user
 
-    device = get_object_or_404(Device, id=device_id, home__user=user)
+    device = get_object_or_404(
+        Device,
+        id=device_id,
+        home__user=user
+    )
 
     config, _ = DeviceConfig.objects.get_or_create(
         device=device,
@@ -127,17 +137,32 @@ def configure_device(request, device_id):
     )
 
     serializer.is_valid(raise_exception=True)
+
+    print("\nVALIDATED DATA:")
+    print(serializer.validated_data)
+
     serializer.save()
 
-    # ✅ ✅ ✅ HIER IST DER FIX
     config.refresh_from_db()
+
+    print("\nAFTER SAVE:")
+    print("name =", config.name)
+    print("energy_source =", config.energy_source)
+    print("energy_group =", config.energy_group)
+
     device.configured = config.is_classified()
     device.save(update_fields=["configured"])
 
-    return Response({
+    response_data = {
         "status": "ok",
         "device": DeviceSerializer(device).data
-    })
+    }
+
+    print("\nRESPONSE:")
+    print(response_data)
+    print("================================\n")
+
+    return Response(response_data)
 
 
 @api_view(["GET"])
