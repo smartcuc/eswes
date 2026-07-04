@@ -38,6 +38,16 @@ export default function LiveEnergySankey({ data }) {
                 nodeSpacing={24}
                 animate={true}
                 motionConfig="gentle"
+
+                label={(node) => {
+                    const value = node.value || 0;
+
+                    return value >= 1000
+                        ? `${node.label} (${(value / 1000).toFixed(1)} kW)`
+                        : `${node.label} (${value.toFixed(0)} W)`;
+                }}
+
+                // label={(node) => node.label}
                 labelPosition="outside"
                 labelOrientation="horizontal"
                 nodeOpacity={1}
@@ -46,7 +56,7 @@ export default function LiveEnergySankey({ data }) {
                     top: 20,
                     right: 40,
                     bottom: 20,
-                    left: 40,
+                    left: 80,
                 }}
                 colors={(node) => {
 

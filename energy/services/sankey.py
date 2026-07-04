@@ -282,7 +282,7 @@ def build_live_sankey(user, flow):
         links.append({
             "source": "sum",
             "target": "untracked",
-            "value": untracked,
+            "value": round(untracked, 2),
         })
 
 
