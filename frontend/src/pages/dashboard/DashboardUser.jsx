@@ -26,6 +26,7 @@ export default function DashboardUser() {
         queryFn: () =>
             apiFetch("/api/energy/dashboard/me/"),
         refetchInterval: 5000,
+        refetchIntervalInBackground: true,
     });
 
     return (
