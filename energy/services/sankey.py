@@ -4,6 +4,7 @@
 
 from devices.models import Device
 from devices.models import DeviceMetric
+from energy.services.signals import get_ems_signals
 
 
 
@@ -65,23 +66,23 @@ def build_live_sankey(user, flow):
         "total_active_power",
     )
 
+    signals = get_ems_signals(user)
+
     grid_power = (
-        get_latest_power(grid_device)
-        if grid_device
-        else 0
+        signals["grid"]["import"]
+        or 0
     )
 
     battery_power = (
-        get_latest_power(battery_device)
-        if battery_device
-        else 0
+        signals["battery"]["discharge"]
+        or 0
     )
 
     total_consumption = (
-        get_latest_power(total_device)
-        if total_device
-        else 0
+        signals["load"]["consumption"]
+        or 0
     )
+
 
     nodes = []
     links = []
