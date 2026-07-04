@@ -130,7 +130,7 @@ def build_live_sankey(user, flow):
 
     add_node(
         "sum",
-        "Σ Energie",
+        f"Σ {total_consumption/1000:.1f} kW",
         "sum",
     )
 
@@ -161,9 +161,9 @@ def build_live_sankey(user, flow):
         node_id = f"device_{device.id}"
         
         label = (
-            config.name
-            or getattr(device, "name", None)
-            or device.identifier
+            config.display_name()
+            if config
+            else device.identifier
         )
 
         power = get_latest_power(device)
@@ -241,13 +241,15 @@ def build_live_sankey(user, flow):
 
         tracked_consumption += consumer["power"]
 
-    links.append({
+    if flow["pv_to_load"] > 0:
+
+        links.append({
             "source": "pv",
             "target": "sum",
             "value": flow["pv_to_load"],
         })
 
-    if battery_power > 0:
+    if flow["battery_to_load"] > 0:
 
         links.append({
             "source": "battery",
@@ -255,7 +257,7 @@ def build_live_sankey(user, flow):
             "value": flow["battery_to_load"],
         })
 
-    if grid_power > 0:
+    if flow["grid_to_load"] > 0:
 
         links.append({
             "source": "grid",
