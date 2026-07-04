@@ -33,8 +33,12 @@ def get_device_by_identifier(devices, identifier):
     return None
 
 
-def build_live_sankey(user, flow):
-
+def build_live_sankey(
+    user,
+    flow,
+    show_floors=True,
+    show_rooms=True,
+):
     devices = (
         Device.objects
         .filter(
@@ -195,7 +199,7 @@ def build_live_sankey(user, flow):
 
         floor = consumer["floor"]
 
-        if floor:
+        if show_floors and floor:
 
             floor_id = f"floor_{floor.id}"
 
@@ -215,7 +219,7 @@ def build_live_sankey(user, flow):
 
         room = consumer["room"]
 
-        if room:
+        if show_rooms and room:
 
             room_id = f"room_{room.id}"
 

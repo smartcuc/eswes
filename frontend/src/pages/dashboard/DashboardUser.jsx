@@ -9,7 +9,8 @@ import KPI from "../../components/ui/KPI";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import useUserPreference from "../hooks/useUserPreference";
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../../api/client";
@@ -25,10 +26,26 @@ export default function DashboardUser() {
         queryKey: ["energy-dashboard"],
         queryFn: () =>
             apiFetch("/api/energy/dashboard/me/"),
-        staleTime: 5000,
         refetchInterval: 3000, // ✅ VERY IMPORTANT
         refetchIntervalInBackground: true,
     });
+
+    const {
+        value: settings,
+        setValue: saveSettings,
+        isLoading: settingsLoading,
+    } = useUserPreference("sankey");
+
+    const showFloors = useMemo(
+        () => settings.showFloors ?? true,
+        [settings.showFloors]
+    );
+
+    const showRooms = useMemo(
+        () => settings.showRooms ?? true,
+        [settings.showRooms]
+    );
+
 
     return (
         <DashboardLayout>
@@ -82,9 +99,63 @@ export default function DashboardUser() {
 
             <Card>
 
-                <h2 className="text-lg font-semibold mb-4">
-                    Live Energiefluss
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+
+                    <h2 className="text-lg font-semibold">
+                        Live Energiefluss
+                    </h2>
+
+                    <div className="flex gap-2">
+
+                        <button
+                            title="Nach Etagen gruppieren"
+                            onClick={() =>
+                                saveSettings({
+                                    ...settings,
+                                    showFloors: !showFloors,
+                                })
+                            }
+                            className={`
+                    px-2.5 py-1
+                    rounded-full
+                    text-xs
+                    border
+                    flex items-center gap-1
+                    transition
+                    ${showFloors
+                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                    : "bg-white hover:bg-gray-50 border-gray-200"}
+                `}
+                        >
+                            🏢 Etagen
+                        </button>
+
+                        <button
+                            title="Nach Räumen gruppieren"
+                            onClick={() =>
+                                saveSettings({
+                                    ...settings,
+                                    showRooms: !showRooms,
+                                })
+                            }
+                            className={`
+                    px-2.5 py-1
+                    rounded-full
+                    text-xs
+                    border
+                    flex items-center gap-1
+                    transition
+                    ${showRooms
+                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                    : "bg-white hover:bg-gray-50 border-gray-200"}
+                `}
+                        >
+                            🚪 Räume
+                        </button>
+
+                    </div>
+
+                </div>
 
                 <LiveEnergySankey
                     data={energyQuery.data?.sankey}
