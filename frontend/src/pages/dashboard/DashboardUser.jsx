@@ -12,7 +12,7 @@ import Button from "../../components/ui/Button";
 import { useState } from "react";
 import useUserPreference from "../../hooks/useUserPreference";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../api/client";
 
 import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey";
@@ -20,6 +20,7 @@ import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey"
 
 export default function DashboardUser() {
 
+    const queryClient = useQueryClient();
     const [openSetup, setOpenSetup] = useState(false);
 
     const {
@@ -37,9 +38,6 @@ export default function DashboardUser() {
             showRooms,
         ],
         queryFn: () => apiFetch("/api/energy/dashboard/me/"),
-
-
-
         refetchInterval: 3000, // ✅ VERY IMPORTANT
         refetchIntervalInBackground: true,
     });
@@ -107,12 +105,15 @@ export default function DashboardUser() {
 
                         <button
                             title="Nach Etagen gruppieren"
-                            onClick={() =>
-                                saveSettings({
+                            onClick={async () => {
+                                await saveSettings({
                                     ...settings,
                                     showFloors: !showFloors,
-                                })
-                            }
+                                });
+
+                                energyQuery.refetch();
+                            }}
+
                             className={`
                     px-2.5 py-1
                     rounded-full
@@ -130,12 +131,15 @@ export default function DashboardUser() {
 
                         <button
                             title="Nach Räumen gruppieren"
-                            onClick={() =>
-                                saveSettings({
+                            onClick={async () => {
+                                await saveSettings({
                                     ...settings,
                                     showRooms: !showRooms,
-                                })
-                            }
+                                });
+
+                                energyQuery.refetch();
+                            }}
+
                             className={`
                     px-2.5 py-1
                     rounded-full

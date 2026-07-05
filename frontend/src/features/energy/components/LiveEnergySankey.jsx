@@ -97,6 +97,9 @@ export default function LiveEnergySankey({ data }) {
 
                         case "consumer":
                             return "#f472b6";
+
+                        case "untracked":
+                            return "#d1d5db";
                     }
 
                     return "#cbd5e1";

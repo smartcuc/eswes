@@ -280,7 +280,7 @@ def build_live_sankey(
         add_node(
             "untracked",
             "Nicht erfasst",
-            "consumer",
+            "untracked",
         )
 
         links.append({
