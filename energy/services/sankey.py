@@ -7,7 +7,6 @@ from devices.models import DeviceMetric
 from energy.services.signals import get_ems_signals
 
 
-
 def get_latest_power(device):
 
     metric = (
@@ -21,16 +20,6 @@ def get_latest_power(device):
     )
 
     return metric.value if metric else 0
-
-
-
-def get_device_by_identifier(devices, identifier):
-
-    for device in devices:
-        if device.identifier == identifier:
-            return device
-
-    return None
 
 
 def build_live_sankey(
@@ -55,38 +44,12 @@ def build_live_sankey(
         )
     )
 
-    grid_device = get_device_by_identifier(
-        devices,
-        "grid_total_power",
-    )
-
-    battery_device = get_device_by_identifier(
-        devices,
-        "battery_power",
-    )
-
-    total_device = get_device_by_identifier(
-        devices,
-        "total_active_power",
-    )
-
     signals = get_ems_signals(user)
-
-    grid_power = (
-        signals["grid"]["import"]
-        or 0
-    )
-
-    battery_power = (
-        signals["battery"]["discharge"]
-        or 0
-    )
 
     total_consumption = (
         signals["load"]["consumption"]
         or 0
     )
-
 
     nodes = []
     links = []
@@ -288,10 +251,6 @@ def build_live_sankey(
             "target": "untracked",
             "value": round(untracked, 2),
         })
-
-
-    if tracked_consumption > total_consumption:
-        tracked_consumption = total_consumption
 
     return {
             "nodes": nodes,

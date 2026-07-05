@@ -137,7 +137,10 @@ export default function DashboardUser() {
                                     showRooms: !showRooms,
                                 });
 
-                                energyQuery.refetch();
+                                queryClient.invalidateQueries({
+                                    queryKey: ["energy-dashboard"],
+                                })
+
                             }}
 
                             className={`
