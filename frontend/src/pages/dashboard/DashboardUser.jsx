@@ -36,13 +36,9 @@ export default function DashboardUser() {
             showFloors,
             showRooms,
         ],
-        queryFn: () =>
+        queryFn: () => apiFetch("/api/energy/dashboard/me/"),
 
-            apiFetch(
-                `/api/energy/dashboard/me/?floors=${showFloors ? 1 : 0
-                }&rooms=${showRooms ? 1 : 0
-                }`
-            ),
+
 
         refetchInterval: 3000, // ✅ VERY IMPORTANT
         refetchIntervalInBackground: true,

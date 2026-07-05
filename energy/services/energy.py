@@ -11,7 +11,7 @@ from energy.services.sankey import build_live_sankey
 def get_energy_data(
     user,
     show_floors=True,
-    show_rooms=True,
+    show_rooms=False,
 ):
 
     signals = get_ems_signals(user)
