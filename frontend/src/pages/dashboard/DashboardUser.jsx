@@ -9,8 +9,8 @@ import KPI from "../../components/ui/KPI";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
-import { useState, useMemo } from "react";
-import useUserPreference from "../hooks/useUserPreference";
+import { useState } from "react";
+import useUserPreference from "../../hooks/useUserPreference";
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../../api/client";
@@ -22,29 +22,31 @@ export default function DashboardUser() {
 
     const [openSetup, setOpenSetup] = useState(false);
 
-    const energyQuery = useQuery({
-        queryKey: ["energy-dashboard"],
-        queryFn: () =>
-            apiFetch("/api/energy/dashboard/me/"),
-        refetchInterval: 3000, // ✅ VERY IMPORTANT
-        refetchIntervalInBackground: true,
-    });
-
     const {
         value: settings,
         setValue: saveSettings,
-        isLoading: settingsLoading,
     } = useUserPreference("sankey");
 
-    const showFloors = useMemo(
-        () => settings.showFloors ?? true,
-        [settings.showFloors]
-    );
+    const showFloors = settings.showFloors ?? true;
+    const showRooms = settings.showRooms ?? true;
 
-    const showRooms = useMemo(
-        () => settings.showRooms ?? true,
-        [settings.showRooms]
-    );
+    const energyQuery = useQuery({
+        queryKey: [
+            "energy-dashboard",
+            showFloors,
+            showRooms,
+        ],
+        queryFn: () =>
+
+            apiFetch(
+                `/api/energy/dashboard/me/?floors=${showFloors ? 1 : 0
+                }&rooms=${showRooms ? 1 : 0
+                }`
+            ),
+
+        refetchInterval: 3000, // ✅ VERY IMPORTANT
+        refetchIntervalInBackground: true,
+    });
 
 
     return (
