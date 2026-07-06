@@ -3,24 +3,7 @@
 ###########################
 
 from devices.models import Device
-from devices.models import DeviceMetric
-from energy.services.signals import get_ems_signals
 from energy.ems.services import get_latest_powers
-
-
-def get_latest_power(device):
-
-    metric = (
-        DeviceMetric.objects
-        .filter(
-            device=device,
-            metric_key="value",
-        )
-        .order_by("-timestamp")
-        .first()
-    )
-
-    return metric.value if metric else 0
 
 
 def build_live_sankey(
