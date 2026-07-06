@@ -11,6 +11,7 @@ from devices.models import (
     Room,
     Floor,
     Home,
+    MQTTProfile,
 )
 
 from energy.models import EMSSignalSource
@@ -284,3 +285,13 @@ class HomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Home
         fields = ("id", "name")
+
+
+class MQTTProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MQTTProfile
+        fields = [
+            "id",
+            "slug",
+            "name",
+        ]

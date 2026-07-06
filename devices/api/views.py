@@ -18,6 +18,7 @@ from devices.models import (
     Room,
     Floor,
     Home,
+    MQTTProfile,
 )
 
 from devices.models import MetricDefinition
@@ -29,6 +30,7 @@ from .serializers import (
     DeviceConfigSerializer,
     HomeSerializer,
     DeviceRoleSerializer,
+    MQTTProfileSerializer,
 #    RoomSerializer,
 #    FloorSerializer,
 )
@@ -522,3 +524,17 @@ def trash_count(request):
         "count": count,
     })
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def mqtt_profile_list(request):
+
+    profiles = MQTTProfile.objects.filter(
+        active=True
+    ).order_by("name")
+
+    return Response(
+        MQTTProfileSerializer(
+            profiles,
+            many=True,
+        ).data
+    )

@@ -50,11 +50,11 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
     
     parts = topic.split("/")
 
-    if len(parts) < 4:
+    if len(parts) != 3:
         raise ValueError("Invalid topic format")
 
     home_token = parts[1].strip()
-    device_identifier = parts[3]
+    device_identifier = parts[2].strip()
 
 
     # ========================================================
@@ -133,8 +133,18 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
 
         # ✅ Case 2: {"val": 229.8}
         elif isinstance(data, dict) and "val" in data:
-            metrics = {"value": data["val"]}
+
+            metric_name = data.get(
+                "metric",
+                "value"
+            )
+
+            metrics = {
+                metric_name: data["val"]
+            }
+
             meta = data
+
 
         # ✅ Case 3: ioBroker wrapper
         elif isinstance(data, dict) and "message" in data:
@@ -203,7 +213,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
             timestamp=ts,
             metric_key=str(key),
             value=_to_float(value),
-            unit=_guess_unit(key),
+            unit="",
             data={
                 "source": source,
                 "raw": meta,
@@ -227,6 +237,7 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
             },
         )
 
+
 # ============================================================
 # ✅ HELPERS
 # ============================================================
@@ -237,20 +248,6 @@ def _to_float(val):
     except Exception:
         return None
 
-
-def _guess_unit(metric: str) -> str:
-    m = metric.lower()
-
-    if "power" in m:
-        return "W"
-    if "energy" in m:
-        return "kWh"
-    if "voltage" in m:
-        return "V"
-    if "current" in m:
-        return "A"
-
-    return ""
 
 # ============================================================
 # ✅ DJANGO MANAGEMENT COMMAND ENTRYPOINT
@@ -302,7 +299,7 @@ class Command(BaseCommand):
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
             print("MQTT connected ✅")
-            client.subscribe("home/+/device/+")
+            client.subscribe("h/+/+")
         else:
             print(f"MQTT failed rc={reason_code}")
 

@@ -18,6 +18,28 @@ User = get_user_model()
 
 
 # ============================================================
+# ✅ MQTT PROFILE
+# ============================================================
+
+class MQTTProfile(models.Model):
+
+    slug = models.SlugField(
+        unique=True
+    )
+
+    name = models.CharField(
+        max_length=100
+    )
+
+    active = models.BooleanField(
+        default=True
+    )
+
+    def __str__(self):
+        return self.name
+    
+
+# ============================================================
 # ✅ HOME (MQTT + CORE)
 # ============================================================
 
@@ -89,7 +111,6 @@ class DeviceRole(models.Model):
     def __str__(self):
         return self.label
 
-
 class MetricDefinition(models.Model):
     key = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
@@ -105,12 +126,6 @@ class MetricDefinition(models.Model):
 
 class Device(models.Model):
 
-    MQTT_PROFILE_CHOICES = [
-            ("iobroker", "ioBroker"),
-            ("shelly", "Shelly"),
-            ("generic", "Generic"),
-        ]
-
     home = models.ForeignKey(
         Home,
         on_delete=models.CASCADE,
@@ -119,10 +134,12 @@ class Device(models.Model):
 
     identifier = models.CharField(max_length=100)
 
-    mqtt_profile = models.CharField(
-        max_length=20,
-        choices=MQTT_PROFILE_CHOICES,
-        default="generic",
+    mqtt_profile = models.ForeignKey(
+        MQTTProfile,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="devices",
     )
     
     # ✅ NEU: technischer Status

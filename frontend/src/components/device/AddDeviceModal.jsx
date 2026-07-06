@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCreateDevice } from "../../hooks/useCreateDevice";
 import { useDeviceStatus } from "../../hooks/useDevices";
+import { useMqttProfiles } from "../../hooks/useMqttProfiles";
 
 /* =========================================================
    HELPERS
@@ -34,6 +35,7 @@ export default function AddDeviceModal({ open, onClose }) {
     const [device, setDevice] = useState(null);
 
     const createDevice = useCreateDevice();
+    const { data: mqttProfiles = [] } = useMqttProfiles();
 
     useEffect(() => {
         if (open) {
@@ -78,6 +80,7 @@ export default function AddDeviceModal({ open, onClose }) {
 
                 {step === 1 && (
                     <StepConnection
+                        profiles={mqttProfiles}
                         onSelect={(type) => {
                             setConnection(type);
                             next();
@@ -105,9 +108,11 @@ export default function AddDeviceModal({ open, onClose }) {
 
                             try {
 
+
                                 const result = await createDevice.mutateAsync({
                                     identifier,
-                                    name
+                                    name,
+                                    mqtt_profile: connection
                                 });
 
                                 setDevice(result);
@@ -144,28 +149,18 @@ export default function AddDeviceModal({ open, onClose }) {
    STEP 1
 ========================================================= */
 
-function StepConnection({ onSelect }) {
 
-    const options = [
-        {
-            key: "ha",
-            icon: "🏠",
-            title: "Home Assistant",
-            description: "MQTT Integration nutzen"
-        },
-        {
-            key: "iobroker",
-            icon: "🔧",
-            title: "ioBroker",
-            description: "MQTT Adapter verbinden"
-        },
-        {
-            key: "mqtt",
-            icon: "📡",
-            title: "MQTT",
-            description: "Beliebiger MQTT Publisher"
-        }
-    ];
+function StepConnection({
+    profiles,
+    onSelect
+}) {
+
+    const iconMap = {
+        generic: "📡",
+        iobroker: "🔧",
+        shelly: "⚡",
+    };
+
 
     return (
         <div>
@@ -180,11 +175,11 @@ function StepConnection({ onSelect }) {
 
             <div className="space-y-3">
 
-                {options.map(option => (
+                {profiles.map(profile => (
 
                     <button
-                        key={option.key}
-                        onClick={() => onSelect(option.key)}
+                        key={profile.id}
+                        onClick={() => onSelect(profile.id)}
                         className="
                             w-full
                             text-left
@@ -202,17 +197,17 @@ function StepConnection({ onSelect }) {
                         <div className="flex items-center gap-3">
 
                             <div className="text-2xl">
-                                {option.icon}
+                                {iconMap[profile.slug] || "📡"}
                             </div>
 
                             <div>
 
                                 <div className="font-medium text-gray-900">
-                                    {option.title}
+                                    {profile.name}
                                 </div>
 
                                 <div className="text-sm text-gray-500">
-                                    {option.description}
+                                    {profile.slug}
                                 </div>
 
                             </div>
@@ -345,7 +340,7 @@ function StepConfig({ device, onClose }) {
 
     const { data: devices } = useDeviceStatus();
 
-    const topic = `home/${device.mqtt_token}/device/${device.identifier}`;
+    const topic = `h/${device.mqtt_token}/${device.identifier}`;
 
     const status = devices?.find(d => d.identifier === device.identifier);
 

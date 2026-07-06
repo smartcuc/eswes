@@ -3,7 +3,7 @@
 ########################
 
 from rest_framework import serializers
-from .models import Device, Home
+from .models import Device, Home, MQTTProfile
 
 from devices.tasks import provision_home
 from devices.api.serializers import DeviceConfigSerializer
@@ -46,9 +46,18 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
     identifier = serializers.CharField()
     name = serializers.CharField(required=False, allow_blank=True)
 
+    mqtt_profile = serializers.PrimaryKeyRelatedField(
+        queryset=MQTTProfile.objects.filter(active=True),
+        required=False,
+    )
+
     class Meta:
         model = Device
-        fields = ["identifier", "name"]
+        fields = [
+            "identifier",
+            "name",
+            "mqtt_profile",
+        ]
 
     def create(self, validated_data):
         user = self.context["request"].user
@@ -67,12 +76,15 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
         identifier = validated_data["identifier"]
         name = validated_data.get("name")
 
+        mqtt_profile = validated_data.get("mqtt_profile")
+
         device, created = Device.objects.get_or_create(
             home=home,
             identifier=identifier,
             defaults={
                 "active": True,
                 "pending_delete": False,
+                "mqtt_profile": mqtt_profile,
             },
         )
 
@@ -80,14 +92,16 @@ class DeviceCreateSerializer(serializers.ModelSerializer):
             device.active = True
             device.pending_delete = False
             device.delete_after = None
+            device.mqtt_profile = mqtt_profile
+
             device.save(
                 update_fields=[
                     "active",
                     "pending_delete",
                     "delete_after",
+                    "mqtt_profile",
                 ]
             )
-        
 
         # ✅ Name gehört in DeviceConfig
         if name:
@@ -130,4 +144,5 @@ class DeviceStatusSerializer(serializers.ModelSerializer):
         if hasattr(obj, "config") and obj.config:
             return obj.config.display_name()
         return obj.identifier
+    
     

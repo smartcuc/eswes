@@ -17,6 +17,7 @@ from .views import (
     trash_count,
     sankey_data,
     list_homes,
+    mqtt_profile_list,
 )
 
 urlpatterns = [
@@ -28,6 +29,7 @@ urlpatterns = [
     path("<int:device_id>/timeseries/", device_timeseries),
     path("sankey/", sankey_data),
     path("homes/", list_homes),
+    path("mqtt-profiles/", mqtt_profile_list),
     path("remove/", remove_devices),
     path("restore/", restore_devices),
     path("trash/", trash_devices),
