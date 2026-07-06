@@ -4,14 +4,27 @@
 
 from devices.models import Device
 from devices.models import DeviceMetric
+from energy.services.signals import get_ems_signals
 
-from energy.ems.services import get_latest_powers
+
+def get_latest_power(device):
+
+    metric = (
+        DeviceMetric.objects
+        .filter(
+            device=device,
+            metric_key="value",
+        )
+        .order_by("-timestamp")
+        .first()
+    )
+
+    return metric.value if metric else 0
 
 
 def build_live_sankey(
     user,
     flow,
-    signals,
     show_floors=True,
     show_rooms=True,
 ):
@@ -31,16 +44,12 @@ def build_live_sankey(
         )
     )
 
-    devices = list(devices)
-
-    powers = get_latest_powers(
-        [device.id for device in devices]
-    )
+    signals = get_ems_signals(user)
 
     total_consumption = (
-            signals["load"]["consumption"]
-            or 0
-        )
+        signals["load"]["consumption"]
+        or 0
+    )
 
     nodes = []
     links = []
@@ -124,7 +133,7 @@ def build_live_sankey(
             else device.identifier
         )
 
-        power = powers.get(device.id, 0)
+        power = get_latest_power(device)
 
         if power <= 0:
             continue

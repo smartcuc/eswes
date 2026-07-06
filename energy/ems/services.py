@@ -5,8 +5,6 @@
 from devices.models import DeviceMetric, Device
 from energy.models import EMSSignalSource
 
-from django.db.models import Max
-
 
 def get_latest_power(device):
 
@@ -22,33 +20,6 @@ def get_latest_power(device):
 
     return metric.value if metric else 0
 
-def get_latest_powers(device_ids):
-
-    latest = {}
-
-    metrics = (
-        DeviceMetric.objects
-        .filter(
-            device_id__in=device_ids,
-            metric_key="value",
-        )
-        .order_by(
-            "device_id",
-            "-timestamp",
-        )
-    )
-
-    seen = set()
-
-    for metric in metrics:
-
-        if metric.device_id in seen:
-            continue
-
-        latest[metric.device_id] = metric.value
-        seen.add(metric.device_id)
-
-    return latest
 
 def build_device_signals(user):
 
@@ -69,17 +40,6 @@ def build_device_signals(user):
         },
     }
 
-    devices = list(
-        Device.objects.filter(
-            home__user=user,
-            active=True,
-            pending_delete=False,
-        )
-    )
-
-    powers = get_latest_powers(
-        [device.id for device in devices]
-    )
     #
     # PV
     #
@@ -95,12 +55,11 @@ def build_device_signals(user):
 
     pv_power = sum(
         max(
-            powers.get(src.device_id, 0),
+            get_latest_power(src.device),
             0,
         )
         for src in pv_sources
     )
-
 
     signals["pv"]["production"] = pv_power
 
@@ -118,7 +77,7 @@ def build_device_signals(user):
     )
 
     grid_power = sum(
-        powers.get(src.device_id, 0)
+        get_latest_power(src.device)
         for src in grid_sources
     )
 
@@ -148,7 +107,7 @@ def build_device_signals(user):
     )
 
     battery_power = sum(
-        powers.get(device.id, 0)
+        get_latest_power(device)
         for device in battery_devices
     )
 
