@@ -35,6 +35,7 @@ def get_energy_data(user):
     sankey = build_live_sankey(
         user,
         flow,
+        signals,
         show_floors=show_floors,
         show_rooms=show_rooms,
     )
