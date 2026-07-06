@@ -21,6 +21,27 @@ def get_latest_power(device):
     return metric.value if metric else 0
 
 
+def get_latest_powers(device_ids):
+
+    latest_metrics = (
+        DeviceMetric.objects
+        .filter(
+            device_id__in=device_ids,
+            metric_key="value",
+        )
+        .order_by(
+            "device_id",
+            "-timestamp",
+        )
+        .distinct("device_id")
+    )
+
+    return {
+        metric.device_id: metric.value
+        for metric in latest_metrics
+    }
+
+
 def build_device_signals(user):
 
     signals = {
