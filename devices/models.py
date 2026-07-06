@@ -21,6 +21,9 @@ User = get_user_model()
 # ✅ HOME (MQTT + CORE)
 # ============================================================
 
+def generate_mqtt_token():
+    return secrets.token_hex(8).upper()
+
 class Home(models.Model):
     user = models.ForeignKey(
         User,
@@ -31,10 +34,11 @@ class Home(models.Model):
     name = models.CharField(max_length=100)
 
     # ✅ MQTT (nur Transport!)
-    mqtt_token = models.UUIDField(
-        default=uuid.uuid4,
+    mqtt_token = models.CharField(
+        max_length=16,
         unique=True,
-        editable=False
+        default=generate_mqtt_token,
+        editable=False,
     )
 
     mqtt_username = models.CharField(max_length=100, blank=True)
@@ -45,7 +49,7 @@ class Home(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.mqtt_username:
-            self.mqtt_username = str(self.mqtt_token)
+            self.mqtt_username = self.mqtt_token
 
         if not self.mqtt_password:
             self.mqtt_password = secrets.token_hex(16)
@@ -101,6 +105,12 @@ class MetricDefinition(models.Model):
 
 class Device(models.Model):
 
+    MQTT_PROFILE_CHOICES = [
+            ("iobroker", "ioBroker"),
+            ("shelly", "Shelly"),
+            ("generic", "Generic"),
+        ]
+
     home = models.ForeignKey(
         Home,
         on_delete=models.CASCADE,
@@ -108,6 +118,12 @@ class Device(models.Model):
     )
 
     identifier = models.CharField(max_length=100)
+
+    mqtt_profile = models.CharField(
+        max_length=20,
+        choices=MQTT_PROFILE_CHOICES,
+        default="generic",
+    )
     
     # ✅ NEU: technischer Status
     configured = models.BooleanField(default=False, db_index=True)
