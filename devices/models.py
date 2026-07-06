@@ -280,6 +280,18 @@ class DeviceMetric(models.Model):
             },
         )
 
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=[
+                    "device",
+                    "metric_key",
+                    "-timestamp",
+                ],
+                name="metric_latest_idx",
+            ),
+        ]
+        
 
 # ============================================================
 # ✅ METRIC AGGREGATIONS
