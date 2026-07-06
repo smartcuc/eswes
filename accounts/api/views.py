@@ -327,7 +327,6 @@ class RequestMagicLinkView(APIView):
 
     def post(self, request):
         email = request.data.get("email")
-        remember = request.data.get("remember", False)
 
         if not email:
             return Response({"error": "email required"}, status=400)
@@ -347,7 +346,6 @@ class RequestMagicLinkView(APIView):
 
         token = MagicLoginToken.objects.create(
             user=user,
-            remember=remember,
         )
 
         # ✅ BEST PRACTICE: LINK IMMER BACKEND
@@ -391,11 +389,10 @@ class MagicLoginView(APIView):
             magic.used_at = timezone.now()
             magic.save()
 
-        # ✅ Session Dauer
-        if magic.remember:
-            request.session.set_expiry(60 * 60 * 24 * 30)
-        else:
-            request.session.set_expiry(60 * 60 * 24)
+        # ✅ Session Dauer zentral aus Settings
+        request.session.set_expiry(
+            settings.SESSION_COOKIE_AGE
+        )
 
         return Response({"status": "ok"})
 

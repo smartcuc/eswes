@@ -87,10 +87,21 @@ function DeviceCard({ device, onSelect, onEdit }) {
             </div>
 
             <div className="text-xl font-bold text-indigo-600">
-                {device.value != null
-                    ? `${device.value} ${device.unit || ""}`
-                    : <span className="text-gray-400">keine Daten</span>
-                }
+                {device.value != null ? (
+                    `${device.value} ${device.unit || ""}`
+                ) : device.status === "stale" ? (
+                    <span className="text-gray-400">
+                        Keine aktuellen Daten
+                    </span>
+                ) : device.status === "offline" ? (
+                    <span className="text-gray-400">
+                        offline
+                    </span>
+                ) : (
+                    <span className="text-gray-400">
+                        Keine Daten
+                    </span>
+                )}
             </div>
 
             {missing && (

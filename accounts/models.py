@@ -218,8 +218,6 @@ class MagicLoginToken(models.Model):
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
 
-    remember = models.BooleanField(default=False)
-
     # Tracking
     clicked_at = models.DateTimeField(null=True, blank=True)
 
