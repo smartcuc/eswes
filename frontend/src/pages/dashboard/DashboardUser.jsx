@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../api/client";
 
 import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey";
+import LiveEnergySankeyECharts from "../../features/energy/components/LiveEnergySankeyECharts";
 
 
 export default function DashboardUser() {
