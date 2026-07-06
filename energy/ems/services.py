@@ -61,6 +61,19 @@ def build_device_signals(user):
         },
     }
 
+
+    all_devices = list(
+        Device.objects.filter(
+            home__user=user,
+            active=True,
+            pending_delete=False,
+        )
+    )
+
+    powers = get_latest_powers(
+        [device.id for device in all_devices]
+    )
+
     #
     # PV
     #
@@ -76,7 +89,7 @@ def build_device_signals(user):
 
     pv_power = sum(
         max(
-            get_latest_power(src.device),
+            powers.get(src.device_id, 0),
             0,
         )
         for src in pv_sources
@@ -97,10 +110,12 @@ def build_device_signals(user):
         .select_related("device")
     )
 
+    
     grid_power = sum(
-        get_latest_power(src.device)
+        powers.get(src.device_id, 0)
         for src in grid_sources
     )
+
 
     if grid_power >= 0:
 
@@ -128,7 +143,7 @@ def build_device_signals(user):
     )
 
     battery_power = sum(
-        get_latest_power(device)
+        powers.get(device.id, 0)
         for device in battery_devices
     )
 
