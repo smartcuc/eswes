@@ -3,7 +3,7 @@
 ###########################
 
 from devices.models import Device
-from energy.ems.services import get_latest_powers
+from devices.services.metrics import get_latest_powers
 
 
 def build_live_sankey(

@@ -11,7 +11,6 @@ from django.db.models import OuterRef, Subquery
 from datetime import timedelta
 from django.utils import timezone
 
-from devices.models import DeviceMetric, MetricDefinition
 from devices.models import (
     Device,
     DeviceConfig,
@@ -21,7 +20,9 @@ from devices.models import (
     Home,
 )
 
+from devices.models import MetricDefinition
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
+from devices.services.metrics import get_latest_powers
 
 from .serializers import (
     DeviceSerializer,
@@ -257,44 +258,47 @@ def sankey_data(request):
 @permission_classes([IsAuthenticated])
 def latest_device_values(request):
 
-    latest_metrics = DeviceMetric.objects.filter(
-        device=OuterRef("pk")
-    ).order_by("-timestamp")
-
-    devices = (
+    devices = list(
         Device.objects
-        .filter(home__user=request.user)
-        .annotate(
-            latest_value=Subquery(
-                latest_metrics.values("value")[:1]
-            ),
-            latest_key=Subquery(
-                latest_metrics.values("metric_key")[:1]
-            ),
+        .filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
         )
+        .select_related("config")
     )
+
+    powers = get_latest_powers(
+        [d.id for d in devices]
+    )
+
+    metric_map = {
+        m.key: m
+        for m in MetricDefinition.objects.all()
+    }
 
     result = []
 
     for d in devices:
 
-        if not d.latest_key:
+        value = powers.get(d.id)
+
+        if value is None:
             continue
 
         config = getattr(d, "config", None)
 
-        if config and config.measurement_type:
-            metric_key = config.measurement_type
-        else:
-            metric_key = d.latest_key
+        metric_key = (
+            config.measurement_type
+            if config and config.measurement_type
+            else "value"
+        )
 
-        metric = MetricDefinition.objects.filter(
-            key=metric_key
-        ).first()
+        metric = metric_map.get(metric_key)
 
         result.append({
             "device": d.id,
-            "value": d.latest_value,
+            "value": value,
             "unit": metric.unit if metric else "",
         })
 

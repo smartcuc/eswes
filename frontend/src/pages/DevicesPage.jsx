@@ -496,6 +496,7 @@ export default function DevicesPage() {
 
     if (
         devicesQuery.isLoading ||
+        valuesQuery.isLoading ||
         settingsLoading
     ) {
         return <div className="p-6">Lade Geräte…</div>;
