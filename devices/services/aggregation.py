@@ -20,6 +20,7 @@ from devices.models import (
     DeviceMetric5m,
     DeviceMetric15m,
     DeviceMetric1h,
+    DeviceConfig,
 )
 
 
@@ -44,7 +45,9 @@ def aggregate_1m():
     )
 
     start = target
-    end = target + timedelta(minutes=1)
+    end = target + timedelta(
+        minutes=1,
+    )
 
     rows = (
         DeviceMetric.objects
@@ -54,7 +57,6 @@ def aggregate_1m():
         )
         .values(
             "device_id",
-            "metric_key",
         )
         .annotate(
             avg=Avg("value"),
@@ -64,21 +66,32 @@ def aggregate_1m():
         )
     )
 
+    configs = dict(
+        DeviceConfig.objects.values_list(
+            "device_id",
+            "measurement_type",
+        )
+    )
+
     with transaction.atomic():
 
         for row in rows:
 
+            metric_key = configs.get(
+                row["device_id"]
+            )
+
             energy_wh = None
 
-            #
-            # Leistung -> Energie
-            #
-            if row["metric_key"] == "power":
+            if (
+                metric_key == "power"
+                and row["avg"] is not None
+            ):
                 energy_wh = row["avg"] / 60
 
             DeviceMetric1m.objects.update_or_create(
                 device_id=row["device_id"],
-                metric_key=row["metric_key"],
+                metric_key=metric_key,
                 bucket=target,
                 defaults={
                     "avg": row["avg"],
@@ -96,7 +109,7 @@ def rollup(
     bucket_seconds,
 ):
     """
-    Generic enterprise rollup.
+    Generic rollup.
 
     - weighted avg
     - correct min/max
@@ -140,7 +153,7 @@ def rollup(
 
         groups.setdefault(
             key,
-            [],
+            []
         ).append(row)
 
     with transaction.atomic():
@@ -155,22 +168,19 @@ def rollup(
                 for item in items
             )
 
-            if total_count:
+            if total_count == 0:
+                continue
 
-                weighted_sum = sum(
-                    (item.avg or 0)
-                    * (item.count or 0)
-                    for item in items
-                )
+            weighted_sum = sum(
+                (item.avg or 0)
+                * (item.count or 0)
+                for item in items
+            )
 
-                avg = (
-                    weighted_sum
-                    / total_count
-                )
-
-            else:
-
-                avg = 0
+            avg = (
+                weighted_sum
+                / total_count
+            )
 
             min_value = min(
                 item.min
@@ -200,7 +210,6 @@ def rollup(
                 },
             )
 
-
 def aggregate_5m():
 
     rollup(
@@ -226,4 +235,3 @@ def aggregate_1h():
         target_model=DeviceMetric1h,
         bucket_seconds=3600,
     )
-    
