@@ -35,6 +35,7 @@ class DeviceMetricAdmin(admin.ModelAdmin):
 class HomeAdmin(admin.ModelAdmin):
     list_display = (
         "id",
+        "user",
         "name",
         "mqtt_token",
         "mqtt_username",
@@ -48,6 +49,8 @@ class HomeAdmin(admin.ModelAdmin):
 
     search_fields = (
         "name",
+        "user__username",
+        "user__email",
         "mqtt_token",
         "mqtt_username",
     )
