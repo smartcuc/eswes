@@ -33,7 +33,24 @@ class DeviceMetricAdmin(admin.ModelAdmin):
 
 @admin.register(Home)
 class HomeAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "user")
+    list_display = (
+        "id",
+        "name",
+        "mqtt_token",
+        "mqtt_username",
+        "mqtt_provisioned",
+    )
+
+    readonly_fields = (
+        "mqtt_token",
+        "mqtt_username",
+    )
+
+    search_fields = (
+        "name",
+        "mqtt_token",
+        "mqtt_username",
+    )
 
 
 @admin.register(Floor)
