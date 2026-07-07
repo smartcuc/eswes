@@ -66,8 +66,11 @@ def aggregate_1m():
         )
     )
 
+    
     configs = dict(
-        DeviceConfig.objects.values_list(
+        DeviceConfig.objects.filter(
+            device__configured=True
+        ).values_list(
             "device_id",
             "measurement_type",
         )
@@ -80,6 +83,9 @@ def aggregate_1m():
             metric_key = configs.get(
                 row["device_id"]
             )
+
+            if not metric_key:
+                continue
 
             energy_wh = None
 
