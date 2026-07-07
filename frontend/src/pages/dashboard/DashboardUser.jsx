@@ -82,17 +82,10 @@ export default function DashboardUser() {
 
                 <Card>
                     <div className="h-40 flex items-center justify-center text-gray-400">
-                        📈 Energiechart (kommt später)
+                        📈 Energiechart kommt sobald wir uns besser kennengelernt haben
                     </div>
                 </Card>
             </div>
-
-            {/* CTA */}
-            <Card className="flex justify-between items-center">
-                <span className="text-gray-600">
-                    Starte mit deinem ersten Energiegerät
-                </span>
-            </Card>
 
             <Card>
 
@@ -163,9 +156,27 @@ export default function DashboardUser() {
 
                 </div>
 
-                <LiveEnergySankey
-                    data={energyQuery.data?.sankey}
-                />
+                {energyQuery.data?.ready ? (
+
+                    <LiveEnergySankey
+                        data={energyQuery.data?.sankey}
+                    />
+
+                ) : (
+
+                    <div
+                        className="
+                            h-80
+                            flex
+                            items-center
+                            justify-center
+                            text-gray-400
+        "
+                    >
+                        👋 Willkommen bei Sharegy
+                    </div>
+
+                )}
 
             </Card>
 

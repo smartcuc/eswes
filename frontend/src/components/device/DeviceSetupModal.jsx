@@ -160,6 +160,12 @@ export default function DeviceSetupModal({
                 }
             }
 
+            Object.keys(payload).forEach(key => {
+                if (payload[key] === null) {
+                    delete payload[key];
+                }
+            });
+
             const data = await apiFetch(`/api/devices/${id}/`, {
                 method: "PATCH",
                 body: JSON.stringify(payload)

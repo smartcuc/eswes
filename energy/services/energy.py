@@ -6,6 +6,8 @@ from energy.services.signals import get_ems_signals
 from energy.flow_engine import calculate_energy_flow
 from energy.services.sankey import build_live_sankey
 from user_settings.models import UserPreference
+from devices.models import DeviceConfig
+
 
 def get_energy_data(user):
 
@@ -38,7 +40,18 @@ def get_energy_data(user):
         show_rooms=show_rooms,
     )
 
+    has_producer = DeviceConfig.objects.filter(
+        device__home__user=user,
+        role__key="producer",
+    ).exists()
+
+    has_consumer = DeviceConfig.objects.filter(
+        device__home__user=user,
+        role__key="consumer",
+    ).exists()
+
     return {
+        "ready": has_producer and has_consumer,
         "sankey": sankey,
     }
 
