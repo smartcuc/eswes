@@ -26,8 +26,6 @@ export default function DashboardUser() {
     const queryClient = useQueryClient();
     const [openSetup, setOpenSetup] = useState(false);
 
-    const kpis = energyQuery.data?.kpis || {};
-
     const {
         value: settings,
         setValue: saveSettings,
@@ -47,6 +45,7 @@ export default function DashboardUser() {
         refetchIntervalInBackground: true,
     });
 
+    const kpis = energyQuery.data?.kpis || {};
 
     return (
         <DashboardLayout>

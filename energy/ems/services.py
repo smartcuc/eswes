@@ -2,7 +2,7 @@
 # energy/ems/services.py
 ########################
 
-from devices.models import DeviceMetric, Device
+from devices.models import Device
 from devices.services.metrics import get_latest_powers
 from energy.models import EMSSignalSource
 

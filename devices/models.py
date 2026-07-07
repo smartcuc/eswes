@@ -331,34 +331,227 @@ class DeviceMetric(models.Model):
 # ============================================================
 
 class DeviceMetric1m(models.Model):
-    device = models.ForeignKey("Device", on_delete=models.CASCADE)
-    bucket = models.DateTimeField(db_index=True)
+
+    device = models.ForeignKey(
+        "Device",
+        on_delete=models.CASCADE
+    )
+
+    metric_key = models.CharField(
+        max_length=64,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+
+    bucket = models.DateTimeField(
+        db_index=True
+    )
 
     avg = models.FloatField()
     min = models.FloatField()
     max = models.FloatField()
     count = models.IntegerField()
 
+    energy_wh = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
     class Meta:
-        unique_together = ("device", "bucket")
+
+        unique_together = (
+            "device",
+            "metric_key",
+            "bucket",
+        )
+
         indexes = [
-            models.Index(fields=["device", "bucket"]),
+
+            models.Index(
+                fields=[
+                    "device",
+                    "metric_key",
+                    "bucket",
+                ]
+            ),
+
+            models.Index(
+                fields=[
+                    "bucket",
+                    "metric_key",
+                ]
+            ),
+
         ]
 
 
 class DeviceMetric5m(models.Model):
-    device = models.ForeignKey("Device", on_delete=models.CASCADE)
-    bucket = models.DateTimeField(db_index=True)
+
+    device = models.ForeignKey(
+        "Device",
+        on_delete=models.CASCADE
+    )
+
+    metric_key = models.CharField(
+        max_length=64,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+
+    bucket = models.DateTimeField(
+        db_index=True
+    )
 
     avg = models.FloatField()
     min = models.FloatField()
     max = models.FloatField()
     count = models.IntegerField()
 
+    energy_wh = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
     class Meta:
-        unique_together = ("device", "bucket")
+
+        unique_together = (
+            "device",
+            "metric_key",
+            "bucket",
+        )
+
         indexes = [
-            models.Index(fields=["device", "bucket"]),
+
+            models.Index(
+                fields=[
+                    "device",
+                    "metric_key",
+                    "bucket",
+                ]
+            ),
+
+            models.Index(
+                fields=[
+                    "bucket",
+                    "metric_key",
+                ]
+            ),
+
         ]
 
+
+class DeviceMetric15m(models.Model):
+
+    device = models.ForeignKey(
+        "Device",
+        on_delete=models.CASCADE
+    )
+
+    metric_key = models.CharField(
+        max_length=64,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+
+    bucket = models.DateTimeField(
+        db_index=True
+    )
+
+    avg = models.FloatField()
+    min = models.FloatField()
+    max = models.FloatField()
+    count = models.IntegerField()
+
+    energy_wh = models.FloatField(
+        null=True,
+        blank=True,
+    )
     
+    class Meta:
+
+        unique_together = (
+            "device",
+            "metric_key",
+            "bucket",
+        )
+
+        indexes = [
+
+            models.Index(
+                fields=[
+                    "device",
+                    "metric_key",
+                    "bucket",
+                ]
+            ),
+
+            models.Index(
+                fields=[
+                    "bucket",
+                    "metric_key",
+                ]
+            ),
+
+        ]
+
+
+
+class DeviceMetric1h(models.Model):
+
+    device = models.ForeignKey(
+        "Device",
+        on_delete=models.CASCADE
+    )
+
+    metric_key = models.CharField(
+        max_length=64,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+
+    bucket = models.DateTimeField(
+        db_index=True
+    )
+
+    avg = models.FloatField()
+    min = models.FloatField()
+    max = models.FloatField()
+    count = models.IntegerField()
+
+    energy_wh = models.FloatField(
+        null=True,
+        blank=True,
+    )
+    
+    class Meta:
+
+        unique_together = (
+            "device",
+            "metric_key",
+            "bucket",
+        )
+
+        indexes = [
+
+            models.Index(
+                fields=[
+                    "device",
+                    "metric_key",
+                    "bucket",
+                ]
+            ),
+
+            models.Index(
+                fields=[
+                    "bucket",
+                    "metric_key",
+                ]
+            ),
+
+        ]
+
+
