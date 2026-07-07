@@ -159,8 +159,8 @@ class Command(BaseCommand):
             # =====================================================
             # ✅ 4. EXPECTED ACLs
             # =====================================================
-            expected_publish = f"home/{token}/device/#"
-            expected_subscribe = f"home/{token}/#"
+            expected_publish = f"h/{token}/#"
+            expected_subscribe = f"h/{token}/#"
 
             # =====================================================
             # ✅ CLEANUP FALSCHER ACLs
