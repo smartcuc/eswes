@@ -15,6 +15,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from devices.models import Home, Device, DeviceMetric
+from integrations.mqtt_profiles import get_parser
 
 import paho.mqtt.client as mqtt
 
@@ -202,6 +203,16 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
 
     device.last_seen = ts or timezone.now()
     device.save(update_fields=["last_seen"])
+    
+    profile_slug = (
+        device.mqtt_profile.slug
+        if device.mqtt_profile
+        else "generic"
+    )
+
+    parser = get_parser(profile_slug)
+
+    metrics = parser.normalize(metrics)
 
     # ========================================================
     # ✅ METRICS INGEST

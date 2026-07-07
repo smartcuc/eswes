@@ -57,5 +57,22 @@ class DeviceRoleAdmin(admin.ModelAdmin):
 class MetricDefinitionAdmin(admin.ModelAdmin):
     list_display = ("id", "key", "name", "unit")
 
+@admin.register(MQTTProfile)
+class MQTTProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "slug",
+        "active",
+    )
+
+    list_filter = (
+        "active",
+    )
+
+    search_fields = (
+        "name",
+        "slug",
+    )
+
 
     
