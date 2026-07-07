@@ -36,17 +36,24 @@ const sections = [
 
     },
     {
-        title: "Structure",
+        title: "📡 Monitoring",
         items: [
             { name: "Floors", path: "/app/structure", icon: "🏡" },
         ],
     },
     {
-        title: "Data",
+        title: "📊 Analytics",
         items: [
             { name: "Metrics", path: "/app/metrics", icon: "📊" },
         ],
     },
+    {
+        title: "⚙️ Einstellungen",
+        items: [
+            { name: "Metrics", path: "/app/metrics", icon: "📊" },
+        ],
+    },
+
 
 ];
 

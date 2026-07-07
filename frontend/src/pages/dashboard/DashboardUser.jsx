@@ -6,7 +6,9 @@ import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
 import DeviceSetupModal from "../../components/device/DeviceSetupModal";
 import KPI from "../../components/ui/KPI";
+import KPISparklineECharts from "../../components/ui/KPISparklineECharts";
 import Card from "../../components/ui/Card";
+
 import Button from "../../components/ui/Button";
 
 import { useState } from "react";
@@ -23,6 +25,8 @@ export default function DashboardUser() {
 
     const queryClient = useQueryClient();
     const [openSetup, setOpenSetup] = useState(false);
+
+    const kpis = energyQuery.data?.kpis || {};
 
     const {
         value: settings,
@@ -62,18 +66,68 @@ export default function DashboardUser() {
 
             <div>
                 <h1 className="text-2xl font-bold">
-                    Dein Energie Dashboard ⚡
+                    Deine Energiezentrale ⚡
                 </h1>
                 <p className="text-gray-500">
-                    Dein persönlicher Energieüberblick
+                    Alles Wichtige auf einen Blick.
                 </p>
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-3 gap-4">
-                <KPI label="Verbrauch" value="12" unit="kWh" icon="⚡" />
-                <KPI label="Produktion" value="8" unit="kWh" icon="☀️" />
-                <KPI label="Kosten" value="4.20" unit="€" icon="💰" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+                <KPI
+                    label="Aktuelle Last"
+                    value={kpis.load ?? "--"}
+                    unit="W"
+                    icon="⚡"
+                    chart={
+                        <KPISparklineECharts
+                            color="#2563eb"
+                            values={[2, 3, 2.5, 4, 5, 4, 6, 5]}
+                        />
+                    }
+                />
+
+                <KPI
+                    label="Erzeugung"
+                    value={kpis.pv ?? "--"}
+                    unit="W"
+                    icon="☀️"
+                    chart={
+                        <KPISparklineECharts
+                            color="#f59e0b"
+                            values={[0, 1, 2, 4, 5, 6, 5, 4]}
+                        />
+                    }
+                />
+
+                <KPI
+                    label="Netz"
+                    value={kpis.grid ?? "--"}
+                    unit="W"
+                    icon="🔌"
+                    chart={
+                        <KPISparklineECharts
+                            color="#10b981"
+                            values={[4, 3, 3.5, 2, 2.5, 1, 0.5, 0]}
+                        />
+                    }
+                />
+
+                <KPI
+                    label="Heute"
+                    value="--"
+                    unit="kWh"
+                    icon="📈"
+                    chart={
+                        <KPISparklineECharts
+                            color="#8b5cf6"
+                            values={[1, 2, 3, 4, 5, 7, 9, 12]}
+                        />
+                    }
+                />
+
             </div>
 
             {/* Chart */}
@@ -92,7 +146,7 @@ export default function DashboardUser() {
                 <div className="flex items-center justify-between mb-4">
 
                     <h2 className="text-lg font-semibold">
-                        Live Energiefluss
+                        Energieübersicht
                     </h2>
 
                     <div className="flex gap-2">

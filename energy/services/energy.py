@@ -50,8 +50,23 @@ def get_energy_data(user):
         role__key="consumer",
     ).exists()
 
+
+    load = signals.get("load", {})
+    pv = signals.get("pv", {})
+    grid = signals.get("grid", {})
+
+    kpis = {
+        "load": load.get("consumption", 0),
+        "pv": pv.get("production", 0),
+        "grid":
+            grid.get("import", 0)
+            - grid.get("export", 0),
+    }
+
+
     return {
         "ready": has_producer and has_consumer,
         "sankey": sankey,
+        "kpis": kpis,
     }
 
