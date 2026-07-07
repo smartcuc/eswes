@@ -311,6 +311,10 @@ class Command(BaseCommand):
         if reason_code == 0:
             print("MQTT connected ✅")
             client.subscribe("h/+/+")
+            
+            result = client.subscribe("h/+/+")
+            print("SUBSCRIBE RESULT:", result)
+
         else:
             print(f"MQTT failed rc={reason_code}")
 
