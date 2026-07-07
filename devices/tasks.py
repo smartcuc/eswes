@@ -90,7 +90,7 @@ def provision_home(self, home_id):
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "publishClientSend",
-            f"home/{home.mqtt_token}/device/#",
+            f"h/{home.mqtt_token}/#",
             "allow",
         )
 
@@ -101,7 +101,7 @@ def provision_home(self, home_id):
             "dynsec", "addRoleACL",
             home.mqtt_username,
             "subscribePattern",
-            f"home/{home.mqtt_token}/#",
+            f"h/{home.mqtt_token}/#",
             "allow",
         )
 

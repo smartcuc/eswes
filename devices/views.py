@@ -139,7 +139,7 @@ def send_device_config(request):
         return Response({"error": "No device data"}, status=400)
 
     try:
-        topic = f"home/{device['mqtt_token']}/device/{device['identifier']}"
+        topic = f"h/{device['mqtt_token']}/{device['identifier']}"
 
         to_email = email_override or request.user.email
 
