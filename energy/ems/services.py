@@ -15,37 +15,31 @@ def build_device_signals(user):
         "battery": {"charge": None, "discharge": None},
     }
 
-    # 1. Alle aktiven Geräte des Users EINMALIG laden
+    # 1. Holt alle Geräte UND lädt die Konfiguration sowie die Rolle direkt mit (1 Query)
     all_devices = list(
         Device.objects.filter(
             home__user=user,
             active=True,
             pending_delete=False,
-        )
+        ).select_related("config__role")
     )
     
-    # Aktuelle Leistungswerte holen (bleibt hocheffizient)
     powers = get_latest_powers([device.id for device in all_devices])
 
-    # 2. PV und Grid Signalquellen in EINEM EINZIGEN DB-Aufruf einsammeln
+    # 2. PV und Grid Signalquellen einsammeln
     sources = EMSSignalSource.objects.filter(
         home__user=user,
         signal_type__in=["pv", "grid"]
     )
     
-    # Im Speicher nach Typen gruppieren (verhindert den 2. DB-Aufruf)
     pv_sources = [src for src in sources if src.signal_type == "pv"]
     grid_sources = [src for src in sources if src.signal_type == "grid"]
 
-    #
-    # PV Berechnung
-    #
+    # PV
     pv_power = sum(max(powers.get(src.device_id, 0), 0) for src in pv_sources)
     signals["pv"]["production"] = pv_power
 
-    #
-    # GRID Berechnung
-    #
+    # GRID
     grid_power = sum(powers.get(src.device_id, 0) for src in grid_sources)
     if grid_power >= 0:
         signals["grid"]["import"] = grid_power
@@ -55,13 +49,14 @@ def build_device_signals(user):
         signals["grid"]["export"] = abs(grid_power)
 
     #
-    # BATTERY Berechnung (Vollständig optimiert ohne DB-Abfrage!)
-    # Da config ein JSONField oder eine Relation ist, filtern wir direkt in Python
-    # Passe den Zugriff an, falls device.config ein normales Dictionary ist (.get())
+    # BATTERY (KORRIGIERT FÜR RELATIONALE MODELLE)
+    #
     battery_power = sum(
         powers.get(device.id, 0)
         for device in all_devices
-        if getattr(device, 'config', {}).get('role', {}).get('key') == 'battery'
+        if (config := getattr(device, "config", None)) is not None 
+        and (role := getattr(config, "role", None)) is not None 
+        and role.key == "battery"
     )
 
     if battery_power >= 0:
@@ -71,9 +66,7 @@ def build_device_signals(user):
         signals["battery"]["discharge"] = 0
         signals["battery"]["charge"] = abs(battery_power)
 
-    #
-    # LOAD Berechnung
-    #
+    # LOAD
     consumption = (
         signals["pv"]["production"]
         + signals["battery"]["discharge"]
@@ -84,6 +77,7 @@ def build_device_signals(user):
     signals["load"]["consumption"] = max(consumption, 0)
 
     return signals
+
 
 
 # def build_device_signals(user):
