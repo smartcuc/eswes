@@ -28,10 +28,11 @@ def delete_home_mqtt(sender, instance, **kwargs):
 def send_metric_update(sender, instance, created, **kwargs):
     channel_layer = get_channel_layer()
 
-    # 💡 NEU: Live-Wert für das HTTP-Dashboard in Redis spiegeln
-    if instance.metric_key == "value":
+    # 💡 KORREKTUR: Reagiere auf den exakten Key, den dein MQTT/Modbus-Inbound nutzt!
+    # Wenn im DB-Feld metric_key "power" steht, muss hier "power" abgefragt werden.
+    if instance.metric_key in ["value", "power"]: 
         cache_key = f"device:{instance.device_id}:latest_power"
-        cache.set(cache_key, float(instance.value), timeout=3600)  # 1 Stunde TTL
+        cache.set(cache_key, float(instance.value), timeout=3600)
 
     # ✅ Daten sauber bauen
     data = {
