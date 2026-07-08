@@ -181,7 +181,10 @@ from celery import shared_task
 from devices.services.aggregation import (
     aggregate_1m,
     aggregate_5m,
+    aggregate_15m,
+    aggregate_1h,
 )
+
 
 @shared_task
 def run_1m_aggregation():
@@ -191,6 +194,17 @@ def run_1m_aggregation():
 @shared_task
 def run_5m_aggregation():
     aggregate_5m()
+
+
+@shared_task
+def run_15m_aggregation():
+    aggregate_15m()
+
+
+@shared_task
+def run_1h_aggregation():
+    aggregate_1h()
+
 
 
 # ============================================================

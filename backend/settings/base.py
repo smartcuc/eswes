@@ -321,6 +321,18 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 300.0,
     },
 
+    # ✅ 15m Aggregation
+    "aggregate-15m": {
+        "task": "devices.tasks.run_15m_aggregation",
+        "schedule": 900.0,
+    },
+
+    # ✅ 1h Aggregation
+    "aggregate-1h": {
+        "task": "devices.tasks.run_1h_aggregation",
+        "schedule": 3600.0,
+    },
+
     # ✅ Device purge
     "purge-pending-devices": {
             "task": "devices.tasks.purge_pending_devices",
