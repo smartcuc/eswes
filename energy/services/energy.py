@@ -8,6 +8,8 @@ from energy.services.sankey import build_live_sankey
 from user_settings.models import UserPreference
 from devices.models import DeviceConfig
 
+from energy.services.kpis import ( get_today_consumption, )
+
 
 def get_energy_data(user):
 
@@ -50,19 +52,33 @@ def get_energy_data(user):
         role__key="consumer",
     ).exists()
 
-
     load = signals.get("load", {})
     pv = signals.get("pv", {})
     grid = signals.get("grid", {})
 
+    today = get_today_consumption(user)
+
     kpis = {
         "load": load.get("consumption", 0),
         "pv": pv.get("production", 0),
-        "grid":
+        "grid": (
             grid.get("import", 0)
-            - grid.get("export", 0),
-    }
+            - grid.get("export", 0)
+        ),
 
+        "today": (
+            today["value"]
+            if today
+            else 0
+        ),
+
+        # Nur für Test und Debug - 
+        "today_source": (
+            today["source"]
+            if today
+            else None
+        ),
+    }
 
     return {
         "ready": has_producer and has_consumer,

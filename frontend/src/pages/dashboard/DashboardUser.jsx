@@ -77,7 +77,7 @@ export default function DashboardUser() {
 
                 <KPI
                     label="Aktuelle Last"
-                    value={kpis.load ?? "--"}
+                    value={kpis.today ?? "--"}
                     unit="W"
                     icon="⚡"
                     chart={
