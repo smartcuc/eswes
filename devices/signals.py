@@ -5,6 +5,7 @@
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.core.cache import cache
+from django.utils import timezone
 
 from devices.models import DeviceConfig
 from devices.serializers import DeviceSerializer
@@ -24,33 +25,38 @@ def delete_home_mqtt(sender, instance, **kwargs):
 
 
 # ✅ Realtime Update bei neuen Metrics
+
+
 @receiver(post_save, sender=DeviceMetric)
 def send_metric_update(sender, instance, created, **kwargs):
-    channel_layer = get_channel_layer()
-
-    # 💡 KORREKTUR: Reagiere auf den exakten Key, den dein MQTT/Modbus-Inbound nutzt!
-    # Wenn im DB-Feld metric_key "power" steht, muss hier "power" abgefragt werden.
-    if instance.metric_key in ["value", "power"]: 
+    # 💡 UTC-Sicherheit: Wir ignorieren den DB-Zeitstempel für den Live-Cache komplett.
+    # Was JETZT im Signal ankommt, wird JETZT in Redis geschrieben.
+    if instance.metric_key == "value":
         cache_key = f"device:{instance.device_id}:latest_power"
         cache.set(cache_key, float(instance.value), timeout=3600)
 
-    # ✅ Daten sauber bauen
-    data = {
-        "type": "metric_update",      # für frontend filter
-        "device_id": instance.device.id,
-        "device_type": getattr(instance.device, "type", None),
-        "value": instance.value,
-    }
-
-    # ✅ wichtig: Gruppenname muss exakt zum Consumer passen
-    async_to_sync(channel_layer.group_send)(
-        "energy",
-        {
-            "type": "send_energy_update",  # ✅ MUSS zum Consumer passen!
-            "data": data
+    # Channels / WebSockets abgesichert ausführen
+    try:
+        channel_layer = get_channel_layer()
+        data = {
+            "type": "metric_update",      
+            "device_id": instance.device_id,
+            "value": float(instance.value),
+            # Falls dein Frontend einen Zeitstempel im ISO-Format braucht:
+            "timestamp": timezone.now().isoformat() # Generiert die korrekte aktuelle Serverzeit
         }
-    )
-    
+
+        async_to_sync(channel_layer.group_send)(
+            "energy",
+            {
+                "type": "send_energy_update",  
+                "data": data
+            }
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("django").error(f"Fehler im Channels-Signal: {e}")
+
 
 @receiver(post_save, sender=DeviceConfig)
 def send_device_update(sender, instance, created, **kwargs):
