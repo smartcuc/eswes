@@ -4,6 +4,7 @@
 
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from django.core.cache import cache
 
 from devices.models import DeviceConfig
 from devices.serializers import DeviceSerializer
@@ -26,6 +27,11 @@ def delete_home_mqtt(sender, instance, **kwargs):
 @receiver(post_save, sender=DeviceMetric)
 def send_metric_update(sender, instance, created, **kwargs):
     channel_layer = get_channel_layer()
+
+    # 💡 NEU: Live-Wert für das HTTP-Dashboard in Redis spiegeln
+    if instance.metric_key == "value":
+        cache_key = f"device:{instance.device_id}:latest_power"
+        cache.set(cache_key, float(instance.value), timeout=3600)  # 1 Stunde TTL
 
     # ✅ Daten sauber bauen
     data = {
