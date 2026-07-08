@@ -11,6 +11,7 @@ import logging
 import os
 import ssl
 
+from django.core.cache import cache  # 💡 Ganz wichtig: Hier importieren
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -230,6 +231,12 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
                 "raw": meta,
             },
         )
+
+        # 2. 💡 NEU: Sofort in den ultraschnellen Redis Live-Cache spiegeln!
+        # Wir matchen hier auf "value" oder "power" – je nachdem, in was dein Parser normalisiert.
+        if str(key) in ["value", "power"] and float_val is not None:
+            cache_key = f"device:{device.id}:latest_power"
+            cache.set(cache_key, float_val, timeout=3600) # 1 Stunde TTL
 
     # ========================================================
     # ✅ STATE INGEST (separat gespeichert)

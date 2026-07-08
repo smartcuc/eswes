@@ -16,6 +16,10 @@ from channels.layers import get_channel_layer
 from .models import Home, DeviceMetric
 from .tasks import delete_mqtt_user
 
+import logging
+
+logger = logging.getLogger("django")
+
 
 # ✅ MQTT cleanup beim Home löschen
 @receiver(post_delete, sender=Home)
@@ -25,37 +29,38 @@ def delete_home_mqtt(sender, instance, **kwargs):
 
 
 # ✅ Realtime Update bei neuen Metrics
-
-
 @receiver(post_save, sender=DeviceMetric)
 def send_metric_update(sender, instance, created, **kwargs):
-    # 💡 UTC-Sicherheit: Wir ignorieren den DB-Zeitstempel für den Live-Cache komplett.
-    # Was JETZT im Signal ankommt, wird JETZT in Redis geschrieben.
-    if instance.metric_key == "value":
-        cache_key = f"device:{instance.device_id}:latest_power"
-        cache.set(cache_key, float(instance.value), timeout=3600)
+    # 1. ZUERST IN REDIS SCHREIBEN (Zeitzonen- & UTC-Sicher)
+    # Wir erlauben "value" und "power", damit Modbus/MQTT morgen beide funktionieren
+    if str(instance.metric_key) in ["value", "power"] and instance.value is not None:
+        try:
+            cache_key = f"device:{instance.device_id}:latest_power"
+            cache.set(cache_key, float(instance.value), timeout=3600)
+        except Exception as cache_err:
+            logger.error(f"[SIGNAL_CACHE_ERROR] Konnte Redis nicht beschreiben: {cache_err}")
 
-    # Channels / WebSockets abgesichert ausführen
+    # 2. CHANNELS / WEBSOCKETS (Komplett isoliert im try-except)
     try:
         channel_layer = get_channel_layer()
-        data = {
-            "type": "metric_update",      
-            "device_id": instance.device_id,
-            "value": float(instance.value),
-            # Falls dein Frontend einen Zeitstempel im ISO-Format braucht:
-            "timestamp": timezone.now().isoformat() # Generiert die korrekte aktuelle Serverzeit
-        }
-
-        async_to_sync(channel_layer.group_send)(
-            "energy",
-            {
-                "type": "send_energy_update",  
-                "data": data
+        if channel_layer:
+            data = {
+                "type": "metric_update",      
+                "device_id": instance.device_id, # Direkt device_id nutzen spart DB-Query
+                "device_type": getattr(instance.device, "type", None), # Falls Frontend das braucht
+                "value": float(instance.value) if instance.value is not None else 0.0,
+                "timestamp": timezone.now().isoformat() # Garantiert aktuelle Serverzeit
             }
-        )
+
+            async_to_sync(channel_layer.group_send)(
+                "energy",
+                {
+                    "type": "send_energy_update",  
+                    "data": data
+                }
+            )
     except Exception as e:
-        import logging
-        logging.getLogger("django").error(f"Fehler im Channels-Signal: {e}")
+        logger.error(f"[SIGNAL_CHANNELS_ERROR] Fehler bei WebSocket-Übertragung: {e}")
 
 
 @receiver(post_save, sender=DeviceConfig)
