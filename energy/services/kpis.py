@@ -54,11 +54,6 @@ def get_today_consumption(user):
         or 0
     )
 
-    logger.info(
-        "Today KPI: %.2f kWh (grid_source)",
-        total_wh / 1000,
-    )
-
     return {
         "value": round(
             total_wh / 1000,

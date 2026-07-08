@@ -116,15 +116,14 @@ export default function DashboardUser() {
 
                 <KPI
                     label="Heute"
-                    value={kpis.pv ?? "--"}
+                    value={
+                        kpis.today?.toLocaleString("de-DE", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                        })
+                    }
                     unit="kWh"
                     icon="📈"
-                    chart={
-                        <KPISparklineECharts
-                            color="#8b5cf6"
-                            values={[1, 2, 3, 4, 5, 7, 9, 12]}
-                        />
-                    }
                 />
 
             </div>
