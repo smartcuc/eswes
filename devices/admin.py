@@ -16,7 +16,7 @@ class DeviceAdmin(admin.ModelAdmin):
         )
     
     list_filter = (
-        "get_user",       # 💡 Geändert: Nutzt die Methode von unten
+        "home__user",     # ✅ KORRIGIERT: Filtert über die echte DB-Relation zum User
     )
 
     search_fields = (
