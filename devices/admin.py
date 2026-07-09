@@ -14,6 +14,10 @@ class DeviceAdmin(admin.ModelAdmin):
         "identifier", 
         "home"
         )
+    
+    list_filter = (
+        "get_user",       # 💡 Geändert: Nutzt die Methode von unten
+    )
 
     search_fields = (
         "home__user__username", # 💡 Korrigiert: Sucht im verknüpften User-Modell via Home
