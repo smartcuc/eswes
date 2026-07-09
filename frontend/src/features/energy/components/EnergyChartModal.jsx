@@ -8,23 +8,18 @@ import ReactECharts from "echarts-for-react";
 
 import { apiFetch } from "../../../api/client";
 
-/* =========================================
-   HELPERS
-========================================= */
-
-function formatTime(ts) {
-    const d = new Date(ts * 1000);
-    return d.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-}
 
 /* =========================================
    COMPONENT
 ========================================= */
 
-export default function EnergyChartModal({ metricKey, displayName, unit, onClose }) {
+export default function EnergyChartModal({
+    metricKey,
+    displayName,
+    unit,
+    color = "#0ea5e9",
+    onClose,
+}) {
     const [range, setRange] = useState("24h");
     const [live, setLive] = useState(false);
     const chartRef = useRef(null);
@@ -40,26 +35,22 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
 
     /* ✅ DATA FETCHING (Zentraler EMS-Timeseries Endpoint) */
     const query = useQuery({
-        queryKey: ["energy-timeseries", metricKey, range],
+        queryKey: ["energy-chart", metricKey, range],
         queryFn: () =>
-            apiFetch(`/api/energy/timeseries/?metric=${metricKey}&range=${range}`),
-        refetchInterval: live ? 3000 : false
+            apiFetch(
+                `/api/energy/chart/?metric=${metricKey}&period=${range}`
+            ),
+        refetchInterval: live ? 3000 : false,
     });
 
     const data = query.data;
 
     /* ✅ DATA FORMATTING FOR ECHARTS */
     const chartData = useMemo(() => {
-        const points = data?.points || [];
-        const xAxisData = [];
-        const seriesData = [];
-
-        points.forEach(p => {
-            xAxisData.push(formatTime(p.t));
-            seriesData.push(Number(p.v ?? 0));
-        });
-
-        return { xAxisData, seriesData };
+        return {
+            xAxisData: data?.timestamps || [],
+            seriesData: data?.values || [],
+        };
     }, [data]);
 
     const currentPointValue = chartData.seriesData.length > 0
@@ -78,7 +69,8 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
 
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
     const option = useMemo(() => {
-        const mainColor = '#0ea5e9'; // Edles Energie-Cyan-Blau
+        //const mainColor = '#0ea5e9'; // Edles Energie-Cyan-Blau
+        const mainColor = color;
 
         return {
             tooltip: {
@@ -136,13 +128,24 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
                     lineStyle: { color: mainColor, width: 2.5 },
                     areaStyle: {
                         color: {
-                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                            type: "linear",
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
                             colorStops: [
-                                { offset: 0, color: 'rgba(14, 165, 233, 0.15)' },
-                                { offset: 1, color: 'rgba(14, 165, 233, 0.0)' }
-                            ]
-                        }
+                                {
+                                    offset: 0,
+                                    color: `${mainColor}33`,
+                                },
+                                {
+                                    offset: 1,
+                                    color: `${mainColor}00`,
+                                },
+                            ],
+                        },
                     },
+
                     markLine: {
                         symbol: ['none', 'none'],
                         silent: true,
@@ -154,7 +157,8 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
                                 lineStyle: { color: '#f97316', type: 'dashed', width: 1 },
                                 label: {
                                     position: 'start',
-                                    formatter: (params) => `Max: ${Number(params.value).toFixed(2)} ${unit}`,
+                                    formatter: (params) => `Max: ${Number(params.value).toFixed(2)
+                                        } ${unit} `,
                                     backgroundColor: '#fff7ed',
                                     borderColor: '#ffedd5',
                                     borderWidth: 1,
@@ -171,7 +175,7 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
                                 lineStyle: { color: '#64748b', type: 'dashed', width: 1 },
                                 label: {
                                     position: 'start',
-                                    formatter: (params) => `Min: ${Number(params.value).toFixed(2)} ${unit}`,
+                                    formatter: (params) => `Min: ${Number(params.value).toFixed(2)} ${unit} `,
                                     backgroundColor: '#f8fafc',
                                     borderColor: '#e2e8f0',
                                     borderWidth: 1,
@@ -188,7 +192,7 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
                                 lineStyle: { color: '#cbd5e1', type: 'dotted', width: 1 },
                                 label: {
                                     position: 'end',
-                                    formatter: (params) => `Ø: ${Number(params.value).toFixed(2)} ${unit}`,
+                                    formatter: (params) => `Ø: ${Number(params.value).toFixed(2)} ${unit} `,
                                     color: '#94a3b8',
                                     fontSize: 10,
                                     backgroundColor: 'transparent',
@@ -200,7 +204,7 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
                 }
             ]
         };
-    }, [chartData, unit, displayName]);
+    }, [chartData, unit, displayName, color]);
 
     return (
         <div
@@ -212,53 +216,129 @@ export default function EnergyChartModal({ metricKey, displayName, unit, onClose
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* HEADER */}
-                <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div
+                    className="p-4 border-b"
+                    style={{
+                        background: `linear-gradient(
+            135deg,
+            ${color}30,
+            ${color}08
+        )`,
+                    }}
+                >
                     <div className="flex justify-between items-center">
+
+                        {/* LINKS */}
                         <div>
-                            <div className="text-xs text-gray-500">EMS System-Analyse</div>
-                            <h3 className="font-semibold text-lg text-gray-900">⚡ {displayName}</h3>
+                            <div className="text-xs text-gray-500">
+                                EMS System-Analyse
+                            </div>
+
+                            <h3
+                                className="font-semibold text-lg"
+                                style={{ color }}
+                            >
+                                ⚡ {displayName}
+                            </h3>
 
                             {currentPointValue !== null && (
-                                <div className="text-sm font-medium text-sky-600 mt-1">
-                                    Aktueller Live-Wert: {currentPointValue.toFixed(2)} {unit}
+                                <div
+                                    className="text-sm font-medium mt-1"
+                                    style={{ color }}
+                                >
+                                    Aktueller Live-Wert:{" "}
+                                    {currentPointValue.toFixed(2)} {unit}
                                 </div>
                             )}
                         </div>
 
+                        {/* RECHTS */}
                         <div className="flex items-center gap-2">
-                            <select
-                                value={range}
-                                onChange={(e) => {
-                                    setRange(e.target.value);
-                                    setLive(false);
-                                }}
-                                className="border rounded px-2 py-1 text-sm bg-white"
-                            >
-                                <option value="1h">1h</option>
-                                <option value="6h">6h</option>
-                                <option value="24h">24h</option>
-                                <option value="7d">7d</option>
-                            </select>
+
+                            {range === "1h" && (
+                                <button
+                                    onClick={() => setLive((v) => !v)}
+                                    className={`px-3 py-1 text-sm rounded-lg font-medium transition-colors flex items-center gap-2 ${live
+                                        ? "bg-green-500 text-white"
+                                        : "bg-gray-100 text-gray-700"
+                                        }`}
+                                >
+                                    <span
+                                        className={
+                                            live
+                                                ? "inline-block w-2 h-2 rounded-full bg-white animate-pulse"
+                                                : "inline-block w-2 h-2 rounded-full bg-gray-400"
+                                        }
+                                    />
+                                    Live
+                                </button>
+                            )}
+
+                            <div className="flex rounded-lg overflow-hidden border shadow-sm">
+                                {["1h", "6h", "24h", "5d"].map((period) => (
+                                    <button
+                                        key={period}
+                                        onClick={() => {
+                                            setRange(period);
+                                            if (period !== "1h") {
+                                                setLive(false);
+                                            }
+                                        }}
+                                        className="px-3 py-1 text-sm font-medium transition"
+                                        style={
+                                            range === period
+                                                ? {
+                                                    backgroundColor: color,
+                                                    color: "#fff",
+                                                }
+                                                : {
+                                                    backgroundColor: "#fff",
+                                                    color: "#64748b",
+                                                }
+                                        }
+                                    >
+                                        {period}
+                                    </button>
+                                ))}
+                            </div>
 
                             <button
-                                onClick={() => setLive(v => !v)}
-                                className={`px-3 py-1 text-sm rounded font-medium transition-colors ${live ? "bg-green-500 text-white" : "bg-gray-200 text-gray-700"
-                                    }`}
+                                className="px-3 py-1 text-sm rounded-lg text-white shadow-sm"
+                                style={{ backgroundColor: color }}
                             >
-                                ● LIVE
+                                CSV
+                            </button>
+
+                            <button
+                                className="px-3 py-1 text-sm rounded-lg text-white shadow-sm"
+                                style={{ backgroundColor: color }}
+                            >
+                                XLSX
+                            </button>
+
+                            <button
+                                className="px-3 py-1 text-sm rounded-lg text-white shadow-sm"
+                                style={{ backgroundColor: color }}
+                            >
+                                PDF
                             </button>
 
                             <button
                                 onClick={handleResetZoom}
-                                className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-600"
+                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600"
                             >
                                 Reset
                             </button>
 
-                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg p-1">
+                            <button
+                                onClick={onClose}
+                                className="text-gray-400 hover:text-gray-600 text-lg p-1"
+                            >
                                 ✕
                             </button>
+
                         </div>
+
                     </div>
                 </div>
 

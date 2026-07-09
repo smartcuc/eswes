@@ -35,6 +35,8 @@ export default function DashboardUser() {
     const showFloors = settings.showFloors ?? true;
     const showRooms = settings.showRooms ?? true;
 
+    const [activeSystemChart, setActiveSystemChart] = useState(null);
+
     const energyQuery = useQuery({
         queryKey: [
             "energy-dashboard",
@@ -42,13 +44,18 @@ export default function DashboardUser() {
             showRooms,
         ],
         queryFn: () => apiFetch("/api/energy/dashboard/me/"),
-        refetchInterval: 3000, // ✅ VERY IMPORTANT
+        //refetchInterval: 3000, // ✅ VERY IMPORTANT
+        refetchInterval: activeSystemChart
+            ? false
+            : 3000,
         refetchIntervalInBackground: true,
     });
 
+
+
     const kpis = energyQuery.data?.kpis || {};
     const charts = energyQuery.data?.charts || {};
-    const [activeSystemChart, setActiveSystemChart] = useState(null);
+    //const [activeSystemChart, setActiveSystemChart] = useState(null);
 
     return (
         <DashboardLayout>
@@ -77,36 +84,68 @@ export default function DashboardUser() {
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
-                <KPI
-                    label="Aktuelle Last"
-                    value={kpis.load ?? "--"}
-                    unit="W"
-                    icon="⚡"
-                    chart={
-                        <KPISparklineECharts
-                            color="#2563eb"
-                            values={charts.load || []}
-                        />
+                <div
+                    onClick={() =>
+                        setActiveSystemChart({
+                            metricKey: "load",
+                            displayName: "Hausverbrauch",
+                            unit: "W",
+                            color: "#2563eb",
+                        })
                     }
-                />
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                >
 
-                <KPI
-                    label="Erzeugung"
-                    value={kpis.pv ?? "--"}
-                    unit="W"
-                    icon="☀️"
-                    chart={
-                        <KPISparklineECharts
-                            color="#f59e0b"
-                            values={charts.pv || []}
-                        />
+                    <KPI
+                        label="Aktuelle Last"
+                        value={kpis.load ?? "--"}
+                        unit="W"
+                        icon="⚡"
+                        chart={
+                            <KPISparklineECharts
+                                color="#2563eb"
+                                values={charts.load || []}
+                            />
+                        }
+                    />
+                </div>
+
+                <div
+                    onClick={() =>
+                        setActiveSystemChart({
+                            metricKey: "pv",
+                            displayName: "PV-Erzeugung",
+                            unit: "W",
+                            color: "#f59e0b",
+                        })
                     }
-                />
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                >
 
+                    <KPI
+                        label="Erzeugung"
+                        value={kpis.pv ?? "--"}
+                        unit="W"
+                        icon="☀️"
+                        chart={
+                            <KPISparklineECharts
+                                color="#f59e0b"
+                                values={charts.pv || []}
+                            />
+                        }
+                    />
+                </div>
                 {/* ✅ KACHEL 1: NETZ */}
                 <div
-                    onClick={() => setActiveSystemChart({ metricKey: "grid", displayName: "Netzanschluss", unit: "W" })}
+                    onClick={() =>
+                        setActiveSystemChart({
+                            metricKey: "grid",
+                            displayName: "Netzanschluss",
+                            unit: "W",
+                            color: "#10b981",
+                        })
+                    }
+
                     className="cursor-pointer hover:opacity-90 transition-opacity"
                 >
 
@@ -238,6 +277,7 @@ export default function DashboardUser() {
                     metricKey={activeSystemChart.metricKey}
                     displayName={activeSystemChart.displayName}
                     unit={activeSystemChart.unit}
+                    color={activeSystemChart.color}
                     onClose={() => setActiveSystemChart(null)}
                 />
             )}

@@ -1,4 +1,4 @@
-/*
+/* Test mit 0-line
 # src/components/ui/KPISparklineECharts.jsx
 */
 
@@ -47,6 +47,23 @@ export default function KPISparklineECharts({
                 areaStyle: {
                     opacity: 0.08,
                     color,
+                },
+
+                markLine: {
+                    silent: true,
+                    symbol: "none",
+
+                    lineStyle: {
+                        color: "#e5e7eb",
+                        width: 1,
+                        type: "dashed",
+                    },
+
+                    data: [
+                        {
+                            yAxis: 0,
+                        },
+                    ],
                 },
             },
         ],
