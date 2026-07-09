@@ -10,7 +10,7 @@ from .models import *
 class DeviceAdmin(admin.ModelAdmin):
     list_display = (
         "id", 
-        "user",
+        "get_user",       # 💡 Geändert: Nutzt die Methode von unten
         "device",
         "name", 
         "identifier", 
@@ -18,9 +18,20 @@ class DeviceAdmin(admin.ModelAdmin):
         )
 
     search_fields = (
-        "user",
+        "home__user__username", # 💡 Korrigiert: Sucht im verknüpften User-Modell via Home
+        "home__user__email",    # 💡 Bonus: Erlaubt auch die Suche nach der E-Mail des Users
         "identifier"
     )
+    
+    # ⚡ Performance-Turbo: Verhindert N+1-Queries in der Admin-Liste
+    select_related = ("home__user",)
+
+    @admin.display(ordering="home__user", description="User")
+    def get_user(self, obj):
+        # Holt den User über das verknüpfte Home-Objekt
+        if obj.home and obj.home.user:
+            return obj.home.user.email or obj.home.user.username
+        return "-"
 
 @admin.register(DeviceConfig)
 class DeviceConfigAdmin(admin.ModelAdmin):
