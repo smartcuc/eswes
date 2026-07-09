@@ -1,12 +1,12 @@
 /*
-# src/components/device/DeviceChartModal.jsx
+# src/features/energy/components/EnergyChartModal.jsx
 */
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 
-import { apiFetch } from "../../api/client";
+import { apiFetch } from "../../../api/client";
 
 /* =========================================
    HELPERS
@@ -24,7 +24,7 @@ function formatTime(ts) {
    COMPONENT
 ========================================= */
 
-function DeviceChartModal({ device, onClose }) {
+export default function EnergyChartModal({ metricKey, displayName, unit, onClose }) {
     const [range, setRange] = useState("24h");
     const [live, setLive] = useState(false);
     const chartRef = useRef(null);
@@ -38,19 +38,17 @@ function DeviceChartModal({ device, onClose }) {
         return () => window.removeEventListener("keydown", handleKey);
     }, [onClose]);
 
-    /* ✅ DATA FETCHING */
+    /* ✅ DATA FETCHING (Zentraler EMS-Timeseries Endpoint) */
     const query = useQuery({
-        queryKey: ["timeseries", device.id, range],
+        queryKey: ["energy-timeseries", metricKey, range],
         queryFn: () =>
-            apiFetch(`/api/devices/${device.id}/timeseries/?range=${range}`),
+            apiFetch(`/api/energy/timeseries/?metric=${metricKey}&range=${range}`),
         refetchInterval: live ? 3000 : false
     });
 
     const data = query.data;
-    const unit = device.unit || "";
 
     /* ✅ DATA FORMATTING FOR ECHARTS */
-    // ECharts arbeitet am besten mit zwei separaten Arrays für X und Y
     const chartData = useMemo(() => {
         const points = data?.points || [];
         const xAxisData = [];
@@ -64,17 +62,13 @@ function DeviceChartModal({ device, onClose }) {
         return { xAxisData, seriesData };
     }, [data]);
 
-    // Aktuellen Punkt für den Header ermitteln
     const currentPointValue = chartData.seriesData.length > 0
         ? chartData.seriesData[chartData.seriesData.length - 1]
         : null;
 
-    /* ✅ NATIVES RESET */
     const handleResetZoom = () => {
         if (chartRef.current) {
-            const chartInstance = chartRef.current.getEchartsInstance();
-            // Setzt den Zoom-Schieberegler wieder auf 0% - 100%
-            chartInstance.dispatchAction({
+            chartRef.current.getEchartsInstance().dispatchAction({
                 type: 'dataZoom',
                 start: 0,
                 end: 100
@@ -83,15 +77,15 @@ function DeviceChartModal({ device, onClose }) {
     };
 
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
-    const mainColor = '#0ea5e9';
     const option = useMemo(() => {
+        const mainColor = '#0ea5e9'; // Edles Energie-Cyan-Blau
+
         return {
-            // Schickes, reaktionsschnelles Tooltip
             tooltip: {
                 trigger: 'axis',
-                formatter: function (params) {
+                formatter: (params) => {
                     const p = params[0];
-                    return `${p.name}<br/><span style="color:#6366f1;font-weight:bold;">${Number(p.value).toFixed(2)} ${unit}</span>`;
+                    return `${p.name}<br/><span style="color:${mainColor};font-weight:bold;">${Number(p.value).toFixed(2)} ${unit}</span>`;
                 },
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 borderColor: '#e2e8f0',
@@ -99,7 +93,7 @@ function DeviceChartModal({ device, onClose }) {
                 textStyle: { color: '#1e293b' }
             },
             grid: {
-                top: '4%',
+                top: '6%',
                 left: '3%',
                 right: '4%',
                 bottom: '15%',
@@ -117,126 +111,96 @@ function DeviceChartModal({ device, onClose }) {
                 axisLine: { show: false },
                 axisLabel: {
                     color: '#64748b',
-                    // 💡 Rundet die Achsenbeschriftung auf 2 Nachkommastellen
                     formatter: (value) => `${Number(value).toFixed(2)} ${unit}`
                 },
                 splitLine: { lineStyle: { color: '#f1f5f9' } }
             },
-
-            // 💡 NATIVE ZOOM ENGINE (Ersetzt die Recharts Maus-Events komplett!)
             dataZoom: [
+                { type: 'inside', start: 0, end: 100 },
                 {
-                    type: 'inside', // Erlaubt Scrollen/Pinchen direkt im Chart
-                    start: 0,
-                    end: 100
-                },
-                {
-                    type: 'slider', // Der sichtbare Schieberegler unten
+                    type: 'slider',
                     start: 0,
                     end: 100,
-                    foregroundColor: '#6366f1',
+                    foregroundColor: mainColor,
                     textStyle: { color: '#64748b' },
                     borderColor: '#f1f5f9'
                 }
             ],
             series: [
                 {
-                    name: device.display_name,
+                    name: displayName,
                     type: 'line',
                     data: chartData.seriesData,
                     showSymbol: false,
-                    smooth: true, // Macht die Kurve elegant weich
-                    lineStyle: {
-                        // color: '#6366f1',
-                        color: mainColor,
-                        width: 2.5
-                    },
-                    // Hübscher Farbverlauf unter der Linie
+                    smooth: true,
+                    lineStyle: { color: mainColor, width: 2.5 },
                     areaStyle: {
                         color: {
-                            type: 'linear',
-                            x: 0, y: 0, x2: 0, y2: 1,
+                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                             colorStops: [
-                                //  { offset: 0, color: 'rgba(99, 102, 241, 0.2)' },
-                                //  { offset: 1, color: 'rgba(99, 102, 241, 0.0)' }
-                                { offset: 0, color: 'rgba(14, 165, 233, 0.15)' }, // Sanfter Verlauf
+                                { offset: 0, color: 'rgba(14, 165, 233, 0.15)' },
                                 { offset: 1, color: 'rgba(14, 165, 233, 0.0)' }
                             ]
                         }
                     },
-                    // 📈 Automatische Min/Max Punkte im Chart markieren
-                    markPoint: null,
-
-                    // 💡 2. Neues `markLine` für gepunktete Linien zur Y-Achse
                     markLine: {
-                        symbol: ['none', 'none'], // Entfernt Pfeile an den Linienenden
-                        silent: true,            // Maus-Events für Linien deaktivieren
+                        symbol: ['none', 'none'],
+                        silent: true,
                         data: [
+                            // MAX LINE (Edles Orange-Rot)
                             {
                                 type: 'max',
                                 name: 'Max',
-                                //lineStyle: { color: '#ef4444', type: 'dashed', width: 1 }, // Rot gepunktet
                                 lineStyle: { color: '#f97316', type: 'dashed', width: 1 },
                                 label: {
-                                    position: 'start', // Platziert den Text direkt an der Y-Achse
+                                    position: 'start',
                                     formatter: (params) => `Max: ${Number(params.value).toFixed(2)} ${unit}`,
-                                    //backgroundColor: '#fef2f2',                        
-                                    //borderColor: '#fee2e2',
                                     backgroundColor: '#fff7ed',
                                     borderColor: '#ffedd5',
                                     borderWidth: 1,
-                                    // padding:,
+                                    //padding:,
                                     borderRadius: 4,
-                                    //color: '#991b1b',
                                     color: '#c2410c',
                                     fontSize: 10
                                 }
                             },
+                            // MIN LINE (Weiches Slate-Grau)
                             {
                                 type: 'min',
                                 name: 'Min',
-                                //lineStyle: { color: '#06b6d4', type: 'dashed', width: 1 }, // Cyan gepunktet
                                 lineStyle: { color: '#64748b', type: 'dashed', width: 1 },
                                 label: {
                                     position: 'start',
                                     formatter: (params) => `Min: ${Number(params.value).toFixed(2)} ${unit}`,
-                                    //backgroundColor: '#ecfeff',
-                                    //borderColor: '#cffafe',
                                     backgroundColor: '#f8fafc',
                                     borderColor: '#e2e8f0',
                                     borderWidth: 1,
-                                    // padding:,
+                                    //padding:,
                                     borderRadius: 4,
-                                    //color: '#155e75',
                                     color: '#334155',
                                     fontSize: 10
                                 }
                             },
+                            // AVERAGE LINE (Dezent, Randlos rechts)
                             {
                                 type: 'average',
                                 name: 'Schnitt',
-                                //lineStyle: { color: '#94a3b8', type: 'dashed', width: 1 },
                                 lineStyle: { color: '#cbd5e1', type: 'dotted', width: 1 },
                                 label: {
-                                    position: 'end', // Am rechten Rand des Charts platzieren
+                                    position: 'end',
                                     formatter: (params) => `Ø: ${Number(params.value).toFixed(2)} ${unit}`,
-                                    backgroundColor: '#f8fafc',
-                                    borderColor: '#e2e8f0',
-                                    borderWidth: 1,
-                                    padding: 4,
-                                    borderRadius: 4,
-                                    //color: '#475569',
                                     color: '#94a3b8',
-                                    fontSize: 10
+                                    fontSize: 10,
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 0
                                 }
                             }
                         ]
-
-                    },
+                    }
                 }
             ]
         };
-    }, [chartData, unit, device.display_name]);
+    }, [chartData, unit, displayName]);
 
     return (
         <div
@@ -251,13 +215,12 @@ function DeviceChartModal({ device, onClose }) {
                 <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
                     <div className="flex justify-between items-center">
                         <div>
-                            <div className="text-xs text-gray-500">Zeitreihe analysieren</div>
-                            <h3 className="font-semibold text-lg text-gray-900">📈 {device.display_name}</h3>
-                            <div className="text-xs text-gray-500">{device.identifier}</div>
+                            <div className="text-xs text-gray-500">EMS System-Analyse</div>
+                            <h3 className="font-semibold text-lg text-gray-900">⚡ {displayName}</h3>
 
                             {currentPointValue !== null && (
-                                <div className="text-sm font-medium text-indigo-600 mt-1">
-                                    Aktuell: {currentPointValue.toFixed(2)} {unit}
+                                <div className="text-sm font-medium text-sky-600 mt-1">
+                                    Aktueller Live-Wert: {currentPointValue.toFixed(2)} {unit}
                                 </div>
                             )}
                         </div>
@@ -292,10 +255,7 @@ function DeviceChartModal({ device, onClose }) {
                                 Reset
                             </button>
 
-                            <button
-                                onClick={onClose}
-                                className="text-gray-400 hover:text-gray-600 text-lg p-1"
-                            >
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg p-1">
                                 ✕
                             </button>
                         </div>
@@ -308,7 +268,7 @@ function DeviceChartModal({ device, onClose }) {
                         ref={chartRef}
                         option={option}
                         style={{ width: "100%", height: "100%" }}
-                        notMerge={true} // Verhindert Daten-Reste beim Range-Wechsel
+                        notMerge={true}
                         lazyUpdate={true}
                     />
                 </div>
@@ -316,5 +276,3 @@ function DeviceChartModal({ device, onClose }) {
         </div>
     );
 }
-
-export default DeviceChartModal;

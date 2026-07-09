@@ -2,23 +2,24 @@
 # src/pages/dashboard/DashboardUser.jsx
 */
 
+import { useState } from "react";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
 import DeviceSetupModal from "../../components/device/DeviceSetupModal";
+import EnergyChartModal from "../../features/energy/components/EnergyChartModal";
 import KPI from "../../components/ui/KPI";
 import KPISparklineECharts from "../../components/ui/KPISparklineECharts";
 import Card from "../../components/ui/Card";
 
-import Button from "../../components/ui/Button";
+//import Button from "../../components/ui/Button";
 
-import { useState } from "react";
 import useUserPreference from "../../hooks/useUserPreference";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../api/client";
 
 import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey";
-import LiveEnergySankeyECharts from "../../features/energy/components/LiveEnergySankeyECharts";
+//import LiveEnergySankeyECharts from "../../features/energy/components/LiveEnergySankeyECharts";
 
 
 export default function DashboardUser() {
@@ -46,6 +47,8 @@ export default function DashboardUser() {
     });
 
     const kpis = energyQuery.data?.kpis || {};
+    const charts = energyQuery.data?.charts || {};
+    const [activeSystemChart, setActiveSystemChart] = useState(null);
 
     return (
         <DashboardLayout>
@@ -83,7 +86,7 @@ export default function DashboardUser() {
                     chart={
                         <KPISparklineECharts
                             color="#2563eb"
-                            values={[2, 3, 2.5, 4, 5, 4, 6, 5]}
+                            values={charts.load || []}
                         />
                     }
                 />
@@ -96,23 +99,31 @@ export default function DashboardUser() {
                     chart={
                         <KPISparklineECharts
                             color="#f59e0b"
-                            values={[0, 1, 2, 4, 5, 6, 5, 4]}
+                            values={charts.pv || []}
                         />
                     }
                 />
 
-                <KPI
-                    label="Netz"
-                    value={kpis.grid ?? "--"}
-                    unit="W"
-                    icon="🔌"
-                    chart={
-                        <KPISparklineECharts
-                            color="#10b981"
-                            values={[4, 3, 3.5, 2, 2.5, 1, 0.5, 0]}
-                        />
-                    }
-                />
+                {/* ✅ KACHEL 1: NETZ */}
+                <div
+                    onClick={() => setActiveSystemChart({ metricKey: "grid", displayName: "Netzanschluss", unit: "W" })}
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                >
+
+                    <KPI
+                        label="Netz"
+                        value={kpis.grid ?? "--"}
+                        unit="W"
+                        icon="🔌"
+                        chart={
+                            <KPISparklineECharts
+                                color="#10b981"
+                                values={charts.grid || []}
+                            />
+
+                        }
+                    />
+                </div>
 
                 <KPI
                     label="Heute"
@@ -124,6 +135,12 @@ export default function DashboardUser() {
                     }
                     unit="kWh"
                     icon="📈"
+                    chart={
+                        <KPISparklineECharts
+                            color="#8b5cf6"
+                            values={charts.today || []}
+                        />
+                    }
                 />
 
             </div>
@@ -231,6 +248,16 @@ export default function DashboardUser() {
                 )}
 
             </Card>
+
+            {/* 💡 EMS SYSTEM CHART MODAL */}
+            {activeSystemChart && (
+                <EnergyChartModal
+                    metricKey={activeSystemChart.metricKey}
+                    displayName={activeSystemChart.displayName}
+                    unit={activeSystemChart.unit}
+                    onClose={() => setActiveSystemChart(null)}
+                />
+            )}
 
         </DashboardLayout>
     );

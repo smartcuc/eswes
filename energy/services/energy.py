@@ -5,10 +5,11 @@
 from energy.services.signals import get_ems_signals
 from energy.flow_engine import calculate_energy_flow
 from energy.services.sankey import build_live_sankey
-from user_settings.models import UserPreference
-from devices.models import DeviceConfig
-
 from energy.services.kpis import ( get_today_consumption, )
+from energy.services.charts import (get_dashboard_chart,)
+from energy.ems.models import (EMSSignalSource,)
+
+from user_settings.models import UserPreference
 
 
 def get_energy_data(user):
@@ -55,10 +56,37 @@ def get_energy_data(user):
         "today_source": today["source"] if today else None,
     }
 
+    grid_ids = list(
+        EMSSignalSource.objects.filter(
+            home__user=user,
+            signal_type="grid",
+        ).values_list(
+            "device_id",
+            flat=True,
+        )
+    )
+
+    pv_ids = list(
+        EMSSignalSource.objects.filter(
+            home__user=user,
+            signal_type="pv",
+        ).values_list(
+            "device_id",
+            flat=True,
+        )
+    )
+
+    charts = {
+        "load": get_dashboard_chart(grid_ids),
+        "pv": get_dashboard_chart(pv_ids),
+        "grid": get_dashboard_chart(grid_ids),
+    }
+
     return {
         # Wenn dein Frontend hier strikt nach Rollen verlangt, 
         # schalte es testweise fest auf True, um zu sehen, ob das Sankey-Diagramm rendert:
         "ready": True, # oder: has_producer and has_consumer
         "sankey": sankey,
         "kpis": kpis,
+        "charts": charts,
     }
