@@ -8,8 +8,19 @@ from .models import *
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    list_display = ("id", "identifier", "home")
+    list_display = (
+        "id", 
+        "user",
+        "device",
+        "name", 
+        "identifier", 
+        "home"
+        )
 
+    search_fields = (
+        "user",
+        "identifier"
+    )
 
 @admin.register(DeviceConfig)
 class DeviceConfigAdmin(admin.ModelAdmin):

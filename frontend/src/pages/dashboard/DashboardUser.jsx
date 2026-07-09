@@ -145,17 +145,7 @@ export default function DashboardUser() {
 
             </div>
 
-            {/* Chart */}
-            <div className="space-y-2">
-                <h2 className="text-lg font-semibold">Verlauf</h2>
-
-                <Card>
-                    <div className="h-40 flex items-center justify-center text-gray-400">
-                        📈 Energiechart kommt sobald wir uns besser kennengelernt haben
-                    </div>
-                </Card>
-            </div>
-
+            {/* Sankey Chart */}
             <Card>
 
                 <div className="flex items-center justify-between mb-4">
@@ -233,16 +223,9 @@ export default function DashboardUser() {
 
                 ) : (
 
-                    <div
-                        className="
-                            h-80
-                            flex
-                            items-center
-                            justify-center
-                            text-gray-400
-        "
-                    >
-                        👋 Willkommen bei Sharegy
+                    <div className="h-40 flex flex-col items-center justify-center text-center text-gray-400 space-y-1">
+                        <p className="text-gray-500 font-medium">Willkommen bei Sharegy 👋</p>
+                        <p>📈 Dein Energiechart kommt, sobald wir uns besser kennengelernt haben.</p>
                     </div>
 
                 )}
