@@ -11,7 +11,6 @@ class DeviceAdmin(admin.ModelAdmin):
     list_display = (
         "id", 
         "get_user",       # 💡 Geändert: Nutzt die Methode von unten
-        "name", 
         "identifier", 
         "home"
         )
