@@ -5,6 +5,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from zoneinfo import ZoneInfo
 from django.utils import timezone
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -19,6 +20,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 import csv
+
+
+export_time = (
+    timezone.now().astimezone(ZoneInfo("Europe/Berlin")).strftime("%d.%m.%Y %H:%M")
+)
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -159,10 +166,10 @@ def export_chart_xlsx(request):
     )
 
     metric_labels = {
-        "load": "Hausverbrauch",
-        "pv": "PV-Erzeugung",
-        "grid": "Netzanschluss",
-        "today": "Verbrauch heute",
+        "load": "Bedarf",
+        "pv": "Erzeugung",
+        "grid": "Bezug/Einspeisung",
+        "today": "Tagesverbrauch",
     }
 
     ws["A8"].font = Font(bold=True)
@@ -183,7 +190,7 @@ def export_chart_xlsx(request):
     ws["B5"] = data["unit"]
 
     ws["A6"] = "Exportiert"
-    ws["B6"] = timezone.now().strftime("%d.%m.%Y %H:%M")
+    ws["B6"] = export_time
 
     # Leerzeile
     ws.append([])
@@ -280,10 +287,7 @@ def export_chart_csv(request):
     writer.writerow(["Metrik", metric_labels.get(metric, metric)])
     writer.writerow(["Zeitraum", period])
     writer.writerow(["Einheit", data["unit"]])
-    writer.writerow([
-        "Exportiert",
-        timezone.now().strftime("%d.%m.%Y %H:%M")
-    ])
+    writer.writerow(["Exportiert", export_time])
 
     writer.writerow([])
 
