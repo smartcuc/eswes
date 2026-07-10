@@ -57,14 +57,38 @@ export default function EnergyChartModal({
         ? chartData.seriesData[chartData.seriesData.length - 1]
         : null;
 
+    const [isZoomed, setIsZoomed] = useState(false);
+
     const handleResetZoom = () => {
         if (chartRef.current) {
             chartRef.current.getEchartsInstance().dispatchAction({
-                type: 'dataZoom',
+                type: "dataZoom",
                 start: 0,
-                end: 100
+                end: 100,
             });
+
+            setIsZoomed(false);
         }
+    };
+
+    const onEvents = {
+        datazoom: (event) => {
+
+            const start =
+                event.batch?.[0]?.start ??
+                event.start ??
+                0;
+
+            const end =
+                event.batch?.[0]?.end ??
+                event.end ??
+                100;
+
+            setIsZoomed(
+                start > 0 ||
+                end < 100
+            );
+        },
     };
 
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
@@ -310,6 +334,12 @@ export default function EnergyChartModal({
                             </button>
 
                             <button
+                                onClick={() =>
+                                    window.open(
+                                        `/api/energy/chart/export/xlsx/?metric=${metricKey}&period=${range}`,
+                                        "_blank"
+                                    )
+                                }
                                 className="px-3 py-1 text-sm rounded-lg text-white shadow-sm"
                                 style={{ backgroundColor: color }}
                             >
@@ -323,12 +353,14 @@ export default function EnergyChartModal({
                                 PDF
                             </button>
 
-                            <button
-                                onClick={handleResetZoom}
-                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600"
-                            >
-                                Reset
-                            </button>
+                            {isZoomed && (
+                                <button
+                                    onClick={handleResetZoom}
+                                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600"
+                                >
+                                    Reset
+                                </button>
+                            )}
 
                             <button
                                 onClick={onClose}
@@ -347,6 +379,7 @@ export default function EnergyChartModal({
                     <ReactECharts
                         ref={chartRef}
                         option={option}
+                        onEvents={onEvents}
                         style={{ width: "100%", height: "100%" }}
                         notMerge={true}
                         lazyUpdate={true}

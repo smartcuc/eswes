@@ -5,13 +5,17 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.utils import timezone
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+
+from devices.models import Device
 
 from energy.services.energy import get_energy_data
 from energy.services.charts import (get_chart_data,)
 from energy.ems.models import EMSSignalSource
 
-from devices.models import Device
+from openpyxl import Workbook, Font
 
 
 @api_view(["GET"])
@@ -99,3 +103,110 @@ def configure_device(request, device_id):
 
     return Response({"status": "ok"})
 
+# ----------------
+# Export - Excel
+# ----------------
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def export_chart_xlsx(request):
+
+    metric = request.GET.get("metric")
+    period = request.GET.get("period", "24h")
+
+    if metric == "pv":
+
+        device_ids = list(
+            EMSSignalSource.objects.filter(
+                home__user=request.user,
+                signal_type="pv",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
+        )
+
+    else:
+
+        device_ids = list(
+            EMSSignalSource.objects.filter(
+                home__user=request.user,
+                signal_type="grid",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
+        )
+
+    data = get_chart_data(
+        device_ids,
+        period,
+    )
+
+    wb = Workbook()
+    ws = wb.active
+
+    ws.title = f"{metric}_{period}"
+
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 18
+
+    ws["A1"].font = Font(
+        bold=True,
+        size=16,
+    )
+
+    metric_labels = {
+        "load": "Hausverbrauch",
+        "pv": "PV-Erzeugung",
+        "grid": "Netzanschluss",
+        "today": "Verbrauch heute",
+    }
+
+    ws["A8"].font = Font(bold=True)
+    ws["B8"].font = Font(bold=True)
+
+    ws["A1"] = "Sharegy Energieexport"
+
+    ws["A3"] = "Metrik"
+    ws["B3"] = metric_labels.get(
+        metric,
+        metric,
+    )
+
+    ws["A4"] = "Zeitraum"
+    ws["B4"] = period
+
+    ws["A5"] = "Einheit"
+    ws["B5"] = data["unit"]
+
+    ws["A6"] = "Exportiert"
+    ws["B6"] = timezone.now().strftime("%d.%m.%Y %H:%M")
+
+    # Leerzeile
+    ws.append([])
+
+    ws["A8"] = "Zeitpunkt"
+    ws["B8"] = f"Wert ({data['unit']})"
+
+    row = 9
+
+    for ts, value in zip(
+        data["timestamps"],
+        data["values"],
+    ):
+        ws.cell(row=row, column=1, value=ts)
+        ws.cell(row=row, column=2, value=value)
+        row += 1
+
+    response = HttpResponse(
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    )
+
+    response["Content-Disposition"] = f'attachment; filename="{metric}_{period}.xlsx"'
+
+    wb.save(response)
+
+    return response

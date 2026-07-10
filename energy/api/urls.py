@@ -5,6 +5,7 @@
 from django.urls import path
 from .views_fake import fake_dashboard
 from .views import dashboard_me, configure_device, chart_data
+from .views import export_chart_xlsx
 
 urlpatterns = [
     path("fake-dashboard/", fake_dashboard),
@@ -14,5 +15,7 @@ urlpatterns = [
 urlpatterns += [
     path("dashboard/me/", dashboard_me),
     path("chart/", chart_data,),
+    path("chart/export/xlsx/",export_chart_xlsx),
     path("devices/<int:device_id>/configure/", configure_device),
 ]
+

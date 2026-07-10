@@ -31,6 +31,7 @@ django-timezone-field==7.2.1
 django_celery_results==2.6.0
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
+et_xmlfile==2.0.0
 fastapi==0.136.3
 flower==2.0.1
 h11==0.16.0
@@ -42,6 +43,7 @@ joblib==1.5.3
 kombu==5.6.2
 msgpack==1.1.2
 numpy==2.4.6
+openpyxl==3.1.5
 packaging==26.2
 paho-mqtt==2.1.0
 prometheus_client==0.25.0
