@@ -74,14 +74,11 @@ def get_chart_data(
         return {
             "period": "1h",
             "unit": "W",
-            "timestamps": [
-                row.bucket.strftime("%H:%M")
-                for row in rows
+            "timestamps": [row.bucket.strftime("%H:%M") for row in rows],
+            "export_timestamps": [
+                row.bucket.strftime("%d.%m.%Y %H:%M") for row in rows
             ],
-            "values": [
-                round(row.avg, 1)
-                for row in rows
-            ],
+            "values": [round(row.avg, 1) for row in rows],
         }
 
     #
@@ -104,10 +101,17 @@ def get_chart_data(
         return {
             "period": "6h",
             "unit": "W",
+
             "timestamps": [
                 row.bucket.strftime("%H:%M")
                 for row in rows
             ],
+
+            "export_timestamps": [
+                row.bucket.strftime("%d.%m.%Y %H:%M")
+                for row in rows
+            ],
+
             "values": [
                 round(row.avg, 1)
                 for row in rows
@@ -134,14 +138,11 @@ def get_chart_data(
         return {
             "period": "24h",
             "unit": "W",
-            "timestamps": [
-                row.bucket.strftime("%H:%M")
-                for row in rows
+            "timestamps": [row.bucket.strftime("%H:%M") for row in rows],
+            "export_timestamps": [
+                row.bucket.strftime("%d.%m.%Y %H:%M") for row in rows
             ],
-            "values": [
-                round(row.avg, 1)
-                for row in rows
-            ],
+            "values": [round(row.avg, 1) for row in rows],
         }
 
     #
@@ -162,21 +163,19 @@ def get_chart_data(
         )
 
         return {
-            "period": "7d",
+            "period": "5d",
             "unit": "W",
-            "timestamps": [
-                row.bucket.strftime("%d.%m %Hh")
-                for row in rows
+            "timestamps": [row.bucket.strftime("%H:%M") for row in rows],
+            "export_timestamps": [
+                row.bucket.strftime("%d.%m.%Y %H:%M") for row in rows
             ],
-            "values": [
-                round(row.avg, 1)
-                for row in rows
-            ],
+            "values": [round(row.avg, 1) for row in rows],
         }
-    
+
     return {
     "period": "24h",
     "unit": "W",
     "timestamps": [],
+    "export_timestamps": [],
     "values": [],
 }

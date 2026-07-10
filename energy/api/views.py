@@ -194,7 +194,7 @@ def export_chart_xlsx(request):
     row = 9
 
     for ts, value in zip(
-        data["timestamps"],
+        data["export_timestamps"],
         data["values"],
     ):
         ws.cell(row=row, column=1, value=ts)
@@ -293,7 +293,7 @@ def export_chart_csv(request):
     ])
 
     for ts, value in zip(
-        data["timestamps"],
+        data["export_timestamps"],
         data["values"],
     ):
         writer.writerow(
