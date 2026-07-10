@@ -18,6 +18,8 @@ from energy.ems.models import EMSSignalSource
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+import csv
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_me(request):
@@ -208,5 +210,97 @@ def export_chart_xlsx(request):
     response["Content-Disposition"] = f'attachment; filename="{metric}_{period}.xlsx"'
 
     wb.save(response)
+
+    return response
+
+
+# ----------------
+# Export - CSV
+# ----------------
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def export_chart_csv(request):
+
+    metric = request.GET.get("metric")
+    period = request.GET.get("period", "24h")
+
+    if metric == "pv":
+
+        device_ids = list(
+            EMSSignalSource.objects.filter(
+                home__user=request.user,
+                signal_type="pv",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
+        )
+
+    else:
+
+        device_ids = list(
+            EMSSignalSource.objects.filter(
+                home__user=request.user,
+                signal_type="grid",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
+        )
+
+    data = get_chart_data(
+        device_ids,
+        period,
+    )
+
+    metric_labels = {
+        "load": "Bedarf",
+        "pv": "Erzeugung",
+        "grid": "Bezug/Einspeisung",
+        "today": "Tagesverbrauch",
+    }
+
+    response = HttpResponse(
+        content_type="text/csv"
+    )
+
+    response[
+        "Content-Disposition"
+    ] = f'attachment; filename="{metric}_{period}.csv"'
+
+    writer = csv.writer(
+        response,
+        delimiter=";"
+    )
+
+    writer.writerow(["Sharegy Energieexport"])
+    writer.writerow([])
+
+    writer.writerow(["Metrik", metric_labels.get(metric, metric)])
+    writer.writerow(["Zeitraum", period])
+    writer.writerow(["Einheit", data["unit"]])
+    writer.writerow([
+        "Exportiert",
+        timezone.now().strftime("%d.%m.%Y %H:%M")
+    ])
+
+    writer.writerow([])
+
+    writer.writerow([
+        "Zeitpunkt",
+        f"Wert ({data['unit']})"
+    ])
+
+    for ts, value in zip(
+        data["timestamps"],
+        data["values"],
+    ):
+        writer.writerow(
+            [
+                ts,
+                str(value).replace(".", ","),
+            ]
+        )
 
     return response

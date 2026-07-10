@@ -327,6 +327,12 @@ export default function EnergyChartModal({
                             </div>
 
                             <button
+                                onClick={() =>
+                                    window.open(
+                                        `/api/energy/chart/export/csv/?metric=${metricKey}&period=${range}`,
+                                        "_blank",
+                                    )
+                                }
                                 className="px-3 py-1 text-sm rounded-lg text-white shadow-sm"
                                 style={{ backgroundColor: color }}
                             >

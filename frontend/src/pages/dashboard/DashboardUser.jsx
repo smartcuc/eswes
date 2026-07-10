@@ -51,8 +51,6 @@ export default function DashboardUser() {
         refetchIntervalInBackground: true,
     });
 
-
-
     const kpis = energyQuery.data?.kpis || {};
     const charts = energyQuery.data?.charts || {};
     //const [activeSystemChart, setActiveSystemChart] = useState(null);
@@ -73,13 +71,18 @@ export default function DashboardUser() {
 
             </div>
 
-            <div>
-                <h1 className="text-2xl font-bold">
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">
                     Deine Energiezentrale ⚡
                 </h1>
-                <p className="text-gray-500">
-                    Alles Wichtige auf einen Blick.
+                <p className="mt-1 text-sm text-gray-500">
+                    Alle wichtigen Energiedaten auf einen Blick.
                 </p>
+            </div>
+            <div className="mb-3">
+                <h2 className="text-sm font-semibold tracking-wide text-gray-500"> {/* uppercase */}
+                    Echtzeit-Status
+                </h2>
             </div>
 
             {/* KPIs */}
@@ -88,7 +91,7 @@ export default function DashboardUser() {
                     onClick={() =>
                         setActiveSystemChart({
                             metricKey: "load",
-                            displayName: "Hausverbrauch",
+                            displayName: "Hausbedarf",
                             unit: "W",
                             color: "#2563eb",
                         })
@@ -97,7 +100,7 @@ export default function DashboardUser() {
                 >
 
                     <KPI
-                        label="Aktuelle Last"
+                        label="Bedarf"
                         value={kpis.load ?? "--"}
                         unit="W"
                         icon="⚡"
@@ -135,7 +138,7 @@ export default function DashboardUser() {
                         }
                     />
                 </div>
-                {/* ✅ KACHEL 1: NETZ */}
+                {/* ✅ KACHEL 2: Grid */}
                 <div
                     onClick={() =>
                         setActiveSystemChart({
@@ -150,7 +153,11 @@ export default function DashboardUser() {
                 >
 
                     <KPI
-                        label="Netz"
+                        label={
+                            (kpis.grid ?? 0) >= 0
+                                ? "Bezug"
+                                : "Einspeisung"
+                        }
                         value={kpis.grid ?? "--"}
                         unit="W"
                         icon="🔌"
@@ -165,7 +172,7 @@ export default function DashboardUser() {
                 </div>
 
                 <KPI
-                    label="Heute"
+                    label="Tagesverbrauch"
                     value={
                         kpis.today?.toLocaleString("de-DE", {
                             minimumFractionDigits: 2,
@@ -185,28 +192,35 @@ export default function DashboardUser() {
             </div>
 
             {/* Sankey Chart */}
-            <Card>
+            <div className="mt-6">
+                <Card>
 
-                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4">
 
-                    <h2 className="text-lg font-semibold">
-                        Energieübersicht
-                    </h2>
+                        <div>
+                            <h2 className="text-xl font-semibold text-gray-900">
+                                Energiefluss
+                            </h2>
 
-                    <div className="flex gap-2">
+                            <p className="text-sm text-gray-500">
+                                Aktuelle Verteilung von Erzeugung und Verbrauch.
+                            </p>
+                        </div>
 
-                        <button
-                            title="Nach Etagen gruppieren"
-                            onClick={async () => {
-                                await saveSettings({
-                                    ...settings,
-                                    showFloors: !showFloors,
-                                });
+                        <div className="flex gap-2">
 
-                                energyQuery.refetch();
-                            }}
+                            <button
+                                title="Nach Etagen gruppieren"
+                                onClick={async () => {
+                                    await saveSettings({
+                                        ...settings,
+                                        showFloors: !showFloors,
+                                    });
 
-                            className={`
+                                    energyQuery.refetch();
+                                }}
+
+                                className={`
                     px-2.5 py-1
                     rounded-full
                     text-xs
@@ -214,28 +228,28 @@ export default function DashboardUser() {
                     flex items-center gap-1
                     transition
                     ${showFloors
-                                    ? "bg-indigo-600 text-white border-indigo-600"
-                                    : "bg-white hover:bg-gray-50 border-gray-200"}
+                                        ? "bg-indigo-600 text-white border-indigo-600"
+                                        : "bg-white hover:bg-gray-50 border-gray-200"}
                 `}
-                        >
-                            🏢 Etagen
-                        </button>
+                            >
+                                🏢 Etagen
+                            </button>
 
-                        <button
-                            title="Nach Räumen gruppieren"
-                            onClick={async () => {
-                                await saveSettings({
-                                    ...settings,
-                                    showRooms: !showRooms,
-                                });
+                            <button
+                                title="Nach Räumen gruppieren"
+                                onClick={async () => {
+                                    await saveSettings({
+                                        ...settings,
+                                        showRooms: !showRooms,
+                                    });
 
-                                queryClient.invalidateQueries({
-                                    queryKey: ["energy-dashboard"],
-                                })
+                                    queryClient.invalidateQueries({
+                                        queryKey: ["energy-dashboard"],
+                                    })
 
-                            }}
+                                }}
 
-                            className={`
+                                className={`
                     px-2.5 py-1
                     rounded-full
                     text-xs
@@ -243,33 +257,34 @@ export default function DashboardUser() {
                     flex items-center gap-1
                     transition
                     ${showRooms
-                                    ? "bg-indigo-600 text-white border-indigo-600"
-                                    : "bg-white hover:bg-gray-50 border-gray-200"}
+                                        ? "bg-indigo-600 text-white border-indigo-600"
+                                        : "bg-white hover:bg-gray-50 border-gray-200"}
                 `}
-                        >
-                            🚪 Räume
-                        </button>
+                            >
+                                🚪 Räume
+                            </button>
+
+                        </div>
 
                     </div>
 
-                </div>
+                    {energyQuery.data?.ready ? (
 
-                {energyQuery.data?.ready ? (
+                        <LiveEnergySankey
+                            data={energyQuery.data?.sankey}
+                        />
 
-                    <LiveEnergySankey
-                        data={energyQuery.data?.sankey}
-                    />
+                    ) : (
 
-                ) : (
+                        <div className="h-40 flex flex-col items-center justify-center text-center text-gray-400 space-y-1">
+                            <p className="text-gray-500 font-medium">Willkommen bei Sharegy 👋</p>
+                            <p>📈 Dein Energiechart kommt, sobald wir uns besser kennengelernt haben.</p>
+                        </div>
 
-                    <div className="h-40 flex flex-col items-center justify-center text-center text-gray-400 space-y-1">
-                        <p className="text-gray-500 font-medium">Willkommen bei Sharegy 👋</p>
-                        <p>📈 Dein Energiechart kommt, sobald wir uns besser kennengelernt haben.</p>
-                    </div>
+                    )}
 
-                )}
-
-            </Card>
+                </Card>
+            </div>
 
             {/* 💡 EMS SYSTEM CHART MODAL */}
             {activeSystemChart && (
