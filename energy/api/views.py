@@ -15,8 +15,8 @@ from energy.services.energy import get_energy_data
 from energy.services.charts import (get_chart_data,)
 from energy.ems.models import EMSSignalSource
 
-from openpyxl import Workbook, Font
-
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
