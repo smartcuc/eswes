@@ -7,7 +7,7 @@ import secrets
 from django.core.cache import cache
 
 from django.db import models
-from django.utils import timezone
+from zoneinfo import available_timezones
 from django.contrib.auth import get_user_model
 
 from channels.layers import get_channel_layer
@@ -15,6 +15,10 @@ from asgiref.sync import async_to_sync
 
 
 User = get_user_model()
+
+from zoneinfo import available_timezones
+
+TIMEZONE_CHOICES = sorted([(tz, tz) for tz in available_timezones()])
 
 
 # ============================================================
@@ -37,7 +41,7 @@ class MQTTProfile(models.Model):
 
     def __str__(self):
         return self.name
-    
+
 
 # ============================================================
 # ✅ HOME (MQTT + CORE)
@@ -54,6 +58,12 @@ class Home(models.Model):
     )
 
     name = models.CharField(max_length=100)
+
+    timezone = models.CharField(
+        max_length=64,
+        default="UTC",
+        choices=TIMEZONE_CHOICES,
+    )
 
     # ✅ MQTT (nur Transport!)
     mqtt_token = models.CharField(
@@ -324,7 +334,7 @@ class DeviceMetric(models.Model):
                 name="metric_latest_idx",
             ),
         ]
-        
+
 
 # ============================================================
 # ✅ METRIC AGGREGATIONS
@@ -498,7 +508,6 @@ class DeviceMetric15m(models.Model):
         ]
 
 
-
 class DeviceMetric1h(models.Model):
 
     device = models.ForeignKey(
@@ -553,5 +562,3 @@ class DeviceMetric1h(models.Model):
             ),
 
         ]
-
-

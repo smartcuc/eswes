@@ -61,6 +61,7 @@ class HomeAdmin(admin.ModelAdmin):
         "id",
         "user",
         "name",
+        "timezone",
         "mqtt_token",
         "mqtt_username",
         "mqtt_provisioned",
@@ -77,6 +78,11 @@ class HomeAdmin(admin.ModelAdmin):
         "user__email",
         "mqtt_token",
         "mqtt_username",
+    )
+
+    list_filter = (
+        "timezone",
+        "mqtt_provisioned",
     )
 
 
@@ -117,6 +123,3 @@ class MQTTProfileAdmin(admin.ModelAdmin):
         "name",
         "slug",
     )
-
-
-    

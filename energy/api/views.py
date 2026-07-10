@@ -22,11 +22,6 @@ from openpyxl.styles import Font
 import csv
 
 
-export_time = (
-    timezone.now().astimezone(ZoneInfo("Europe/Berlin")).strftime("%d.%m.%Y %H:%M")
-)
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_me(request):
@@ -43,7 +38,7 @@ def chart_data(request):
         "period",
         "24h",
     )
-    
+
     if period not in [
         "1h",
         "6h",
@@ -90,9 +85,13 @@ def chart_data(request):
             )
         )
 
+    home = request.user.homes.first()
+    timezone_name = home.timezone if home else "UTC"
+
     data = get_chart_data(
         device_ids,
         period,
+        timezone_name=timezone_name,
     )
 
     return Response(data)
@@ -147,9 +146,17 @@ def export_chart_xlsx(request):
             )
         )
 
+    home = request.user.homes.first()
+    timezone_name = home.timezone if home else "UTC"
+
+    export_time = (
+        timezone.now().astimezone(ZoneInfo(timezone_name)).strftime("%d.%m.%Y %H:%M")
+    )
+
     data = get_chart_data(
         device_ids,
         period,
+        timezone_name=timezone_name,
     )
 
     wb = Workbook()
@@ -256,9 +263,17 @@ def export_chart_csv(request):
             )
         )
 
+    home = request.user.homes.first()
+    timezone_name = home.timezone if home else "UTC"
+
+    export_time = (
+        timezone.now().astimezone(ZoneInfo(timezone_name)).strftime("%d.%m.%Y %H:%M")
+    )
+
     data = get_chart_data(
         device_ids,
         period,
+        timezone_name=home.timezone_name,
     )
 
     metric_labels = {

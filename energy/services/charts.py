@@ -3,6 +3,7 @@
 ###########################
 
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 
@@ -22,25 +23,19 @@ def get_dashboard_chart(device_ids):
 
     since = timezone.now() - timedelta(hours=24)
 
-    rows = (
-        DeviceMetric1h.objects
-        .filter(
-            device_id__in=device_ids,
-            metric_key="power",
-            bucket__gte=since,
-        )
-        .order_by("bucket")
-    )
+    rows = DeviceMetric1h.objects.filter(
+        device_id__in=device_ids,
+        metric_key="power",
+        bucket__gte=since,
+    ).order_by("bucket")
 
-    return [
-        round(row.avg, 1)
-        for row in rows
-    ]
+    return [round(row.avg, 1) for row in rows]
 
 
 def get_chart_data(
     device_ids,
     period="24h",
+    timezone_name="UTC",
 ):
     """
     Modalchart.
@@ -53,6 +48,7 @@ def get_chart_data(
     """
 
     now = timezone.now()
+    tz = ZoneInfo(timezone_name)
 
     #
     # 1 Stunde
@@ -61,22 +57,18 @@ def get_chart_data(
 
         since = now - timedelta(hours=1)
 
-        rows = (
-            DeviceMetric1m.objects
-            .filter(
-                device_id__in=device_ids,
-                metric_key="power",
-                bucket__gte=since,
-            )
-            .order_by("bucket")
-        )
+        rows = DeviceMetric1m.objects.filter(
+            device_id__in=device_ids,
+            metric_key="power",
+            bucket__gte=since,
+        ).order_by("bucket")
 
         return {
             "period": "1h",
             "unit": "W",
-            "timestamps": [row.bucket.strftime("%H:%M") for row in rows],
+            "timestamps": [row.bucket.astimezone(tz).strftime("%H:%M") for row in rows],
             "export_timestamps": [
-                row.bucket.strftime("%d.%m.%Y %H:%M") for row in rows
+                row.bucket.astimezone(tz).strftime("%d.%m.%Y %H:%M") for row in rows
             ],
             "values": [round(row.avg, 1) for row in rows],
         }
@@ -88,59 +80,41 @@ def get_chart_data(
 
         since = now - timedelta(hours=6)
 
-        rows = (
-            DeviceMetric5m.objects
-            .filter(
-                device_id__in=device_ids,
-                metric_key="power",
-                bucket__gte=since,
-            )
-            .order_by("bucket")
-        )
+        rows = DeviceMetric5m.objects.filter(
+            device_id__in=device_ids,
+            metric_key="power",
+            bucket__gte=since,
+        ).order_by("bucket")
 
         return {
             "period": "6h",
             "unit": "W",
-
-            "timestamps": [
-                row.bucket.strftime("%H:%M")
-                for row in rows
-            ],
-
+            "timestamps": [row.bucket.astimezone(tz).strftime("%H:%M") for row in rows],
             "export_timestamps": [
-                row.bucket.strftime("%d.%m.%Y %H:%M")
-                for row in rows
+                row.bucket.astimezone(tz).strftime("%d.%m.%Y %H:%M") for row in rows
             ],
-
-            "values": [
-                round(row.avg, 1)
-                for row in rows
-            ],
+            "values": [round(row.avg, 1) for row in rows],
         }
 
     #
-    # 24 Stunden (Default)
+    # 24 Stunden
     #
     elif period == "24h":
 
         since = now - timedelta(hours=24)
 
-        rows = (
-            DeviceMetric1h.objects
-            .filter(
-                device_id__in=device_ids,
-                metric_key="power",
-                bucket__gte=since,
-            )
-            .order_by("bucket")
-        )
+        rows = DeviceMetric1h.objects.filter(
+            device_id__in=device_ids,
+            metric_key="power",
+            bucket__gte=since,
+        ).order_by("bucket")
 
         return {
             "period": "24h",
             "unit": "W",
-            "timestamps": [row.bucket.strftime("%H:%M") for row in rows],
+            "timestamps": [row.bucket.astimezone(tz).strftime("%H:%M") for row in rows],
             "export_timestamps": [
-                row.bucket.strftime("%d.%m.%Y %H:%M") for row in rows
+                row.bucket.astimezone(tz).strftime("%d.%m.%Y %H:%M") for row in rows
             ],
             "values": [round(row.avg, 1) for row in rows],
         }
@@ -150,32 +124,30 @@ def get_chart_data(
     #
     elif period == "5d":
 
-        since = now - timedelta(days=7)
+        since = now - timedelta(days=5)
 
-        rows = (
-            DeviceMetric1h.objects
-            .filter(
-                device_id__in=device_ids,
-                metric_key="power",
-                bucket__gte=since,
-            )
-            .order_by("bucket")
-        )
+        rows = DeviceMetric1h.objects.filter(
+            device_id__in=device_ids,
+            metric_key="power",
+            bucket__gte=since,
+        ).order_by("bucket")
 
         return {
             "period": "5d",
             "unit": "W",
-            "timestamps": [row.bucket.strftime("%H:%M") for row in rows],
+            "timestamps": [
+                row.bucket.astimezone(tz).strftime("%d.%m %H:%M") for row in rows
+            ],
             "export_timestamps": [
-                row.bucket.strftime("%d.%m.%Y %H:%M") for row in rows
+                row.bucket.astimezone(tz).strftime("%d.%m.%Y %H:%M") for row in rows
             ],
             "values": [round(row.avg, 1) for row in rows],
         }
 
     return {
-    "period": "24h",
-    "unit": "W",
-    "timestamps": [],
-    "export_timestamps": [],
-    "values": [],
-}
+        "period": "24h",
+        "unit": "W",
+        "timestamps": [],
+        "export_timestamps": [],
+        "values": [],
+    }
