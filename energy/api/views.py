@@ -273,7 +273,7 @@ def export_chart_csv(request):
     data = get_chart_data(
         device_ids,
         period,
-        timezone_name=home.timezone_name,
+        timezone_name=timezone_name,
     )
 
     metric_labels = {
