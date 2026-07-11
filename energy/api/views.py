@@ -221,7 +221,14 @@ def export_chart_xlsx(request):
         )
     )
 
-    response["Content-Disposition"] = f'attachment; filename="{metric}_{period}.xlsx"'
+    metric_label = metric_labels.get(
+        metric,
+        metric,
+    )
+
+    safe_label = metric_label.replace("/", "-").replace("\\", "-").replace(" ", "_")
+
+    response["Content-Disposition"] = f'attachment; filename="sharegy_{safe_label}_{period}.xlsx"'
 
     wb.save(response)
 
@@ -287,9 +294,16 @@ def export_chart_csv(request):
         content_type="text/csv"
     )
 
-    response[
-        "Content-Disposition"
-    ] = f'attachment; filename="{metric}_{period}.csv"'
+    metric_label = metric_labels.get(
+        metric,
+        metric,
+    )
+
+    safe_label = metric_label.replace("/", "-").replace("\\", "-").replace(" ", "_")
+
+    response["Content-Disposition"] = (
+        f'attachment; filename="sharegy_{safe_label}_{period}.csv"'
+    )
 
     writer = csv.writer(
         response,
