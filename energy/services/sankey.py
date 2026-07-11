@@ -86,7 +86,7 @@ def build_live_sankey(
 
     add_node(
         "sum",
-        f"Σ {total_consumption/1000:.1f} kW",
+        "Haus",
         "sum",
     )
 
@@ -115,7 +115,7 @@ def build_live_sankey(
             continue
 
         node_id = f"device_{device.id}"
-        
+
         label = (
             config.display_name()
             if config
@@ -132,7 +132,7 @@ def build_live_sankey(
             label,
             "consumer",
         )
-        
+
         consumers.append({
             "node_id": node_id,
             "floor": config.floor,
@@ -221,12 +221,11 @@ def build_live_sankey(
             "value": flow["grid_to_load"],
         })
 
-    
     untracked = max(
         total_consumption - tracked_consumption,
         0,
     )  
-    
+
     if untracked > 0:
 
         add_node(

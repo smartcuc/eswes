@@ -3,6 +3,7 @@
 */
 
 import ReactECharts from "echarts-for-react";
+import { useEffect, useRef } from "react";
 
 function getNodeColor(node) {
     switch (node.id) {
@@ -22,6 +23,18 @@ function getNodeColor(node) {
 }
 
 export default function LiveEnergySankeyECharts({ data }) {
+    const chartRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (chartRef.current) {
+                const echartsInstance = chartRef.current.getEchartsInstance();
+                if (echartsInstance && !echartsInstance.isDisposed()) {
+                    echartsInstance.dispose(); // Zerstört die Instanz im DOM restlos
+                }
+            }
+        };
+    }, []);
 
     if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.links)) {
         return <div className="text-gray-400">Keine Energiedaten</div>;
@@ -105,6 +118,7 @@ export default function LiveEnergySankeyECharts({ data }) {
     return (
         <div style={{ height: 550 }}>
             <ReactECharts
+                ref={chartRef}
                 option={option}
                 style={{ height: "100%", width: "100%" }}
                 // 🔥 CRITICAL FIX 2: Lässt ECharts die Werte flüssig animieren statt neu zu bauen
