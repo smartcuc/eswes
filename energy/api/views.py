@@ -409,12 +409,12 @@ def export_chart_pdf(request):
 
     elements = []
 
-    elements.append(
-        Paragraph(
-            "Sharegy Energieexport",
-            styles["Title"],
-        )
+    title = Paragraph(
+        "<b>Sharegy</b><br/>Energieexport",
+        styles["Title"],
     )
+
+    elements.append(title)
 
     elements.append(Spacer(1, 12))
 
@@ -438,8 +438,12 @@ def export_chart_pdf(request):
     info_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F3F4F6")),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#D1D5DB")),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
@@ -463,12 +467,30 @@ def export_chart_pdf(request):
     data_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563EB")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
+
+    for i in range(1, len(table_data)):
+        if i % 2 == 0:
+            data_table.setStyle(
+                TableStyle(
+                    [
+                        (
+                            "BACKGROUND",
+                            (0, i),
+                            (-1, i),
+                            colors.HexColor("#F9FAFB"),
+                        )
+                    ]
+                )
+            )
 
     elements.append(data_table)
 
