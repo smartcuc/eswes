@@ -35,9 +35,6 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet
 import matplotlib.pyplot as plt
-import base64
-
-from rest_framework import status
 
 
 @api_view(["GET"])
@@ -360,47 +357,69 @@ def export_chart_csv(request):
 # ----------------
 # Export - PDF
 # ----------------
-# ⚠️ Von GET auf POST umgestellt!
-@api_view(["POST"])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def export_chart_pdf(request):
-    metric = request.data.get("metric")
-    period = request.data.get("period", "24h")
-    sankey_base64 = request.data.get("sankey_base64")  # 📸 Das Bild aus dem Browser
 
-    # 1. Datenquellen-Ermittlung
+    metric = request.GET.get("metric")
+    period = request.GET.get("period", "24h")
+
     if metric == "pv":
+
         device_ids = list(
             EMSSignalSource.objects.filter(
-                home__user=request.user, signal_type="pv"
-            ).values_list("device_id", flat=True)
+                home__user=request.user,
+                signal_type="pv",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
         )
+
     else:
+
         device_ids = list(
             EMSSignalSource.objects.filter(
-                home__user=request.user, signal_type="grid"
-            ).values_list("device_id", flat=True)
+                home__user=request.user,
+                signal_type="grid",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
         )
 
     home = request.user.homes.first()
     timezone_name = home.timezone if home else "UTC"
+
     export_time = (
         timezone.now().astimezone(ZoneInfo(timezone_name)).strftime("%d.%m.%Y %H:%M")
     )
 
-    data = get_chart_data(device_ids, period, timezone_name=timezone_name)
+    data = get_chart_data(
+        device_ids,
+        period,
+        timezone_name=timezone_name,
+    )
 
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+    )
+
     styles = getSampleStyleSheet()
+
     elements = []
 
-    # Title
     title = Paragraph(
-        "<font size='22'><b>Sharegy</b></font><br/><font size='16'>Energieexport</font>",
+        "<font size='22'><b>Sharegy</b></font><br/>"
+        "<font size='16'>Energieexport</font>",
         styles["Title"],
     )
+
     elements.append(title)
+
     elements.append(Spacer(1, 20))
 
     metric_labels = {
@@ -410,7 +429,6 @@ def export_chart_pdf(request):
         "today": "Tagesverbrauch",
     }
 
-    # Meta Info Table
     info_table = Table(
         [
             ["Metrik", metric_labels.get(metric, metric)],
@@ -434,67 +452,145 @@ def export_chart_pdf(request):
             ]
         )
     )
+
     elements.append(info_table)
     elements.append(Spacer(1, 30))
 
-    # =========================================================================
-    # 📸 ENERGIEMANGEMENT: SANKEY EXPORT AUS DEM BROWSER
-    # =========================================================================
-    if sankey_base64 and ";base64," in sankey_base64:
-        elements.append(Paragraph("Energiefluss (Echtzeit-Abbild)", styles["Heading2"]))
-        elements.append(Spacer(1, 8))
+    elements.append(
+        Paragraph(
+            "Leistungsverlauf",
+            styles["Heading2"],
+        )
+    )
 
-        try:
-            # Trenne den Base64-Header ("data:image/png;base64,") ab
-            _, imgstr = sankey_base64.split(";base64,")
-            sankey_img_buffer = BytesIO(base64.b64decode(imgstr))
-
-            # Bild in ReportLab einbetten (Breite: 450, Höhe skaliert automatisch)
-            sankey_image = Image(sankey_img_buffer, width=450, height=180)
-            elements.append(sankey_image)
-            elements.append(Spacer(1, 25))
-        except Exception:
-            pass  # Fallback falls das Dekodieren schlägt, bricht der PDF-Bau nicht ab
-
-    # =========================================================================
-    # 📈 LEISTUNGSVERLAUF (LINIENCHART)
-    # =========================================================================
-    elements.append(Paragraph("Leistungsverlauf", styles["Heading2"]))
     elements.append(Spacer(1, 8))
 
     chart_buffer = BytesIO()
-    timestamps = [ts[11:16] for ts in data["export_timestamps"]]
+
+    timestamps = [
+        ts[11:16]
+        for ts in data["export_timestamps"]
+    ]
 
     plt.figure(figsize=(8, 3))
     plt.margins(x=0)
-    plt.plot(data["values"], linewidth=2.5, color="#2563EB")
-    plt.fill_between(
-        range(len(data["values"])), data["values"], alpha=0.15, color="#2563EB"
+
+    plt.plot(
+        data["values"],
+        linewidth=2.5,
+        color="#2563EB",
     )
+
+    plt.fill_between(
+        range(len(data["values"])),
+        data["values"],
+        alpha=0.15,
+        color="#2563EB",
+    )
+
     plt.title(metric_labels.get(metric, metric))
-    plt.suptitle(f"Zeitraum: {period}", fontsize=9)
+
+    plt.suptitle(
+        f"Zeitraum: {period}",
+        fontsize=9,
+    )
 
     step = max(1, len(timestamps) // 5)
-    plt.xticks(range(0, len(timestamps), step), timestamps[::step], rotation=45)
+
+    plt.xticks(
+        range(0, len(timestamps), step),
+        timestamps[::step],
+        rotation=45,
+    )
+
     plt.ylabel(data["unit"])
     plt.xlabel("Zeit")
-    plt.grid(True, alpha=0.3)
+
+    plt.grid(
+        True,
+        alpha=0.3,
+    )
+
     plt.tight_layout()
 
-    plt.savefig(chart_buffer, format="png")
+    plt.savefig(
+        chart_buffer,
+        format="png",
+    )
+
     plt.close()
+
     chart_buffer.seek(0)
 
-    chart = Image(chart_buffer, width=450, height=220)
+    chart = Image(
+        chart_buffer,
+        width=450,
+        height=220,
+    )
+
     elements.append(chart)
     elements.append(Spacer(1, 25))
 
-    # Data Table
-    table_data = [["Zeitpunkt", f"Wert ({data['unit']})"]]
-    for ts, value in zip(data["export_timestamps"], data["values"]):
-        table_data.append([ts, str(value).replace(".", ",")])
+    elements.append(
+        Paragraph(
+            "Zusammenfassung",
+            styles["Heading2"],
+        )
+    )
 
-    data_table = Table(table_data, colWidths=[220, 100])
+    elements.append(Spacer(1, 8))
+
+    values = data["values"]
+
+    max_value = max(values) if values else 0
+    min_value = min(values) if values else 0
+    avg_value = sum(values) / len(values) if values else 0
+    count_value = len(values)
+
+    summary_table = Table(
+        [
+            ["Maximum", f"{max_value:.1f} {data['unit']}"],
+            ["Minimum", f"{min_value:.1f} {data['unit']}"],
+            ["Durchschnitt", f"{avg_value:.1f} {data['unit']}"],
+            ["Messwerte", str(count_value)],
+        ],
+        colWidths=[120, 180],
+    )
+
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563EB")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#D1D5DB")),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    elements.append(summary_table)
+    elements.append(Spacer(1, 25))
+
+    table_data = [["Zeitpunkt", f"Wert ({data['unit']})"]]
+
+    for ts, value in zip(
+        data["export_timestamps"],
+        data["values"],
+    ):
+        table_data.append([
+            ts,
+            str(value).replace(".", ","),
+        ])
+
+    data_table = Table(
+        table_data,
+        colWidths=[220, 100],
+    )
+
     data_table.setStyle(
         TableStyle(
             [
@@ -513,22 +609,35 @@ def export_chart_pdf(request):
         if i % 2 == 0:
             data_table.setStyle(
                 TableStyle(
-                    [("BACKGROUND", (0, i), (-1, i), colors.HexColor("#F9FAFB"))]
+                    [
+                        (
+                            "BACKGROUND",
+                            (0, i),
+                            (-1, i),
+                            colors.HexColor("#F9FAFB"),
+                        )
+                    ]
                 )
             )
 
     elements.append(data_table)
 
-    # Build PDF & Response
     doc.build(elements)
+
     response = HttpResponse(content_type="application/pdf")
 
-    metric_label = metric_labels.get(metric, metric)
+    metric_label = metric_labels.get(
+        metric,
+        metric,
+    )
+
     safe_label = metric_label.replace("/", "-").replace("\\", "-").replace(" ", "_")
+
     response["Content-Disposition"] = (
         f'attachment; filename="sharegy_{safe_label}_{period}.pdf"'
     )
 
     buffer.seek(0)
     response.write(buffer.getvalue())
+
     return response

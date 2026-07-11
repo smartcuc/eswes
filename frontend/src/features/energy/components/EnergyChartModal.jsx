@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import { apiFetch } from "../../../api/client";
 
+
 /* =========================================
  COMPONENT
 ========================================= */
