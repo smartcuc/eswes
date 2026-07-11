@@ -353,6 +353,12 @@ export default function EnergyChartModal({
                             </button>
 
                             <button
+                                onClick={() =>
+                                    window.open(
+                                        `/api/energy/chart/export/pdf/?metric=${metricKey}&period=${range}`,
+                                        "_blank"
+                                    )
+                                }
                                 className="px-3 py-1 text-sm rounded-lg text-white shadow-sm"
                                 style={{ backgroundColor: color }}
                             >

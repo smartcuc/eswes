@@ -21,6 +21,18 @@ from openpyxl.styles import Font
 
 import csv
 
+from io import BytesIO
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
+from reportlab.lib.styles import getSampleStyleSheet
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -335,5 +347,147 @@ def export_chart_csv(request):
                 str(value).replace(".", ","),
             ]
         )
+
+    return response
+
+
+# ----------------
+# Export - PDF
+# ----------------
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def export_chart_pdf(request):
+
+    metric = request.GET.get("metric")
+    period = request.GET.get("period", "24h")
+
+    if metric == "pv":
+
+        device_ids = list(
+            EMSSignalSource.objects.filter(
+                home__user=request.user,
+                signal_type="pv",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
+        )
+
+    else:
+
+        device_ids = list(
+            EMSSignalSource.objects.filter(
+                home__user=request.user,
+                signal_type="grid",
+            ).values_list(
+                "device_id",
+                flat=True,
+            )
+        )
+
+    home = request.user.homes.first()
+    timezone_name = home.timezone if home else "UTC"
+
+    export_time = (
+        timezone.now().astimezone(ZoneInfo(timezone_name)).strftime("%d.%m.%Y %H:%M")
+    )
+
+    data = get_chart_data(
+        device_ids,
+        period,
+        timezone_name=timezone_name,
+    )
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+    )
+
+    styles = getSampleStyleSheet()
+
+    elements = []
+
+    elements.append(
+        Paragraph(
+            "Sharegy Energieexport",
+            styles["Title"],
+        )
+    )
+
+    elements.append(Spacer(1, 12))
+
+    metric_labels = {
+        "load": "Bedarf",
+        "pv": "Erzeugung",
+        "grid": "Bezug/Einspeisung",
+        "today": "Tagesverbrauch",
+    }
+
+    info_table = Table(
+        [
+            ["Metrik", metric_labels.get(metric, metric)],
+            ["Zeitraum", period],
+            ["Einheit", data["unit"]],
+            ["Zeitzone", timezone_name],
+            ["Exportiert", export_time],
+        ]
+    )
+
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
+
+    elements.append(info_table)
+    elements.append(Spacer(1, 20))
+
+    table_data = [["Zeitpunkt", f"Wert ({data['unit']})"]]
+
+    for ts, value in zip(
+        data["export_timestamps"],
+        data["values"],
+    ):
+        table_data.append([
+            ts,
+            str(value).replace(".", ","),
+        ])
+
+    data_table = Table(table_data)
+
+    data_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
+
+    elements.append(data_table)
+
+    doc.build(elements)
+
+    response = HttpResponse(content_type="application/pdf")
+
+    metric_label = metric_labels.get(
+        metric,
+        metric,
+    )
+
+    safe_label = metric_label.replace("/", "-").replace("\\", "-").replace(" ", "_")
+
+    response["Content-Disposition"] = (
+        f'attachment; filename="sharegy_{safe_label}_{period}.pdf"'
+    )
+
+    buffer.seek(0)
+    response.write(buffer.getvalue())
 
     return response
