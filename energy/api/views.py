@@ -467,6 +467,11 @@ def export_chart_pdf(request):
 
     chart_buffer = BytesIO()
 
+    timestamps = [
+        ts[11:16]
+        for ts in data["export_timestamps"]
+    ]
+
     plt.figure(figsize=(8, 3))
 
     plt.plot(
@@ -482,12 +487,12 @@ def export_chart_pdf(request):
         color="#2563EB",
     )
 
-    plt.plot(
-        data["values"],
-        linewidth=2,
-    )
-
     plt.title(metric_labels.get(metric, metric))
+
+    plt.xticks(
+        range(0, len(timestamps), max(1, len(timestamps) // 6)),
+        timestamps[::max(1, len(timestamps) // 6)],
+    )
 
     plt.grid(True)
 
