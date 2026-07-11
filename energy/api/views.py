@@ -31,8 +31,11 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    Image,
 )
 from reportlab.lib.styles import getSampleStyleSheet
+import matplotlib.pyplot as plt
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -416,7 +419,7 @@ def export_chart_pdf(request):
 
     elements.append(title)
 
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 20))
 
     metric_labels = {
         "load": "Bedarf",
@@ -432,7 +435,8 @@ def export_chart_pdf(request):
             ["Einheit", data["unit"]],
             ["Zeitzone", timezone_name],
             ["Exportiert", export_time],
-        ]
+        ],
+        colWidths=[100, 250],
     )
 
     info_table.setStyle(
@@ -449,6 +453,40 @@ def export_chart_pdf(request):
     )
 
     elements.append(info_table)
+    elements.append(Spacer(1, 30))
+
+    chart_buffer = BytesIO()
+
+    plt.figure(figsize=(8, 3))
+
+    plt.plot(
+        data["values"],
+        linewidth=2,
+    )
+
+    plt.title(metric_labels.get(metric, metric))
+
+    plt.grid(True)
+
+    plt.tight_layout()
+
+    plt.savefig(
+        chart_buffer,
+        format="png",
+    )
+
+    plt.close()
+
+    chart_buffer.seek(0)
+
+    chart = Image(
+    chart_buffer,
+    width=450,
+    height=170,
+)
+
+    elements.append(chart)
+
     elements.append(Spacer(1, 20))
 
     table_data = [["Zeitpunkt", f"Wert ({data['unit']})"]]
@@ -462,7 +500,10 @@ def export_chart_pdf(request):
             str(value).replace(".", ","),
         ])
 
-    data_table = Table(table_data)
+    data_table = Table(
+        table_data,
+        colWidths=[220, 100],
+    )
 
     data_table.setStyle(
         TableStyle(
@@ -473,6 +514,7 @@ def export_chart_pdf(request):
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
             ]
         )
     )
