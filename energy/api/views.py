@@ -456,9 +456,6 @@ def export_chart_pdf(request):
     elements.append(info_table)
     elements.append(Spacer(1, 30))
 
-    elements.append(info_table)
-    elements.append(Spacer(1, 30))
-
     elements.append(
         Paragraph(
             "Leistungsverlauf",
