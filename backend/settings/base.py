@@ -390,7 +390,21 @@ LOGGING = {
         "handlers": ["stdout"],
         "level": DJANGO_LOG_LEVEL,
     },
+    # 🔥 HIER GEZIELT DIE LOGGERS FÜR DIE RUHE EINBAUEN:
+    "loggers": {
+        "matplotlib": {
+            "handlers": ["stdout"],
+            "level": "WARNING",  # Filtert das "findfont"-Geschnatter heraus
+            "propagate": False,  # Verhindert das Weiterreichen an den root-logger
+        },
+        "PIL": {
+            "handlers": ["stdout"],
+            "level": "WARNING",  # Filtert die "STREAM"-Bildlogs heraus
+            "propagate": False,
+        },
+    },
 }
+
 
 # =====================================
 # MQTT
@@ -425,4 +439,3 @@ if SENTRY_DSN:
         send_default_pii=False,
         traces_sample_rate=0.1,
     )
-    

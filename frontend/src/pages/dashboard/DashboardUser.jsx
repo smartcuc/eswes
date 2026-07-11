@@ -18,8 +18,9 @@ import useUserPreference from "../../hooks/useUserPreference";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../api/client";
 
-import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey";
+//import LiveEnergySankey from "../../features/energy/components/LiveEnergySankey";
 //import LiveEnergySankeyECharts from "../../features/energy/components/LiveEnergySankeyECharts";
+import LiveEnergySankeyECharts from "../../features/energy/components/LiveEnergySankeyGCharts";
 
 
 export default function DashboardUser() {
@@ -270,7 +271,7 @@ export default function DashboardUser() {
 
                     {energyQuery.data?.ready ? (
 
-                        <LiveEnergySankey
+                        <LiveEnergySankeyECharts
                             data={energyQuery.data?.sankey}
                         />
 
