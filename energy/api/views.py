@@ -413,7 +413,8 @@ def export_chart_pdf(request):
     elements = []
 
     title = Paragraph(
-        "<b>Sharegy</b><br/>Energieexport",
+        "<font size='22'><b>Sharegy</b></font><br/>"
+        "<font size='16'>Energieexport</font>",
         styles["Title"],
     )
 
@@ -455,9 +456,34 @@ def export_chart_pdf(request):
     elements.append(info_table)
     elements.append(Spacer(1, 30))
 
+    elements.append(info_table)
+    elements.append(Spacer(1, 30))
+
+    elements.append(
+        Paragraph(
+            "Leistungsverlauf",
+            styles["Heading2"],
+        )
+    )
+
+    elements.append(Spacer(1, 8))
+
     chart_buffer = BytesIO()
 
     plt.figure(figsize=(8, 3))
+
+    plt.plot(
+        data["values"],
+        linewidth=2.5,
+        color="#2563EB",
+    )
+
+    plt.fill_between(
+        range(len(data["values"])),
+        data["values"],
+        alpha=0.15,
+        color="#2563EB",
+    )
 
     plt.plot(
         data["values"],
@@ -480,14 +506,13 @@ def export_chart_pdf(request):
     chart_buffer.seek(0)
 
     chart = Image(
-    chart_buffer,
-    width=450,
-    height=170,
-)
+        chart_buffer,
+        width=500,
+        height=220,
+    )
 
     elements.append(chart)
-
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 25))
 
     table_data = [["Zeitpunkt", f"Wert ({data['unit']})"]]
 
