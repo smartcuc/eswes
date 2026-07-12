@@ -310,6 +310,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
@@ -327,36 +328,34 @@ def device_dashboard_values(request):
 
     device_ids = [d.id for d in devices]
 
-    # 2. 🔥 OPTIMIERUNG 1: Neueste Metrik pro Gerät OHNE teures distinct()
-    # Wir holen uns über eine Subquery exakt die ID des neuesten Eintrags pro Gerät
-    newest_metric_id = DeviceMetric.objects.filter(
-        device_id=OuterRef('device_id')
-    ).order_by('-timestamp').values('id')[:1]
+    # 2. 🔥 Subquery-Optimierung (Bleibt pfeilschnell)
+    newest_metric_id = (
+        DeviceMetric.objects.filter(device_id=OuterRef("device_id"))
+        .order_by("-timestamp")
+        .values("id")[:1]
+    )
 
-    # Jetzt filtern wir blitzschnell nur über diese IDs
+    # ✅ KORREKTUR: Wir holen echte Objekte (.filter statt .values), damit das Frontend
+    # exakt dieselben Attribute wie vorher geliefert bekommt.
     latest_metrics = DeviceMetric.objects.filter(
-        id__in=Subquery(newest_metric_id),
-        device_id__in=device_ids
-    ).values("device_id", "value", "metric_key")
+        id__in=Subquery(newest_metric_id), device_id__in=device_ids
+    )
 
-    latest_map = {m["device_id"]: m for m in latest_metrics}
+    latest_map = {m.device_id: m for m in latest_metrics}
 
     # 3. Metrik-Definitionen im Speicher cachen
     metric_map = {m.key: m for m in MetricDefinition.objects.all()}
 
-    # 4. 🔥 OPTIMIERUNG 2: Sparkline-Zeitfenster korrigieren (Code sagt 1h, Kommentar sagt 4h)
-    # Wenn du 4h willst, ändere timedelta(hours=1) auf (hours=4)
-    # 4. Sparkline-Zeitfenster (1 Stunde für schnellen Last-Check)
+    # 4. Sparkline-Zeitfenster
     sparkline_since = timezone.now() - timedelta(hours=1)
 
-    # ✅ JETZT KORREKT: Saubere Django-Abfrage ohne den Syntaxfehler
     sparkline_rows = (
         DeviceMetric1m.objects.filter(
             device_id__in=device_ids,
             bucket__gte=sparkline_since,
         )
-        .values("device_id", "avg")
-        .order_by("device_id", "bucket")  # Nutzt die standardmäßige Sortierung
+        .values("device_id", "avg", "bucket")
+        .order_by("device_id", "bucket")
     )
 
     # 5. Sparkline-Mapping hocheffizient aufbauen
@@ -368,31 +367,32 @@ def device_dashboard_values(request):
         if d_id not in sparkline_map:
             sparkline_map[d_id] = []
 
-        # Direkt runden – spart Rechenzeit gegenüber float(or 0)
-        sparkline_map[d_id].append(round(val, 2) if val is not None else 0.0)
+        sparkline_map[d_id].append(round(float(val or 0), 2))
 
-    # 6. Response bauen
+    # 6. Response bauen (Exakt wie in deinem funktionierenden Original)
     result = []
     for d in devices:
-        metric_data = latest_map.get(d.id)
-        if not metric_data:
+        metric_row = latest_map.get(d.id)
+        if not metric_row:
             continue
 
         config = getattr(d, "config", None)
         metric_key = (
             config.measurement_type
             if config and config.measurement_type
-            else metric_data["metric_key"]
+            else metric_row.metric_key  # Wieder saubere Punkt-Notation
         )
 
         metric = metric_map.get(metric_key)
 
-        result.append({
-            "device": d.id,
-            "value": metric_data["value"],
-            "unit": metric.unit if metric else "",
-            "sparkline": sparkline_map.get(d.id, []),
-        })
+        result.append(
+            {
+                "device": d.id,
+                "value": metric_row.value,  # Wieder saubere Punkt-Notation
+                "unit": metric.unit if metric else "",
+                "sparkline": sparkline_map.get(d.id, []),
+            }
+        )
 
     return Response(result)
 
