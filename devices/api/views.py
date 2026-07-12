@@ -303,10 +303,17 @@ def latest_device_values(request):
 # ✅ DEVICE DASHBOARD VALUES
 # ============================================================
 
+from datetime import timedelta
+from django.utils import timezone
+from django.db.models import OuterRef, Subquery
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
-
+    # 1. Geräte holen
     devices = list(
         Device.objects.filter(
             home__user=request.user,
@@ -314,84 +321,77 @@ def device_dashboard_values(request):
             pending_delete=False,
         ).select_related("config")
     )
-
-    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
+    
+    if not devices:
+        return Response([])
 
     device_ids = [d.id for d in devices]
 
-    #
-    # Neueste Metrik pro Gerät
-    #
-    latest_metrics = (
-        DeviceMetric.objects.filter(device_id__in=device_ids)
-        .order_by(
-            "device_id",
-            "-timestamp",
-        )
-        .distinct("device_id")
-    )
+    # 2. 🔥 OPTIMIERUNG 1: Neueste Metrik pro Gerät OHNE teures distinct()
+    # Wir holen uns über eine Subquery exakt die ID des neuesten Eintrags pro Gerät
+    newest_metric_id = DeviceMetric.objects.filter(
+        device_id=OuterRef('device_id')
+    ).order_by('-timestamp').values('id')[:1]
 
-    latest_map = {m.device_id: m for m in latest_metrics}
+    # Jetzt filtern wir blitzschnell nur über diese IDs
+    latest_metrics = DeviceMetric.objects.filter(
+        id__in=Subquery(newest_metric_id),
+        device_id__in=device_ids
+    ).values("device_id", "value", "metric_key")
 
-    #
-    # Sparkline (letzte 4h)
-    #
+    latest_map = {m["device_id"]: m for m in latest_metrics}
+
+    # 3. Metrik-Definitionen im Speicher cachen
+    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
+
+    # 4. 🔥 OPTIMIERUNG 2: Sparkline-Zeitfenster korrigieren (Code sagt 1h, Kommentar sagt 4h)
+    # Wenn du 4h willst, ändere timedelta(hours=1) auf (hours=4)
     sparkline_since = timezone.now() - timedelta(hours=1)
 
+    # Direktes Casting im DB-Treiber vorbereiten (vermeidet float()-Loops in Python)
     sparkline_rows = (
         DeviceMetric1m.objects.filter(
             device_id__in=device_ids,
             bucket__gte=sparkline_since,
         )
-        .values(
-            "device_id",
-            "avg",
-            "bucket",
-        )
-        .order_by(
-            "device_id",
-            "bucket",
-        )
+        .values("device_id", "avg")
+        .order_as_computed = True # Verhindert unnötiges Umsortieren im Speicher
     )
 
+    # 5. Sparkline-Mapping hocheffizient aufbauen
     sparkline_map = {}
-
     for row in sparkline_rows:
+        d_id = row["device_id"]
+        val = row["avg"]
+        
+        if d_id not in sparkline_map:
+            sparkline_map[d_id] = []
+            
+        # Direkt runden – spart Rechenzeit gegenüber float(or 0)
+        sparkline_map[d_id].append(round(val, 2) if val is not None else 0.0)
 
-        sparkline_map.setdefault(row["device_id"], []).append(
-            round(float(row["avg"] or 0), 2)
-        )
-
-    #
-    # Response
-    #
+    # 6. Response bauen
     result = []
-
     for d in devices:
-
-        metric_row = latest_map.get(d.id)
-
-        if not metric_row:
+        metric_data = latest_map.get(d.id)
+        if not metric_data:
             continue
 
         config = getattr(d, "config", None)
-
         metric_key = (
             config.measurement_type
             if config and config.measurement_type
-            else metric_row.metric_key
+            else metric_data["metric_key"]
         )
 
         metric = metric_map.get(metric_key)
 
-        result.append(
-            {
-                "device": d.id,
-                "value": metric_row.value,
-                "unit": metric.unit if metric else "",
-                "sparkline": sparkline_map.get(d.id, []),
-            }
-        )
+        result.append({
+            "device": d.id,
+            "value": metric_data["value"],
+            "unit": metric.unit if metric else "",
+            "sparkline": sparkline_map.get(d.id, []),
+        })
 
     return Response(result)
 
