@@ -84,11 +84,15 @@ def device_setup_options(request):
 def device_list(request):
 
     devices = Device.objects.filter(
-            home__user=request.user,
-            active=True,
-            pending_delete=False,
-        )
-
+        home__user=request.user,
+        active=True,
+        pending_delete=False,
+    ).select_related(
+        "config",
+        "config__role",
+        "config__room",
+        "config__floor",
+    )
     return Response(DeviceSerializer(devices, many=True).data)
 
 
@@ -101,10 +105,15 @@ def device_list(request):
 def unconfigured_devices(request):
 
     devices = Device.objects.filter(
-            home__user=request.user,
-            active=True,
-            pending_delete=False,
-        )
+        home__user=request.user,
+        active=True,
+        pending_delete=False,
+    ).select_related(
+        "config",
+        "config__role",
+        "config__room",
+        "config__floor",
+    )
 
     result = []
 
