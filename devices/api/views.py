@@ -35,6 +35,7 @@ from .serializers import (
 #    FloorSerializer,
 )
 
+from collections import defaultdict
 
 # ============================================================
 # ✅ SETUP OPTIONS
@@ -315,96 +316,71 @@ def latest_device_values(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
-# 
-#     devices = list(
-#         Device.objects.filter(
-#             home__user=request.user,
-#             active=True,
-#             pending_delete=False,
-#         ).select_related("config")
-#     )
 
-#     metric_map = {m.key: m for m in MetricDefinition.objects.all()}
+    devices = list(
+        Device.objects.filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
+        ).select_related("config")
+    )
 
-#     device_ids = [d.id for d in devices]
+    device_ids = [d.id for d in devices]
 
-#     #
-#     # Neueste Metrik pro Gerät
-#     #
-#     latest_metrics = (
-#         DeviceMetric.objects.filter(device_id__in=device_ids)
-#         .order_by(
-#             "device_id",
-#             "-timestamp",
-#         )
-#         .distinct("device_id")
-#     )
+    #
+    # Aktuelle Werte
+    #
+    values = get_latest_powers(device_ids)
 
-#     latest_map = {m.device_id: m for m in latest_metrics}
+    #
+    # Letzte 60 Minuten Sparkline
+    #
+    since = timezone.now() - timedelta(hours=1)
 
-#     #
-#     # Sparkline (letzte 1h)
-#     #
-#     sparkline_since = timezone.now() - timedelta(hours=1)
+    sparkline_rows = (
+        DeviceMetric1m.objects.filter(
+            device_id__in=device_ids,
+            bucket__gte=since,
+        )
+        .values(
+            "device_id",
+            "avg",
+        )
+        .order_by(
+            "device_id",
+            "bucket",
+        )
+    )
 
-#     sparkline_rows = (
-#         DeviceMetric1m.objects.filter(
-#             device_id__in=device_ids,
-#             bucket__gte=sparkline_since,
-#         )
-#         .values(
-#             "device_id",
-#             "avg",
-#             "bucket",
-#         )
-#         .order_by(
-#             "device_id",
-#             "bucket",
-#         )
-#     )
+    sparkline_map = defaultdict(list)
 
-#     sparkline_map = {}
+    for row in sparkline_rows:
+        sparkline_map[row["device_id"]].append(round(float(row["avg"] or 0), 2))
 
-#     for row in sparkline_rows:
+    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
 
-#         sparkline_map.setdefault(row["device_id"], []).append(
-#             round(float(row["avg"] or 0), 2)
-#         )
+    result = []
 
-#     #
-#     # Response
-#     #
-#     result = []
+    for d in devices:
 
-#     for d in devices:
+        config = getattr(d, "config", None)
 
-#         metric_row = latest_map.get(d.id)
+        metric_key = (
+            config.measurement_type if config and config.measurement_type else "value"
+        )
 
-#         if not metric_row:
-#             continue
+        metric = metric_map.get(metric_key)
 
-#         config = getattr(d, "config", None)
+        result.append(
+            {
+                "device": d.id,
+                "value": values.get(d.id),
+                "unit": metric.unit if metric else "",
+                "sparkline": sparkline_map.get(d.id, []),
+            }
+        )
 
-#         metric_key = (
-#             config.measurement_type
-#             if config and config.measurement_type
-#             else metric_row.metric_key
-#         )
-
-#         metric = metric_map.get(metric_key)
-
-#         result.append(
-#             {
-#                 "device": d.id,
-#                 "value": metric_row.value,
-#                 "unit": metric.unit if metric else "",
-#                 "sparkline": sparkline_map.get(d.id, []),
-#             }
-#         )
-
-#     return Response(result)
- 
-    return Response([])
+    return Response(result)
 
 
 # ============================================================
