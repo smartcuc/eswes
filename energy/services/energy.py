@@ -36,7 +36,7 @@ def get_energy_data(user):
     )
 
     # 💡 OPTIMIERUNG: "ready"-Check ohne DB-Abfragen!
-    # Wir prüfen einfach direkt in den Live-Signalen, ob Werte für Erzeugung (PV) 
+    # Wir prüfen einfach direkt in den Live-Signalen, ob Werte für Erzeugung (PV)
     # oder Verbrauch (Load) existieren. Das spart 2 schwere SQL-Queries!
     has_producer = (signals.get("pv", {}).get("production") is not None)
     has_consumer = (signals.get("load", {}).get("consumption") is not None)
@@ -80,6 +80,7 @@ def get_energy_data(user):
         "load": get_dashboard_chart(grid_ids),
         "pv": get_dashboard_chart(pv_ids),
         "grid": get_dashboard_chart(grid_ids),
+        "today": today["history"] if today else [],
     }
 
     return {

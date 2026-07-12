@@ -7,6 +7,7 @@ import ReactECharts from "echarts-for-react";
 export default function KPISparklineECharts({
     values = [],
     color = "#2563eb",
+    chartType = "line",
 }) {
 
     const option = {
@@ -34,8 +35,9 @@ export default function KPISparklineECharts({
         series: [
             {
                 data: values,
-                type: "line",
-                smooth: true,
+                type: chartType,
+
+                smooth: chartType === "line",
 
                 showSymbol: false,
 
@@ -44,27 +46,38 @@ export default function KPISparklineECharts({
                     color,
                 },
 
-                areaStyle: {
-                    opacity: 0.08,
+                areaStyle:
+                    chartType === "line"
+                        ? {
+                            opacity: 0.08,
+                            color,
+                        }
+                        : undefined,
+
+                itemStyle: {
                     color,
+                    borderRadius: [2, 2, 0, 0],
                 },
 
-                markLine: {
-                    silent: true,
-                    symbol: "none",
+                markLine:
+                    chartType === "line"
+                        ? {
+                            silent: true,
+                            symbol: "none",
 
-                    lineStyle: {
-                        color: "#e5e7eb",
-                        width: 1,
-                        type: "dashed",
-                    },
+                            lineStyle: {
+                                color: "#e5e7eb",
+                                width: 1,
+                                type: "dashed",
+                            },
 
-                    data: [
-                        {
-                            yAxis: 0,
-                        },
-                    ],
-                },
+                            data: [
+                                {
+                                    yAxis: 0,
+                                },
+                            ],
+                        }
+                        : undefined,
             },
         ],
 

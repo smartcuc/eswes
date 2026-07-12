@@ -55,6 +55,7 @@ export default function DashboardUser() {
     const kpis = energyQuery.data?.kpis || {};
     const charts = energyQuery.data?.charts || {};
     //const [activeSystemChart, setActiveSystemChart] = useState(null);
+    console.log("charts.today", charts.today);
 
     return (
         <DashboardLayout>
@@ -186,6 +187,7 @@ export default function DashboardUser() {
                         <KPISparklineECharts
                             color="#8b5cf6"
                             values={charts.today || []}
+                            chartType="bar"
                         />
                     }
                 />

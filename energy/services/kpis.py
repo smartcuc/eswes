@@ -54,10 +54,29 @@ def get_today_consumption(user):
         or 0
     )
 
+    rows = (
+        DeviceMetric1h.objects
+        .filter(
+            device_id__in=grid_devices,
+            bucket__gte=today_start,
+            metric_key="power",
+        )
+        .order_by("bucket")
+    )
+
+    history = [
+        round(
+            (row.energy_wh or 0) / 1000,
+            3,
+        )
+        for row in rows
+    ]
+    
     return {
         "value": round(
             total_wh / 1000,
             2,
         ),
         "source": "grid_source",
+        "history": history,
     }
