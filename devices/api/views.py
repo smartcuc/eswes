@@ -303,17 +303,11 @@ def latest_device_values(request):
 # ✅ DEVICE DASHBOARD VALUES
 # ============================================================
 
-from datetime import timedelta
-from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
-    # 1. Nur aktive Geräte des Users holen
+
     devices = list(
         Device.objects.filter(
             home__user=request.user,
@@ -322,27 +316,27 @@ def device_dashboard_values(request):
         ).select_related("config")
     )
 
-    if not devices:
-        return Response([])
+    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
 
     device_ids = [d.id for d in devices]
 
-    # 2. 🔥 DIE RETTUNG: Zurück zu distinct(), aber JETZT knallhart per ID gefiltert!
-    # Da wir zuerst nach device_id__in filtern, nutzt Postgres sofort den Index
-    # und muss NICHT mehr die Millionen Zeilen der gesamten Tabelle scannen.
+    #
+    # Neueste Metrik pro Gerät
+    #
     latest_metrics = (
         DeviceMetric.objects.filter(device_id__in=device_ids)
-        .order_by("device_id", "-timestamp")
+        .order_by(
+            "device_id",
+            "-timestamp",
+        )
         .distinct("device_id")
-        .values("device_id", "value", "metric_key")
     )
 
-    latest_map = {m["device_id"]: m for m in latest_metrics}
+    latest_map = {m.device_id: m for m in latest_metrics}
 
-    # 3. Metrik-Definitionen im Speicher cachen
-    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
-
-    # 4. Sparkline-Zeitfenster (Letzte Stunde)
+    #
+    # Sparkline (letzte 4h)
+    #
     sparkline_since = timezone.now() - timedelta(hours=1)
 
     sparkline_rows = (
@@ -350,33 +344,43 @@ def device_dashboard_values(request):
             device_id__in=device_ids,
             bucket__gte=sparkline_since,
         )
-        .values("device_id", "avg")
-        .order_by("device_id", "bucket")
+        .values(
+            "device_id",
+            "avg",
+            "bucket",
+        )
+        .order_by(
+            "device_id",
+            "bucket",
+        )
     )
 
-    # 5. Sparkline-Mapping aufbauen
     sparkline_map = {}
+
     for row in sparkline_rows:
-        d_id = row["device_id"]
-        val = row["avg"]
 
-        if d_id not in sparkline_map:
-            sparkline_map[d_id] = []
+        sparkline_map.setdefault(row["device_id"], []).append(
+            round(float(row["avg"] or 0), 2)
+        )
 
-        sparkline_map[d_id].append(round(float(val or 0), 2))
-
-    # 6. Response bauen (Sicherer, pfeilschneller Dictionary-Zugriff)
+    #
+    # Response
+    #
     result = []
+
     for d in devices:
-        metric_data = latest_map.get(d.id)
-        if not metric_data:
+
+        metric_row = latest_map.get(d.id)
+
+        if not metric_row:
             continue
 
         config = getattr(d, "config", None)
+
         metric_key = (
             config.measurement_type
             if config and config.measurement_type
-            else metric_data["metric_key"]
+            else metric_row.metric_key
         )
 
         metric = metric_map.get(metric_key)
@@ -384,7 +388,7 @@ def device_dashboard_values(request):
         result.append(
             {
                 "device": d.id,
-                "value": metric_data["value"],
+                "value": metric_row.value,
                 "unit": metric.unit if metric else "",
                 "sparkline": sparkline_map.get(d.id, []),
             }
