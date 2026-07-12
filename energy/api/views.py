@@ -37,6 +37,15 @@ from reportlab.lib.styles import getSampleStyleSheet
 import matplotlib.pyplot as plt
 
 
+SHAREGY_INDIGO = colors.HexColor("#6366F1")
+SHAREGY_PURPLE = colors.HexColor("#8B5CF6")
+SHAREGY_PINK = colors.HexColor("#EC4899")
+
+SHAREGY_LIGHT = colors.HexColor("#F9FAFB")
+SHAREGY_BORDER = colors.HexColor("#D1D5DB")
+SHAREGY_TEXT = colors.HexColor("#374151")
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_me(request):
@@ -413,8 +422,8 @@ def export_chart_pdf(request):
     elements = []
 
     title = Paragraph(
-        "<font size='22'><b>Sharegy</b></font><br/>"
-        "<font size='16'>Energieexport</font>",
+        "<font color='#6366F1' size='24'><b>Sharegy</b></font><br/>"
+        "<font color='#8B5CF6' size='16'>Energiebericht</font>",
         styles["Title"],
     )
 
@@ -436,6 +445,7 @@ def export_chart_pdf(request):
             ["Einheit", data["unit"]],
             ["Zeitzone", timezone_name],
             ["Exportiert", export_time],
+            ["Report-ID", timezone.now().strftime("%Y%m%d%H%M%S")],
         ],
         colWidths=[100, 250],
     )
@@ -443,10 +453,10 @@ def export_chart_pdf(request):
     info_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F3F4F6")),
+                ("BACKGROUND", (0, 0), (0, -1), SHAREGY_LIGHT),
                 ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
-                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#D1D5DB")),
+                ("BOX", (0, 0), (-1, -1), 1, SHAREGY_BORDER),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
@@ -458,7 +468,7 @@ def export_chart_pdf(request):
 
     elements.append(
         Paragraph(
-            "Leistungsverlauf",
+            "1. Leistungsverlauf",
             styles["Heading2"],
         )
     )
@@ -477,15 +487,15 @@ def export_chart_pdf(request):
 
     plt.plot(
         data["values"],
-        linewidth=2.5,
-        color="#2563EB",
+        linewidth=3,
+        color="#8B5CF6",
     )
 
     plt.fill_between(
         range(len(data["values"])),
         data["values"],
-        alpha=0.15,
-        color="#2563EB",
+        alpha=0.18,
+        color="#EC4899",
     )
 
     plt.title(metric_labels.get(metric, metric))
@@ -533,7 +543,7 @@ def export_chart_pdf(request):
 
     elements.append(
         Paragraph(
-            "Zusammenfassung",
+            "2. Zusammenfassung",
             styles["Heading2"],
         )
     )
@@ -575,6 +585,15 @@ def export_chart_pdf(request):
     elements.append(summary_table)
     elements.append(Spacer(1, 25))
 
+    elements.append(
+        Paragraph(
+            "3. Messwerte",
+            styles["Heading2"],
+        )
+    )
+
+    elements.append(Spacer(1, 8))
+
     table_data = [["Zeitpunkt", f"Wert ({data['unit']})"]]
 
     for ts, value in zip(
@@ -594,13 +613,13 @@ def export_chart_pdf(request):
     data_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563EB")),
+                ("BACKGROUND", (0, 0), (-1, 0), SHAREGY_INDIGO),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
             ]
         )
     )
@@ -622,7 +641,36 @@ def export_chart_pdf(request):
 
     elements.append(data_table)
 
-    doc.build(elements)
+    def add_footer(canvas, doc):
+
+        canvas.saveState()
+
+        canvas.setFont(
+            "Helvetica",
+            9,
+        )
+
+        canvas.setFillColor(SHAREGY_TEXT)
+
+        canvas.drawString(
+            40,
+            25,
+            "Sharegy EMS",
+        )
+
+        canvas.drawRightString(
+            A4[0] - 40,
+            25,
+            f"Seite {doc.page}",
+        )
+
+        canvas.restoreState()
+
+    doc.build(
+        elements,
+        onFirstPage=add_footer,
+        onLaterPages=add_footer,
+    )
 
     response = HttpResponse(content_type="application/pdf")
 
