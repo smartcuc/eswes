@@ -334,8 +334,8 @@ def device_dashboard_values(request):
 
     latest_map = {m.device_id: m for m in latest_metrics}
 
-    #
-    # Sparkline (letzte 4h)
+"""     #
+    # Sparkline (letzte 1h)
     #
     sparkline_since = timezone.now() - timedelta(hours=1)
 
@@ -362,7 +362,7 @@ def device_dashboard_values(request):
         sparkline_map.setdefault(row["device_id"], []).append(
             round(float(row["avg"] or 0), 2)
         )
-
+ """
     #
     # Response
     #
