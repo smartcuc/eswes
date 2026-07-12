@@ -261,43 +261,16 @@ def sankey_data(request):
 def latest_device_values(request):
 
     devices = list(
-        Device.objects
-        .filter(
+        Device.objects.filter(
             home__user=request.user,
             active=True,
             pending_delete=False,
-        )
-        .select_related("config")
+        ).select_related("config")
     )
 
-    powers = get_latest_powers(
-        [d.id for d in devices]
-    )
+    powers = get_latest_powers([d.id for d in devices])
 
-    sparkline_since = timezone.now() - timedelta(hours=4)
-
-    sparkline_rows = (
-        DeviceMetric1m.objects.filter(bucket__gte=sparkline_since)
-        .values(
-            "device_id",
-            "avg",
-            "bucket",
-        )
-        .order_by("device_id", "bucket")
-    )
-
-    sparkline_map = {}
-
-    for row in sparkline_rows:
-
-        sparkline_map.setdefault(row["device_id"], []).append(
-            round(float(row["avg"] or 0), 2)
-        )
-
-    metric_map = {
-        m.key: m
-        for m in MetricDefinition.objects.all()
-    }
+    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
 
     result = []
 
@@ -311,22 +284,114 @@ def latest_device_values(request):
         config = getattr(d, "config", None)
 
         metric_key = (
-            config.measurement_type
-            if config and config.measurement_type
-            else "value"
+            config.measurement_type if config and config.measurement_type else "value"
         )
 
         metric = metric_map.get(metric_key)
 
-    result.append({
-        "device": d.id,
-        "value": value,
-        "unit": metric.unit if metric else "",
-        "sparkline": sparkline_map.get(
-            d.id,
-            []
-        ),
-    })
+        result.append(
+            {
+                "device": d.id,
+                "value": value,
+                "unit": metric.unit if metric else "",
+            }
+        )
+
+    return Response(result)
+
+# ============================================================
+# ✅ DEVICE DASHBOARD VALUES
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def device_dashboard_values(request):
+
+    devices = list(
+        Device.objects.filter(
+            home__user=request.user,
+            active=True,
+            pending_delete=False,
+        ).select_related("config")
+    )
+
+    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
+
+    device_ids = [d.id for d in devices]
+
+    #
+    # Neueste Metrik pro Gerät
+    #
+    latest_metrics = (
+        DeviceMetric.objects.filter(device_id__in=device_ids)
+        .order_by(
+            "device_id",
+            "-timestamp",
+        )
+        .distinct("device_id")
+    )
+
+    latest_map = {m.device_id: m for m in latest_metrics}
+
+    #
+    # Sparkline (letzte 4h)
+    #
+    sparkline_since = timezone.now() - timedelta(hours=4)
+
+    sparkline_rows = (
+        DeviceMetric1m.objects.filter(
+            device_id__in=device_ids,
+            bucket__gte=sparkline_since,
+        )
+        .values(
+            "device_id",
+            "avg",
+            "bucket",
+        )
+        .order_by(
+            "device_id",
+            "bucket",
+        )
+    )
+
+    sparkline_map = {}
+
+    for row in sparkline_rows:
+
+        sparkline_map.setdefault(row["device_id"], []).append(
+            round(float(row["avg"] or 0), 2)
+        )
+
+    #
+    # Response
+    #
+    result = []
+
+    for d in devices:
+
+        metric_row = latest_map.get(d.id)
+
+        if not metric_row:
+            continue
+
+        config = getattr(d, "config", None)
+
+        metric_key = (
+            config.measurement_type
+            if config and config.measurement_type
+            else metric_row.metric_key
+        )
+
+        metric = metric_map.get(metric_key)
+
+        result.append(
+            {
+                "device": d.id,
+                "value": metric_row.value,
+                "unit": metric.unit if metric else "",
+                "sparkline": sparkline_map.get(d.id, []),
+            }
+        )
 
     return Response(result)
 
