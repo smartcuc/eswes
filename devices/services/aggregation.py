@@ -2,7 +2,8 @@
 # devices/services/aggregation.py
 #################################
 
-from datetime import timedelta
+from datetime import timedelta, datetime
+
 
 from django.db import transaction
 from django.db.models import (
@@ -25,9 +26,14 @@ from devices.models import (
 
 
 def floor_bucket(dt, seconds):
-    return dt - timedelta(
-        seconds=dt.second % seconds,
-        microseconds=dt.microsecond,
+
+    epoch = int(dt.timestamp())
+
+    floored = epoch - (epoch % seconds)
+
+    return datetime.fromtimestamp(
+        floored,
+        tz=dt.tzinfo,
     )
 
 
