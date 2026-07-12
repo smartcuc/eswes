@@ -321,7 +321,7 @@ def device_dashboard_values(request):
             pending_delete=False,
         ).select_related("config")
     )
-    
+
     if not devices:
         return Response([])
 
@@ -346,16 +346,17 @@ def device_dashboard_values(request):
 
     # 4. 🔥 OPTIMIERUNG 2: Sparkline-Zeitfenster korrigieren (Code sagt 1h, Kommentar sagt 4h)
     # Wenn du 4h willst, ändere timedelta(hours=1) auf (hours=4)
+    # 4. Sparkline-Zeitfenster (1 Stunde für schnellen Last-Check)
     sparkline_since = timezone.now() - timedelta(hours=1)
 
-    # Direktes Casting im DB-Treiber vorbereiten (vermeidet float()-Loops in Python)
+    # ✅ JETZT KORREKT: Saubere Django-Abfrage ohne den Syntaxfehler
     sparkline_rows = (
         DeviceMetric1m.objects.filter(
             device_id__in=device_ids,
             bucket__gte=sparkline_since,
         )
         .values("device_id", "avg")
-        .order_as_computed = True # Verhindert unnötiges Umsortieren im Speicher
+        .order_by("device_id", "bucket")  # Nutzt die standardmäßige Sortierung
     )
 
     # 5. Sparkline-Mapping hocheffizient aufbauen
@@ -363,10 +364,10 @@ def device_dashboard_values(request):
     for row in sparkline_rows:
         d_id = row["device_id"]
         val = row["avg"]
-        
+
         if d_id not in sparkline_map:
             sparkline_map[d_id] = []
-            
+
         # Direkt runden – spart Rechenzeit gegenüber float(or 0)
         sparkline_map[d_id].append(round(val, 2) if val is not None else 0.0)
 
