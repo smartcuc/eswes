@@ -55,7 +55,6 @@ export default function DashboardUser() {
     const kpis = energyQuery.data?.kpis || {};
     const charts = energyQuery.data?.charts || {};
     //const [activeSystemChart, setActiveSystemChart] = useState(null);
-    console.log("charts.today", charts.today);
 
     return (
         <DashboardLayout>
@@ -173,24 +172,38 @@ export default function DashboardUser() {
                     />
                 </div>
 
-                <KPI
-                    label="Tagesverbrauch"
-                    value={
-                        kpis.today?.toLocaleString("de-DE", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
+                <div
+                    onClick={() =>
+                        setActiveSystemChart({
+                            metricKey: "today",
+                            displayName: "Tagesverbrauch",
+                            unit: "kWh",
+                            color: "#8b5cf6",
                         })
                     }
-                    unit="kWh"
-                    icon="📈"
-                    chart={
-                        <KPISparklineECharts
-                            color="#8b5cf6"
-                            values={charts.today || []}
-                            chartType="bar"
-                        />
-                    }
-                />
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                >
+
+                    <KPI
+                        label="Tagesverbrauch"
+                        value={
+                            kpis.today?.toLocaleString("de-DE", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })
+                        }
+                        unit="kWh"
+                        icon="📈"
+                        chart={
+                            <KPISparklineECharts
+                                color="#8b5cf6"
+                                values={charts.today || []}
+                                chartType="bar"
+                            />
+                        }
+                    />
+
+                </div>
 
             </div>
 

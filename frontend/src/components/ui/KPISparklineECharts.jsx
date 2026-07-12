@@ -37,6 +37,11 @@ export default function KPISparklineECharts({
                 data: values,
                 type: chartType,
 
+                // series: [
+                //     {
+                //         data: values,
+                //         type: "line",
+
                 smooth: chartType === "line",
 
                 showSymbol: false,

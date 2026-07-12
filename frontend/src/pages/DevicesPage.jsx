@@ -25,6 +25,47 @@ function ensureOrder(items, storedOrder) {
     return [...existing, ...missing];
 }
 
+function getRoleColor(config) {
+
+    if (config?.is_grid_source) {
+        return {
+            text: "text-emerald-600",
+            bg: "bg-emerald-50",
+            ring: "hover:ring-emerald-200",
+        };
+    }
+
+    switch (config?.role?.key) {
+
+        case "producer":
+            return {
+                text: "text-amber-500",
+                bg: "bg-amber-50",
+                ring: "hover:ring-amber-200",
+            };
+
+        case "consumer":
+            return {
+                text: "text-blue-600",
+                bg: "bg-blue-50",
+                ring: "hover:ring-blue-200",
+            };
+
+        case "battery":
+            return {
+                text: "text-purple-600",
+                bg: "bg-purple-50",
+                ring: "hover:ring-purple-200",
+            };
+
+        default:
+            return {
+                text: "text-gray-500",
+                bg: "bg-white",
+                ring: "hover:ring-gray-200",
+            };
+    }
+}
 
 /* =========================================================
    DEVICE CARD
@@ -35,12 +76,27 @@ function DeviceCard({ device, onSelect, onEdit }) {
     const isOnline = device.status === "online";
     const missing = !config.measurement_type || !config.role;
 
-    function getIcon(roleKey) {
-        switch (roleKey) {
-            case "producer": return "⚡";
-            case "consumer": return "🔌";
-            case "battery": return "🔋";
-            default: return "🔧";
+    const roleStyle = getRoleColor(config);
+
+    function getIcon(config) {
+
+        if (config?.is_grid_source) {
+            return "🔌";
+        }
+
+        switch (config?.role?.key) {
+
+            case "producer":
+                return "☀️";
+
+            case "consumer":
+                return "⚡";
+
+            case "battery":
+                return "🔋";
+
+            default:
+                return "🔧";
         }
     }
 
@@ -48,16 +104,26 @@ function DeviceCard({ device, onSelect, onEdit }) {
         <div
             onClick={() => onSelect(device)}
             className={`
-                cursor-pointer border rounded-xl p-4 shadow-sm transition hover:shadow-md
-                hover:ring-2 hover:ring-indigo-200
-                ${missing ? "border-yellow-300 bg-yellow-50" : "border-gray-200 bg-white"}
+                cursor-pointer
+                border
+                rounded-xl
+                p-4
+                shadow-sm
+                transition
+                hover:shadow-md
+                hover:ring-2
+                ${roleStyle.ring}
+                ${missing
+                    ? "border-yellow-300 bg-yellow-50"
+                    : `border-gray-200 ${roleStyle.bg}`
+                }
             `}
         >
             <div className="flex justify-between mb-2 items-start">
 
                 <div>
-                    <div className="font-semibold flex items-center gap-2">
-                        {getIcon(config.role?.key)}
+                    <div className={`font-semibold flex items-center gap-2 ${roleStyle.text}`}>
+                        {getIcon(config)}
                         {device.display_name}
                         {missing && <span className="text-yellow-600 text-sm">⚠</span>}
                     </div>
@@ -82,11 +148,15 @@ function DeviceCard({ device, onSelect, onEdit }) {
                 </div>
             </div>
 
-            <div className="text-sm text-gray-500 mb-2">
-                {config.role?.label || "–"}
+            <div className={`text-sm mb-2 ${roleStyle.text}`}>
+                {
+                    config.is_grid_source
+                        ? "Netz"
+                        : (config.role?.label || "–")
+                }
             </div>
 
-            <div className="text-xl font-bold text-indigo-600">
+            <div className={`text-xl font-bold ${roleStyle.text}`}>
                 {device.value != null ? (
                     `${device.value} ${device.unit || ""}`
                 ) : device.status === "stale" ? (
@@ -140,12 +210,12 @@ const statusOptions = [
 
 const roleOptions = {
     producer: {
-        icon: "⚡",
+        icon: "☀️",
         label: "Erzeuger",
         title: "Energieerzeuger anzeigen",
     },
     consumer: {
-        icon: "🔌",
+        icon: "⚡",
         label: "Verbraucher",
         title: "Energieverbraucher anzeigen",
     },
@@ -153,6 +223,11 @@ const roleOptions = {
         icon: "🔋",
         label: "Speicher",
         title: "Batteriespeicher anzeigen",
+    },
+    grid: {
+        icon: "🔌",
+        label: "Netz",
+        title: "Netzanschlüsse anzeigen",
     },
 };
 
@@ -221,6 +296,7 @@ export default function DevicesPage() {
                 "producer",
                 "consumer",
                 "battery",
+                "grid",
             ],
         [settings.roles]
     );
@@ -262,12 +338,13 @@ export default function DevicesPage() {
         }));
     }, [devices, statusMap, valueMap]);
 
-
     const roleStats = useMemo(() => {
         const map = {};
 
         merged.forEach(d => {
-            const key = d.config?.role?.key;
+            const key = d.config?.is_grid_source
+                ? "grid"
+                : d.config?.role?.key;
 
             if (!key) {
                 return;
@@ -339,12 +416,18 @@ export default function DevicesPage() {
         }
 
         list = list.filter(d => {
+
+            if (d.config?.is_grid_source) {
+                return activeRoles.includes("grid");
+            }
+
             const role = d.config?.role?.key;
 
             return role
                 ? activeRoles.includes(role)
                 : true;
         });
+
 
         return list;
 
@@ -569,7 +652,7 @@ export default function DevicesPage() {
                 ))}
 
                 {/* ROLE CHIPS */}
-                {["producer", "consumer", "battery"].map(role => {
+                {["producer", "consumer", "battery", "grid"].map(role => {
 
                     const active = activeRoles.includes(role);
                     const config = roleOptions[role];

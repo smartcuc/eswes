@@ -14,10 +14,7 @@ urlpatterns = [
 
 urlpatterns += [
     path("dashboard/me/", dashboard_me),
-    path(
-        "chart/",
-        chart_data,
-    ),
+    path("chart/", chart_data),
     path("chart/export/xlsx/", export_chart_xlsx),
     path("chart/export/csv/", export_chart_csv),
     path("chart/export/pdf/", export_chart_pdf),

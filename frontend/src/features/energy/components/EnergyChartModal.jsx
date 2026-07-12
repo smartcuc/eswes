@@ -121,9 +121,19 @@ export default function EnergyChartModal({
             ],
             series: [
                 {
+                    type:
+                        metricKey === "today"
+                            ? "bar"
+                            : "line",
                     name: displayName,
-                    type: 'line',
                     data: seriesData,
+                    itemStyle:
+                        metricKey === "today"
+                            ? {
+                                color: mainColor,
+                                borderRadius: [4, 4, 0, 0],
+                            }
+                            : undefined,
                     showSymbol: false,
                     smooth: true,
                     lineStyle: { color: mainColor, width: 2.5 },
