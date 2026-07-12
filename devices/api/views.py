@@ -336,7 +336,7 @@ def device_dashboard_values(request):
     #
     # Sparkline (letzte 4h)
     #
-    sparkline_since = timezone.now() - timedelta(hours=4)
+    sparkline_since = timezone.now() - timedelta(hours=1)
 
     sparkline_rows = (
         DeviceMetric1m.objects.filter(

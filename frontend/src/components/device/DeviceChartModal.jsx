@@ -313,7 +313,7 @@ function DeviceChartModal({ device, onClose }) {
                                     Aktuell: {currentPointValue.toFixed(2)} {unit}
                                 </div>
                             )}
-                            `
+
                         </div>
 
                         <div className="flex items-center gap-2">

@@ -174,10 +174,6 @@ function DeviceCard({ device, onSelect, onEdit }) {
                     </span>
                 )}
             </div>
-            <div className="text-xs text-red-500">
-                {device.sparkline?.length || 0} Punkte
-            </div>
-            console.log(device.sparkline);
 
             {device.sparkline?.length > 0 && (
                 <KPISparklineECharts
@@ -285,7 +281,7 @@ export default function DevicesPage() {
 
     const valuesQuery = useQuery({
         queryKey: ["devices-values"],
-        queryFn: () => apiFetch("/api/devices/latest/"),
+        queryFn: () => apiFetch("/api/devices/dashboard/"),
         refetchInterval: 3000,
         retry: false,
     });
@@ -350,26 +346,16 @@ export default function DevicesPage() {
         (valuesQuery.data || []).map(v => [v.device, v])
     );
 
-    console.log("valueMap", valueMap);
-
     const merged = useMemo(() => {
-        return devices.map(d => {
-
-            console.log(
-                "Device",
-                d.id,
-                valueMap[d.id]
-            );
-
-            return {
-                ...d,
-                status: (statusMap[d.id]?.status || "offline").toLowerCase(),
-                value: valueMap[d.id]?.value,
-                unit: valueMap[d.id]?.unit,
-                sparkline: valueMap[d.id]?.sparkline || [],
-            };
-        });
+        return devices.map(d => ({
+            ...d,
+            status: (statusMap[d.id]?.status || "offline").toLowerCase(),
+            value: valueMap[d.id]?.value,
+            unit: valueMap[d.id]?.unit,
+            sparkline: valueMap[d.id]?.sparkline || [],
+        }));
     }, [devices, statusMap, valueMap]);
+
 
     const roleStats = useMemo(() => {
         const map = {};
