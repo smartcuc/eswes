@@ -305,7 +305,6 @@ def latest_device_values(request):
 
 from datetime import timedelta
 from django.utils import timezone
-from django.db.models import OuterRef, Subquery
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -314,7 +313,7 @@ from rest_framework.response import Response
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
-    # 1. Geräte holen
+    # 1. Nur aktive Geräte des Users holen
     devices = list(
         Device.objects.filter(
             home__user=request.user,
@@ -328,25 +327,22 @@ def device_dashboard_values(request):
 
     device_ids = [d.id for d in devices]
 
-    # 2. 🔥 Subquery auf die IDs (Blitzschnell im SQL-Index)
-    newest_metric_id = (
-        DeviceMetric.objects.filter(device_id=OuterRef("device_id"))
-        .order_by("-timestamp")
-        .values("id")[:1]
+    # 2. 🔥 DIE RETTUNG: Zurück zu distinct(), aber JETZT knallhart per ID gefiltert!
+    # Da wir zuerst nach device_id__in filtern, nutzt Postgres sofort den Index
+    # und muss NICHT mehr die Millionen Zeilen der gesamten Tabelle scannen.
+    latest_metrics = (
+        DeviceMetric.objects.filter(device_id__in=device_ids)
+        .order_by("device_id", "-timestamp")
+        .distinct("device_id")
+        .values("device_id", "value", "metric_key")
     )
 
-    # ✅ HIER DIE RETTUNG: Wir nutzen .values(), was die 280ms garantiert!
-    latest_metrics = DeviceMetric.objects.filter(
-        id__in=Subquery(newest_metric_id), device_id__in=device_ids
-    ).values("device_id", "value", "metric_key")
-
-    # Wir bauen das Mapping so auf, dass wir Dictionaries nutzen
     latest_map = {m["device_id"]: m for m in latest_metrics}
 
     # 3. Metrik-Definitionen im Speicher cachen
     metric_map = {m.key: m for m in MetricDefinition.objects.all()}
 
-    # 4. Sparkline-Zeitfenster
+    # 4. Sparkline-Zeitfenster (Letzte Stunde)
     sparkline_since = timezone.now() - timedelta(hours=1)
 
     sparkline_rows = (
@@ -369,16 +365,14 @@ def device_dashboard_values(request):
 
         sparkline_map[d_id].append(round(float(val or 0), 2))
 
-    # 6. Response bauen (Sicherer Zugriff auf das Dictionary)
+    # 6. Response bauen (Sicherer, pfeilschneller Dictionary-Zugriff)
     result = []
     for d in devices:
-        metric_data = latest_map.get(d.id)  # Das ist jetzt ein Dictionary!
+        metric_data = latest_map.get(d.id)
         if not metric_data:
             continue
 
         config = getattr(d, "config", None)
-
-        # ✅ KORREKTUR: Zugriff über eckige Klammern, da metric_data ein Dict ist
         metric_key = (
             config.measurement_type
             if config and config.measurement_type
@@ -390,13 +384,14 @@ def device_dashboard_values(request):
         result.append(
             {
                 "device": d.id,
-                "value": metric_data["value"],  # ✅ KORREKTUR: Dictionary-Zugriff
+                "value": metric_data["value"],
                 "unit": metric.unit if metric else "",
                 "sparkline": sparkline_map.get(d.id, []),
             }
         )
 
     return Response(result)
+
 
 # ============================================================
 # ✅ TIMESERIES API
