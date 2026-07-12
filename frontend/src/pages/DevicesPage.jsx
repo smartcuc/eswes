@@ -5,6 +5,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { apiFetch } from "../api/client";
+import KPISparklineECharts from "../components/ui/KPISparklineECharts";
 import DeviceChartModal from "../components/device/DeviceChartModal";
 import DeviceSetupModal from "../components/device/DeviceSetupModal";
 import useUserPreference from "../hooks/useUserPreference";
@@ -174,6 +175,22 @@ function DeviceCard({ device, onSelect, onEdit }) {
                 )}
             </div>
 
+            {device.sparkline?.length > 0 && (
+                <KPISparklineECharts
+                    values={device.sparkline}
+                    color={roleStyle.text.includes("amber")
+                        ? "#f59e0b"
+                        : roleStyle.text.includes("blue")
+                            ? "#2563eb"
+                            : roleStyle.text.includes("purple")
+                                ? "#8b5cf6"
+                                : roleStyle.text.includes("emerald")
+                                    ? "#10b981"
+                                    : "#64748b"
+                    }
+                />
+            )}
+
             {missing && (
                 <div className="text-xs text-yellow-700 mt-2">
                     ⚠ Unvollständig konfiguriert
@@ -335,6 +352,7 @@ export default function DevicesPage() {
             status: (statusMap[d.id]?.status || "offline").toLowerCase(),
             value: valueMap[d.id]?.value,
             unit: valueMap[d.id]?.unit,
+            sparkline: valueMap[d.id]?.sparkline || [],
         }));
     }, [devices, statusMap, valueMap]);
 

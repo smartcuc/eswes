@@ -274,6 +274,26 @@ def latest_device_values(request):
         [d.id for d in devices]
     )
 
+    sparkline_since = timezone.now() - timedelta(hours=4)
+
+    sparkline_rows = (
+        DeviceMetric1m.objects.filter(bucket__gte=sparkline_since)
+        .values(
+            "device_id",
+            "avg",
+            "bucket",
+        )
+        .order_by("device_id", "bucket")
+    )
+
+    sparkline_map = {}
+
+    for row in sparkline_rows:
+
+        sparkline_map.setdefault(row["device_id"], []).append(
+            round(float(row["avg"] or 0), 2)
+        )
+
     metric_map = {
         m.key: m
         for m in MetricDefinition.objects.all()
@@ -298,11 +318,15 @@ def latest_device_values(request):
 
         metric = metric_map.get(metric_key)
 
-        result.append({
-            "device": d.id,
-            "value": value,
-            "unit": metric.unit if metric else "",
-        })
+    result.append({
+        "device": d.id,
+        "value": value,
+        "unit": metric.unit if metric else "",
+        "sparkline": sparkline_map.get(
+            d.id,
+            []
+        ),
+    })
 
     return Response(result)
 

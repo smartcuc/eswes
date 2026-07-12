@@ -20,6 +20,46 @@ function formatTime(ts) {
     });
 }
 
+function getDeviceStyle(device) {
+
+    const config = device.config || {};
+
+    if (config.is_grid_source) {
+        return {
+            color: "#10b981",
+            icon: "🔌",
+        };
+    }
+
+    switch (config.role?.key) {
+
+        case "producer":
+            return {
+                color: "#f59e0b",
+                icon: "☀️",
+            };
+
+        case "consumer":
+            return {
+                color: "#2563eb",
+                icon: "⚡",
+            };
+
+        case "battery":
+            return {
+                color: "#8b5cf6",
+                icon: "🔋",
+            };
+
+        default:
+            return {
+                color: "#64748b",
+                icon: "🔧",
+            };
+    }
+}
+
+
 /* =========================================
    COMPONENT
 ========================================= */
@@ -28,6 +68,8 @@ function DeviceChartModal({ device, onClose }) {
     const [range, setRange] = useState("24h");
     const [live, setLive] = useState(false);
     const chartRef = useRef(null);
+    const deviceStyle = getDeviceStyle(device);
+    const mainColor = deviceStyle.color;
 
     /* ✅ ESC schließen */
     useEffect(() => {
@@ -83,7 +125,6 @@ function DeviceChartModal({ device, onClose }) {
     };
 
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
-    const mainColor = '#0ea5e9';
     const option = useMemo(() => {
         return {
             // Schickes, reaktionsschnelles Tooltip
@@ -248,18 +289,31 @@ function DeviceChartModal({ device, onClose }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* HEADER */}
-                <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div
+                    className="p-4 border-b"
+                    style={{
+                        background: `linear-gradient(
+                            135deg,
+                            ${mainColor}30,
+                            ${mainColor}08
+                        )`
+                    }}
+                >
                     <div className="flex justify-between items-center">
                         <div>
                             <div className="text-xs text-gray-500">Zeitreihe analysieren</div>
-                            <h3 className="font-semibold text-lg text-gray-900">📈 {device.display_name}</h3>
+                            <h3 className="font-semibold text-lg text-gray-900">{deviceStyle.icon} {device.display_name}</h3>
                             <div className="text-xs text-gray-500">{device.identifier}</div>
 
                             {currentPointValue !== null && (
-                                <div className="text-sm font-medium text-indigo-600 mt-1">
+                                <div
+                                    className="text-sm font-medium mt-1"
+                                    style={{ color: mainColor }}
+                                >
                                     Aktuell: {currentPointValue.toFixed(2)} {unit}
                                 </div>
                             )}
+                            `
                         </div>
 
                         <div className="flex items-center gap-2">
