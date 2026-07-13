@@ -42,15 +42,6 @@ def get_energy_data(user):
     pv = signals.get("pv", {})
     grid = signals.get("grid", {})
 
-
-    has_grid = len(grid_ids) > 0
-
-    has_load = (
-        load.get("consumption") is not None
-    )
-
-    ready = has_grid and has_load
-
     # 4. Heutigen Verbrauch ermitteln
     today = get_today_consumption(user)
 
@@ -88,6 +79,10 @@ def get_energy_data(user):
         "grid": get_dashboard_chart(grid_ids),
         "today": today["history"] if today else [],
     }
+
+    has_grid = len(grid_ids) > 0
+    has_load = load.get("consumption") is not None
+    ready = has_grid and has_load
 
     return {
         # Wenn dein Frontend hier strikt nach Rollen verlangt, 
