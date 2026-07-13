@@ -136,7 +136,7 @@ INSTALLED_APPS = [
     "tenants",
     "content",
     "design",
-#    "devices",
+    "demo",
     "channels",
     "forecast",
     "accounts",
@@ -165,8 +165,6 @@ MIDDLEWARE = [
 
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-
-#    "backend.demo_middleware.ReadOnlyDemoMiddleware",
 ]
 
 

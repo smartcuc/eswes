@@ -14,6 +14,11 @@ export default function Onboarding() {
 
     const { settings } = useSettings();
 
+    const detectedTimezone =
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone;
+
     const mutation = useMutation({
         mutationFn: async (step) => {
             await apiFetch("/api/onboarding-step/", {
@@ -45,6 +50,11 @@ export default function Onboarding() {
 
     const started = settings && settings.onboarding_step === "setup";
 
+    const needsTimezone =
+        started &&
+        !settings?.timezone &&
+        !!detectedTimezone;
+
     function updateStep(step) {
         if (mutation.isLoading) return;
 
@@ -56,6 +66,23 @@ export default function Onboarding() {
             },
         });
     }
+
+    async function acceptTimezone() {
+
+        await apiFetch("/api/timezone/", {
+            method: "POST",
+            body: JSON.stringify({
+                timezone: detectedTimezone,
+            }),
+        });
+
+        await queryClient.invalidateQueries({
+            queryKey: ["settings"],
+        });
+
+        updateStep("done");
+    }
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center p-6">
@@ -87,7 +114,73 @@ export default function Onboarding() {
                     </>
                 )}
 
-                {started && (
+                {started && needsTimezone && (
+                    <>
+                        <h2 className="text-xl font-semibold text-center mb-4">
+                            🌍 Regionale Einstellungen
+                        </h2>
+
+                        <p className="text-gray-500 text-center mb-3">
+                            Wir haben folgende Zeitzone erkannt:
+                        </p>
+
+                        <div className="text-center mb-2">
+                            <span
+                                className="
+                    inline-block
+                    px-4
+                    py-2
+                    rounded-lg
+                    bg-indigo-50
+                    text-indigo-700
+                    font-medium
+                "
+                            >
+                                {detectedTimezone}
+                            </span>
+                        </div>
+
+                        <p className="text-xs text-gray-400 text-center mb-6">
+                            Die Erkennung basiert auf den Einstellungen
+                            deines Browsers und kann durch VPNs oder
+                            Proxys abweichen.
+                        </p>
+
+                        <div className="space-y-2">
+
+                            <button
+                                onClick={acceptTimezone}
+                                className="
+                                w-full
+                                bg-indigo-600
+                                hover:bg-indigo-700
+                                text-white
+                                py-3
+                                rounded-lg
+                            "
+                            >
+                                Übernehmen
+                            </button>
+
+                            <button
+                                onClick={() => updateStep("done")}
+                                className="
+                                w-full
+                                border
+                                border-gray-200
+                                py-3
+                                rounded-lg
+                                hover:bg-gray-50
+                           "
+                            >
+                                Überspringen
+                            </button>
+
+                        </div>
+                    </>
+                )}
+
+                {started && !needsTimezone && (
                     <>
                         <h2 className="text-xl font-semibold text-center mb-4">
                             Dein Dashboard ist bereit 🚀
@@ -100,7 +193,14 @@ export default function Onboarding() {
                         <button
                             onClick={() => updateStep("done")}
                             disabled={mutation.isLoading}
-                            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg"
+                            className="
+                            w-full
+                            bg-orange-500
+                            hover:bg-orange-600
+                            text-white
+                            py-3
+                            rounded-lg
+                        "
                         >
                             {mutation.isLoading ? "…" : "Zum Dashboard"}
                         </button>

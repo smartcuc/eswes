@@ -16,6 +16,7 @@ export default function Profile() {
 
     const [timezone, setTimezone] = useState("");
     const [language, setLanguage] = useState("de");
+    const [saved, setSaved] = useState(false);
 
     const timezoneQuery = useQuery({
         queryKey: ["timezones"],
@@ -52,6 +53,12 @@ export default function Profile() {
         await queryClient.invalidateQueries({
             queryKey: ["settings"],
         });
+
+        setSaved(true);
+
+        setTimeout(() => {
+            setSaved(false);
+        }, 3000);
     }
 
     async function saveLanguage() {
@@ -66,7 +73,14 @@ export default function Profile() {
         await queryClient.invalidateQueries({
             queryKey: ["settings"],
         });
+
+        setSaved(true);
+
+        setTimeout(() => {
+            setSaved(false);
+        }, 3000);
     }
+
 
     return (
         <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -80,7 +94,21 @@ export default function Profile() {
                     Persönliche Daten und Präferenzen.
                 </p>
             </div>
-
+            {saved && (
+                <div
+                    className="
+                        rounded-lg
+                        border
+                        border-green-200
+                        bg-green-50
+                        px-4
+                        py-3
+                        text-green-700
+                    "
+                >
+                    ✅ Einstellungen wurden gespeichert.
+                </div>
+            )}
             <div className="grid gap-6 lg:grid-cols-2">
 
                 <Card>
