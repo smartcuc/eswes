@@ -86,7 +86,7 @@ def get_energy_data(user):
     return {
         # Wenn dein Frontend hier strikt nach Rollen verlangt, 
         # schalte es testweise fest auf True, um zu sehen, ob das Sankey-Diagramm rendert:
-        "ready": True, # oder: has_producer and has_consumer
+        "ready": False, # oder: has_producer and has_consumer
         "sankey": sankey,
         "kpis": kpis,
         "charts": charts,

@@ -317,16 +317,16 @@ export default function DashboardUser() {
                                 }}
 
                                 className={`
-                    px-2.5 py-1
-                    rounded-full
-                    text-xs
-                    border
-                    flex items-center gap-1
-                    transition
-                    ${showRooms
+                                        px-2.5 py-1
+                                        rounded-full
+                                        text-xs
+                                        border
+                                        flex items-center gap-1
+                                        transition
+                                        ${showRooms
                                         ? "bg-indigo-600 text-white border-indigo-600"
                                         : "bg-white hover:bg-gray-50 border-gray-200"}
-                `}
+                                `}
                             >
                                 🚪 Räume
                             </button>
