@@ -44,7 +44,7 @@ class UserSettingsView(APIView):
     def get(self, request):
         settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
 
-        console.log(settings);
+        print(settings_obj)
         return Response(
             {
                 "onboarding_step": settings_obj.onboarding_step,
