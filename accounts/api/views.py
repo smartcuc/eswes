@@ -44,10 +44,14 @@ class UserSettingsView(APIView):
     def get(self, request):
         settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
 
-        return Response({
-            "onboarding_step": settings_obj.onboarding_step,
-            "usage_mode": settings_obj.usage_mode,
-        })
+        return Response(
+            {
+                "onboarding_step": settings_obj.onboarding_step,
+                "usage_mode": settings_obj.usage_mode,
+                "language": settings_obj.language,
+                "timezone": settings_obj.timezone,
+            }
+        )
 
 
 class UpdateOnboardingStepView(APIView):
@@ -71,7 +75,7 @@ class UpdateOnboardingStepView(APIView):
         settings_obj.save()
 
         return Response({"status": "ok"})
-    
+
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -422,7 +426,7 @@ class LogoutView(APIView):
         logout(request)
         request.session.flush()   # 💥 extra safe
         return Response({"status": "logged_out"})
-    
+
 
 def track_magic_click(request, token):
     obj = MagicLoginToken.objects.filter(token=token).first()
@@ -432,7 +436,6 @@ def track_magic_click(request, token):
         obj.save()
 
     return redirect(f"{settings.FRONTEND_BASE_URL}/auth/magic/{token}")
-
 
 
 def track_open(request, token):
@@ -540,6 +543,3 @@ class DashboardStatsView(APIView):
             },
             "live_logins": live_logins
         })
-    
-
-    
