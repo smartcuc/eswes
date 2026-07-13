@@ -2,9 +2,9 @@
 # BlockRenderer.jsx
 */
 
-import SankeyDemo from "./SankeyDemo";
-import EnergyFlow from "./components/EnergyFlow";
-import UserEnergyPanel from "./components/UserEnergyPanel";
+// import SankeyDemo from "./SankeyDemo";
+// import EnergyFlow from "./components/EnergyFlow";
+// import UserEnergyPanel from "./components/UserEnergyPanel";
 
 
 export default function BlockRenderer({ block, theme }) {
@@ -88,18 +88,18 @@ export default function BlockRenderer({ block, theme }) {
         /* =========================================================
            SanKey BLOCK 
         ========================================================= */
-        case "sankey":
-            return (
-                <div className="py-16">
-                    <SankeyDemo theme={theme} />
-                </div>
-            );
-
-        case "energy_flow":
-            return <EnergyFlow data={block.content} />;
-
-        case "user_energy":
-            return <UserEnergyPanel />
+        /*         case "sankey":
+                    return (
+                        <div className="py-16">
+                            <SankeyDemo theme={theme} />
+                        </div>
+                    );
+        
+                case "energy_flow":
+                    return <EnergyFlow data={block.content} />;
+        
+                case "user_energy":
+                    return <UserEnergyPanel /> */
 
         /* =========================================================
            DEFAULT (falls unbekannter Block)

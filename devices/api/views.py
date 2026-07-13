@@ -412,10 +412,10 @@ def get_range_config(range_str):
             "value_field": "avg",
         }
 
-    if range_str == "7d":
+    if range_str == "5d":
         return {
             "model": DeviceMetric5m,
-            "delta": timedelta(days=7),
+            "delta": timedelta(days=5),
             "field": "bucket",
             "value_field": "avg",
         }

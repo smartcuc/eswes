@@ -47,14 +47,14 @@ export default function KPISparklineECharts({
                 showSymbol: false,
 
                 lineStyle: {
-                    width: 2,
+                    width: 2.5,
                     color,
                 },
 
                 areaStyle:
                     chartType === "line"
                         ? {
-                            opacity: 0.08,
+                            opacity: 0.15,
                             color,
                         }
                         : undefined,
@@ -92,7 +92,7 @@ export default function KPISparklineECharts({
     };
 
     return (
-        <div className="h-12 mt-2">
+        <div className="h-14 mt-1">
             <ReactECharts
                 option={option}
                 style={{

@@ -5,15 +5,8 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { KpiCard } from "../../components/admin/KpiCard";
+import ReactECharts from "echarts-for-react";
 
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
-} from "recharts";
 
 export default function AdminDashboard() {
     const [data, setData] = useState(null);
@@ -36,6 +29,29 @@ export default function AdminDashboard() {
         { name: "Login", value: data.funnel.used },
     ];
 
+    const chartOption = {
+        tooltip: {
+            trigger: "axis",
+        },
+        xAxis: {
+            type: "category",
+            data: funnel.map(f => f.name),
+        },
+        yAxis: {
+            type: "value",
+        },
+        series: [
+            {
+                type: "bar",
+                data: funnel.map(f => f.value),
+                itemStyle: {
+                    color: "#4f46e5",
+                },
+                barWidth: "50%",
+            },
+        ],
+    };
+
     return (
         <AdminLayout>
 
@@ -51,14 +67,13 @@ export default function AdminDashboard() {
             <div className="bg-white p-6 rounded-2xl shadow mb-6">
                 <h2 className="mb-4 font-semibold">Conversion Funnel</h2>
 
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={funnel}>
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#4f46e5" />
-                    </BarChart>
-                </ResponsiveContainer>
+                <ReactECharts
+                    option={chartOption}
+                    style={{
+                        width: "100%",
+                        height: "300px",
+                    }}
+                />
             </div>
 
             {/* LIVE LOGINS */}

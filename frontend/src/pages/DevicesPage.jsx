@@ -33,6 +33,7 @@ function getRoleColor(config) {
             text: "text-emerald-600",
             bg: "bg-emerald-50",
             ring: "hover:ring-emerald-200",
+            chart: "#10b981",
         };
     }
 
@@ -43,6 +44,7 @@ function getRoleColor(config) {
                 text: "text-amber-500",
                 bg: "bg-amber-50",
                 ring: "hover:ring-amber-200",
+                chart: "#f59e0b",
             };
 
         case "consumer":
@@ -50,6 +52,7 @@ function getRoleColor(config) {
                 text: "text-blue-600",
                 bg: "bg-blue-50",
                 ring: "hover:ring-blue-200",
+                chart: "#2563eb",
             };
 
         case "battery":
@@ -57,6 +60,7 @@ function getRoleColor(config) {
                 text: "text-purple-600",
                 bg: "bg-purple-50",
                 ring: "hover:ring-purple-200",
+                chart: "#8b5cf6",
             };
 
         default:
@@ -64,6 +68,7 @@ function getRoleColor(config) {
                 text: "text-gray-500",
                 bg: "bg-white",
                 ring: "hover:ring-gray-200",
+                chart: "#64748b",
             };
     }
 }
@@ -176,19 +181,12 @@ function DeviceCard({ device, onSelect, onEdit }) {
             </div>
 
             {device.sparkline?.length > 0 && (
-                <KPISparklineECharts
-                    values={device.sparkline}
-                    color={roleStyle.text.includes("amber")
-                        ? "#f59e0b"
-                        : roleStyle.text.includes("blue")
-                            ? "#2563eb"
-                            : roleStyle.text.includes("purple")
-                                ? "#8b5cf6"
-                                : roleStyle.text.includes("emerald")
-                                    ? "#10b981"
-                                    : "#64748b"
-                    }
-                />
+                <div className="mt-1">
+                    <KPISparklineECharts
+                        values={device.sparkline}
+                        color={roleStyle.chart}
+                    />
+                </div>
             )}
 
             {missing && (

@@ -1,18 +1,55 @@
-import { useFunnel } from "../../hooks/useFunnel"
-import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts"
+import { useMemo } from "react";
+import ReactECharts from "echarts-for-react";
+import { useFunnel } from "../../hooks/useFunnel";
 
 export function FunnelChart() {
-    const { data, isLoading } = useFunnel()
+    const { data, isLoading } = useFunnel();
 
-    if (isLoading) return <div>Loading...</div>
+    const option = useMemo(() => ({
+        tooltip: {
+            trigger: "axis",
+        },
+
+        grid: {
+            top: 20,
+            left: 40,
+            right: 20,
+            bottom: 40,
+        },
+
+        xAxis: {
+            type: "category",
+            data: (data || []).map(item => item.label),
+        },
+
+        yAxis: {
+            type: "value",
+        },
+
+        series: [
+            {
+                type: "bar",
+                data: (data || []).map(item => item.count),
+                itemStyle: {
+                    color: "#8884d8",
+                },
+            },
+        ],
+    }), [data]);
+
+    if (isLoading) {
+        return <div>Loading...</div>;
+    }
 
     return (
-        <BarChart width={500} height={300} data={data}>
-            <XAxis dataKey="label" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="count" fill="#8884d8" />
-        </BarChart>
-    )
+        <ReactECharts
+            option={option}
+            style={{
+                width: "500px",
+                height: "300px",
+            }}
+        />
+    );
 }
+
 

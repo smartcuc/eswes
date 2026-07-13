@@ -2,7 +2,7 @@
 # src/components/device/DeviceChartModal.jsx
 */
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 
@@ -67,6 +67,7 @@ function getDeviceStyle(device) {
 function DeviceChartModal({ device, onClose }) {
     const [range, setRange] = useState("24h");
     const [live, setLive] = useState(false);
+    const [isZoomed, setIsZoomed] = useState(false);
     const chartRef = useRef(null);
     const deviceStyle = getDeviceStyle(device);
     const mainColor = deviceStyle.color;
@@ -111,6 +112,30 @@ function DeviceChartModal({ device, onClose }) {
         ? chartData.seriesData[chartData.seriesData.length - 1]
         : null;
 
+    const stats = useMemo(() => {
+
+        const values = chartData.seriesData;
+
+        if (!values.length) {
+            return null;
+        }
+
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+
+        const avg =
+            values.reduce((a, b) => a + b, 0) /
+            values.length;
+
+        return {
+            min,
+            max,
+            avg,
+            current: values[values.length - 1],
+        };
+
+    }, [chartData]);
+
     /* ✅ NATIVES RESET */
     const handleResetZoom = () => {
         if (chartRef.current) {
@@ -124,6 +149,28 @@ function DeviceChartModal({ device, onClose }) {
         }
     };
 
+    const handleDataZoom = useCallback((event) => {
+
+        const start =
+            event.batch?.[0]?.start ??
+            event.start ??
+            0;
+
+        const end =
+            event.batch?.[0]?.end ??
+            event.end ??
+            100;
+
+        setIsZoomed(
+            start > 0 || end < 100
+        );
+
+    }, []);
+
+    const onEvents = useMemo(() => ({
+        datazoom: handleDataZoom,
+    }), [handleDataZoom]);
+
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
     const option = useMemo(() => {
         return {
@@ -132,7 +179,13 @@ function DeviceChartModal({ device, onClose }) {
                 trigger: 'axis',
                 formatter: function (params) {
                     const p = params[0];
-                    return `${p.name}<br/><span style="color:#6366f1;font-weight:bold;">${Number(p.value).toFixed(2)} ${unit}</span>`;
+
+                    return `
+                        ${p.name}<br/>
+                        <span style="color:${mainColor};font-weight:bold;">
+                            ${Number(p.value).toFixed(2)} ${unit}
+                        </span>
+                    `;
                 },
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 borderColor: '#e2e8f0',
@@ -195,15 +248,22 @@ function DeviceChartModal({ device, onClose }) {
                     // Hübscher Farbverlauf unter der Linie
                     areaStyle: {
                         color: {
-                            type: 'linear',
-                            x: 0, y: 0, x2: 0, y2: 1,
+                            type: "linear",
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
                             colorStops: [
-                                //  { offset: 0, color: 'rgba(99, 102, 241, 0.2)' },
-                                //  { offset: 1, color: 'rgba(99, 102, 241, 0.0)' }
-                                { offset: 0, color: 'rgba(14, 165, 233, 0.15)' }, // Sanfter Verlauf
-                                { offset: 1, color: 'rgba(14, 165, 233, 0.0)' }
-                            ]
-                        }
+                                {
+                                    offset: 0,
+                                    color: `${mainColor}33`,
+                                },
+                                {
+                                    offset: 1,
+                                    color: `${mainColor}00`,
+                                },
+                            ],
+                        },
                     },
                     // 📈 Automatische Min/Max Punkte im Chart markieren
                     markPoint: null,
@@ -288,6 +348,7 @@ function DeviceChartModal({ device, onClose }) {
                 className="bg-white rounded-2xl shadow-xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
+
                 {/* HEADER */}
                 <div
                     className="p-4 border-b"
@@ -305,69 +366,209 @@ function DeviceChartModal({ device, onClose }) {
                             <h3 className="font-semibold text-lg text-gray-900">{deviceStyle.icon} {device.display_name}</h3>
                             <div className="text-xs text-gray-500">{device.identifier}</div>
 
-                            {currentPointValue !== null && (
+                            {/*                             {currentPointValue !== null && (
                                 <div
                                     className="text-sm font-medium mt-1"
                                     style={{ color: mainColor }}
                                 >
                                     Aktuell: {currentPointValue.toFixed(2)} {unit}
                                 </div>
-                            )}
+                            )} */}
 
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <select
-                                value={range}
-                                onChange={(e) => {
-                                    setRange(e.target.value);
-                                    setLive(false);
-                                }}
-                                className="border rounded px-2 py-1 text-sm bg-white"
-                            >
-                                <option value="1h">1h</option>
-                                <option value="6h">6h</option>
-                                <option value="24h">24h</option>
-                                <option value="7d">7d</option>
-                            </select>
 
-                            <button
-                                onClick={() => setLive(v => !v)}
-                                className={`px-3 py-1 text-sm rounded font-medium transition-colors ${live ? "bg-green-500 text-white" : "bg-gray-200 text-gray-700"
-                                    }`}
-                            >
-                                ● LIVE
-                            </button>
+                            {range === "1h" && (
+                                <button
+                                    onClick={() => setLive(v => !v)}
+                                    className={`
+                                        px-3 py-1
+                                        text-sm
+                                        rounded-lg
+                                        font-medium
+                                        transition-colors
+                                        flex items-center gap-2
+                                        ${live
+                                            ? "bg-green-500 text-white"
+                                            : "bg-gray-100 text-gray-700"
+                                        }
+                                    `}
+                                >
+                                    <span
+                                        className={`
+                                            inline-block
+                                            w-2
+                                            h-2
+                                            rounded-full
+                                            ${live
+                                                ? "bg-white animate-pulse"
+                                                : "bg-gray-400"
+                                            }
+                `}
+                                    />
 
-                            <button
-                                onClick={handleResetZoom}
-                                className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-600"
-                            >
-                                Reset
-                            </button>
+                                    Live
+                                </button>
+                            )}
+
+                            <div className="flex rounded-lg overflow-hidden border shadow-sm bg-white">
+
+                                {["1h", "6h", "24h", "5d"].map(period => (
+
+                                    <button
+                                        key={period}
+                                        onClick={() => {
+                                            setRange(period);
+
+                                            if (period !== "1h") {
+                                                setLive(false);
+                                            }
+                                        }}
+                                        className={`
+                                            px-3 py-1
+                                            text-sm
+                                            font-medium
+                                            transition-colors
+                                            ${range === period
+                                                ? "text-white"
+                                                : "text-gray-500 hover:bg-gray-50"
+                                            }
+                                      `}
+                                        style={
+                                            range === period
+                                                ? { backgroundColor: mainColor }
+                                                : undefined
+                                        }
+                                    >
+                                        {period}
+                                    </button>
+
+                                ))}
+
+                            </div>
+
+                            {["CSV", "XLSX", "PDF"].map(label => (
+                                <button
+                                    key={label}
+                                    disabled
+                                    className="
+                                        px-3
+                                        py-1
+                                        text-sm
+                                        rounded-lg
+                                        text-white
+                                        shadow-sm
+                                        font-medium
+                                        opacity-60
+                                        cursor-not-allowed
+                                    "
+                                    style={{ backgroundColor: mainColor }}
+                                    title="Kommt später 😉"
+                                >
+                                    {label}
+                                </button>
+                            ))}
+
+                            {isZoomed && (
+                                <button
+                                    onClick={handleResetZoom}
+                                    className="
+                                        px-3
+                                        py-1
+                                        text-sm
+                                        bg-gray-100
+                                        hover:bg-gray-200
+                                        rounded-lg
+                                        text-gray-600
+                                        font-medium
+                                        transition-colors
+                                    "
+                                >
+                                    Reset
+                                </button>
+                            )}
 
                             <button
                                 onClick={onClose}
-                                className="text-gray-400 hover:text-gray-600 text-lg p-1"
+                                className="
+                                    text-gray-400
+                                    hover:text-gray-600
+                                    text-lg
+                                    p-1
+                                    transition-colors
+                                "
                             >
                                 ✕
                             </button>
+
                         </div>
                     </div>
+
+                    {stats && (
+                        <div className="mt-4 flex justify-center">
+                            <div className="grid grid-cols-4 gap-3 w-1/2 min-w-[500px]">
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Aktuell
+                                    </div>
+                                    <div
+                                        className="font-semibold"
+                                        style={{ color: mainColor }}
+                                    >
+                                        {stats.current.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Minimum
+                                    </div>
+
+                                    <div className="font-semibold text-slate-600">
+                                        {stats.min.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Maximum
+                                    </div>
+
+                                    <div className="font-semibold text-orange-600">
+                                        {stats.max.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Durchschnitt
+                                    </div>
+
+                                    <div className="font-semibold text-gray-700">
+                                        {stats.avg.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
+                {/* </div> */}
 
                 {/* CHART CONTAINER */}
                 <div className="flex-1 p-4 relative min-h-0">
                     <ReactECharts
                         ref={chartRef}
                         option={option}
+                        onEvents={onEvents}
                         style={{ width: "100%", height: "100%" }}
-                        notMerge={true} // Verhindert Daten-Reste beim Range-Wechsel
+                        notMerge={true}
                         lazyUpdate={true}
                     />
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 
