@@ -3,6 +3,7 @@
 */
 
 import { useState } from "react";
+import { useSettings } from "../../hooks/useSettings";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
 import TimezoneAlertBanner from "../../components/dashboard/TimezoneAlertBanner";
@@ -29,12 +30,11 @@ export default function DashboardUser() {
     const queryClient = useQueryClient();
     const [openSetup, setOpenSetup] = useState(false);
 
-    const profileQuery = useQuery({
-        queryKey: ["me"],
-        queryFn: () => apiFetch("/api/users/me/"),
-    });
-
     const [openUserSettings, setOpenUserSettings] = useState(false);
+
+    const {
+        settings: userSettings,
+    } = useSettings();
 
     const {
         value: settings,
@@ -62,7 +62,6 @@ export default function DashboardUser() {
 
     const kpis = energyQuery.data?.kpis || {};
     const charts = energyQuery.data?.charts || {};
-    //const [activeSystemChart, setActiveSystemChart] = useState(null);
 
     return (
         <DashboardLayout>
@@ -82,10 +81,21 @@ export default function DashboardUser() {
             <div className="p-6">
 
                 <TimezoneAlertBanner
-                    timezone={profileQuery.data?.timezone}
-                    onAccept={(timezone) => {
-                        console.log("Timezone übernehmen:", timezone);
+                    timezone={userSettings?.timezone}
+                    onAccept={async (timezone) => {
+
+                        await apiFetch("/api/timezone/", {
+                            method: "POST",
+                            body: JSON.stringify({
+                                timezone,
+                            }),
+                        });
+
+                        await queryClient.invalidateQueries({
+                            queryKey: ["settings"],
+                        });
                     }}
+
                     onSettings={() => {
                         console.log("Settings öffnen");
                     }}

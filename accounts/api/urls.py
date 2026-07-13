@@ -6,7 +6,7 @@ from django.urls import path
 from .views import UserSettingsView, UpdateOnboardingStepView
 from .views import UserProfileView
 from .views import UserUsageModeView
-from .views import UserLanguageView
+from .views import UserLanguageView, UserTimezoneView
 from .views import UseInviteView
 from .views import CreateInviteView
 from .views import MyTenantView
@@ -81,5 +81,6 @@ urlpatterns += [
     path("auth/me/", MeView.as_view()),
 ]
 
-
-
+urlpatterns += [
+    path("timezone/", UserTimezoneView.as_view()),
+]
