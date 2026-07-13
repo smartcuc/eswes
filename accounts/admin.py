@@ -10,11 +10,6 @@ from django.db.models import Count
 
 from accounts.models import MagicLoginToken
 
-### Helper ###
-@admin.display(description="Timezone gesetzt")
-def has_timezone(self, obj):
-    return bool(obj.timezone)
-
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
@@ -77,6 +72,11 @@ class UserSettingsAdmin(admin.ModelAdmin):
         "user__email",
         "user__username",
     )
+
+    ### Helper ###
+    @admin.display(description="Timezone gesetzt")
+    def has_timezone(self, obj):
+        return bool(obj.timezone)
 
 
 @admin.register(MagicLoginToken)

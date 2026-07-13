@@ -34,10 +34,10 @@ def get_today_consumption(user):
 
     if not grid_devices.exists():
 
-        logger.warning(
-            "No grid source configured for user %s",
-            user.id,
-        )
+        # logger.warning(
+        #     "No grid source configured for user %s",
+        #     user.id,
+        # )
 
         return None
 
