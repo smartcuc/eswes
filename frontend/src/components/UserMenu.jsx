@@ -94,13 +94,13 @@ export default function UserMenu() {
 
                     <div className="h-px bg-gray-100 my-2 mx-2" />
 
-                    {/* ✅ Settings */}
+                    {/* ✅ User Profile Settings */}
                     <Link
-                        to="/app/settings"
+                        to="/app/profile"
                         onClick={() => setOpen(false)}
                         className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
                     >
-                        ⚙️ Einstellungen
+                        👤 Profil
                     </Link>
 
                     {/* ✅ Logout */}

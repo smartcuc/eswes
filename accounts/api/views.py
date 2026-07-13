@@ -166,6 +166,15 @@ class UserTimezoneView(APIView):
         )
 
 
+class TimezoneListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        return Response(sorted(list(available_timezones())))
+
+
+
 # ---------------- TENANT / INVITES ---------------- #
 
 class UseInviteView(APIView):

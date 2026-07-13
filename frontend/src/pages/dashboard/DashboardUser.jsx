@@ -3,6 +3,7 @@
 */
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSettings } from "../../hooks/useSettings";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
@@ -30,7 +31,7 @@ export default function DashboardUser() {
     const queryClient = useQueryClient();
     const [openSetup, setOpenSetup] = useState(false);
 
-    const [openUserSettings, setOpenUserSettings] = useState(false);
+    const navigate = useNavigate();
 
     const {
         settings: userSettings,
@@ -97,7 +98,7 @@ export default function DashboardUser() {
                     }}
 
                     onSettings={() => {
-                        console.log("Settings öffnen");
+                        navigate("/app/profile");
                     }}
                 />
 
@@ -288,16 +289,16 @@ export default function DashboardUser() {
                                 }}
 
                                 className={`
-                    px-2.5 py-1
-                    rounded-full
-                    text-xs
-                    border
-                    flex items-center gap-1
-                    transition
-                    ${showFloors
+                                        px-2.5 py-1
+                                        rounded-full
+                                        text-xs
+                                        border
+                                        flex items-center gap-1
+                                        transition
+                                        ${showFloors
                                         ? "bg-indigo-600 text-white border-indigo-600"
                                         : "bg-white hover:bg-gray-50 border-gray-200"}
-                `}
+                                `}
                             >
                                 🏢 Etagen
                             </button>

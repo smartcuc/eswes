@@ -4,6 +4,7 @@
 
 import { useUser } from "../hooks/useUser";
 import AppTopbar from "../components/layout/Topbar";
+import Profile from "../pages/Profile";
 import Sidebar from "../components/layout/Sidebar";
 
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -48,6 +49,8 @@ export default function AppShell() {
                         <Route index element={<Navigate to="/app/dashboard" replace />} />
 
                         <Route path="dashboard" element={<Dashboard user={user} />} />
+                        <Route path="profile" element={<Profile />} />
+
                         <Route path="overview" element={<OverviewPage />} />
                         <Route path="energy" element={<EnergyDashboard />} />
                         <Route path="settings" element={<Settings />} />
