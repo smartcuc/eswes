@@ -6,6 +6,8 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model, login, logout
 
+from zoneinfo import available_timezones
+
 from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import redirect
@@ -130,6 +132,38 @@ class UserLanguageView(APIView):
         settings_obj.save()
 
         return Response({"status": "saved"})
+
+
+class UserTimezoneView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        timezone_value = request.data.get("timezone")
+
+        if not timezone_value:
+            return Response(
+                {"error": "timezone required"},
+                status=400,
+            )
+
+        if timezone_value not in available_timezones():
+            return Response(
+                {"error": "invalid timezone"},
+                status=400,
+            )
+
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+
+        settings_obj.timezone = timezone_value
+        settings_obj.save()
+
+        return Response(
+            {
+                "status": "saved",
+                "timezone": timezone_value,
+            }
+        )
 
 
 # ---------------- TENANT / INVITES ---------------- #
