@@ -2,7 +2,6 @@
 # accounts/admin.py
 ####################
 
-
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from .models import User, UserProfile, UserSettings
@@ -10,6 +9,11 @@ from django.db import models
 from django.db.models import Count
 
 from accounts.models import MagicLoginToken
+
+### Helper ###
+@admin.display(description="Timezone gesetzt")
+def has_timezone(self, obj):
+    return bool(obj.timezone)
 
 
 @admin.register(User)
@@ -50,8 +54,29 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(UserSettings)
 class UserSettingsAdmin(admin.ModelAdmin):
-    list_display = ("user", "dashboard_mode", "usage_mode", "created_at")
-    list_filter = ("dashboard_mode", "usage_mode")
+
+    list_display = (
+        "user",
+        "has_timezone",
+        "timezone",
+        "language",
+        "dashboard_mode",
+        "usage_mode",
+        "onboarding_step",
+        "created_at",
+    )
+
+    list_filter = (
+        "language",
+        "usage_mode",
+        "dashboard_mode",
+        "onboarding_step",
+    )
+
+    search_fields = (
+        "user__email",
+        "user__username",
+    )
 
 
 @admin.register(MagicLoginToken)
@@ -71,4 +96,3 @@ class MagicLoginTokenAdmin(admin.ModelAdmin):
         }
 
         return super().changelist_view(request, extra_context=extra_context)
-    
