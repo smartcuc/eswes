@@ -5,6 +5,7 @@
 import { useState } from "react";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import UnconfiguredDevicesBanner from "../../components/dashboard/UnconfiguredDevicesBanner";
+import TimezoneAlertBanner from "../../components/dashboard/TimezoneAlertBanner";
 import DeviceSetupModal from "../../components/device/DeviceSetupModal";
 import EnergyChartModal from "../../features/energy/components/EnergyChartModal";
 import KPI from "../../components/ui/KPI";
@@ -27,6 +28,13 @@ export default function DashboardUser() {
 
     const queryClient = useQueryClient();
     const [openSetup, setOpenSetup] = useState(false);
+
+    const profileQuery = useQuery({
+        queryKey: ["me"],
+        queryFn: () => apiFetch("/api/users/me/"),
+    });
+
+    const [openUserSettings, setOpenUserSettings] = useState(false);
 
     const {
         value: settings,
@@ -71,7 +79,19 @@ export default function DashboardUser() {
                 />
 
             </div>
+            <div className="p-6">
 
+                <TimezoneAlertBanner
+                    timezone={profileQuery.data?.timezone}
+                    onAccept={(timezone) => {
+                        console.log("Timezone übernehmen:", timezone);
+                    }}
+                    onSettings={() => {
+                        console.log("Settings öffnen");
+                    }}
+                />
+
+            </div>
             <div className="mb-6">
                 <h1 className="text-3xl font-bold tracking-tight text-gray-900">
                     Deine Energiezentrale ⚡
@@ -102,7 +122,14 @@ export default function DashboardUser() {
 
                     <KPI
                         label="Bedarf"
-                        value={kpis.load ?? "--"}
+                        value={
+                            kpis.load != null
+                                ? kpis.load.toLocaleString("de-DE", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })
+                                : "--"
+                        }
                         unit="W"
                         icon="⚡"
                         chart={
@@ -128,7 +155,14 @@ export default function DashboardUser() {
 
                     <KPI
                         label="Erzeugung"
-                        value={kpis.pv ?? "--"}
+                        value={
+                            kpis.pv != null
+                                ? kpis.pv.toLocaleString("de-DE", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })
+                                : "--"
+                        }
                         unit="W"
                         icon="☀️"
                         chart={
@@ -159,7 +193,14 @@ export default function DashboardUser() {
                                 ? "Bezug"
                                 : "Einspeisung"
                         }
-                        value={kpis.grid ?? "--"}
+                        value={
+                            kpis.grid != null
+                                ? kpis.grid.toLocaleString("de-DE", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })
+                                : "--"
+                        }
                         unit="W"
                         icon="🔌"
                         chart={

@@ -8,6 +8,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from zoneinfo import available_timezones
 
 class User(AbstractUser):
     """
@@ -71,11 +72,17 @@ class UserSettings(models.Model):
     """
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="settings")
-   
+
     # --- Dashboard ---
-    DASHBOARD_MODE = [("simple", "Simple"), ("advanced", "Advanced")]
+    DASHBOARD_MODE = [
+        ("simple", "Simple"),
+        ("advanced", "Advanced"),
+    ]
+
     dashboard_mode = models.CharField(
-        max_length=20, choices=DASHBOARD_MODE, default="simple"
+        max_length=20,
+        choices=DASHBOARD_MODE,
+        default="simple",
     )
 
     USAGE_MODE = [
@@ -83,8 +90,26 @@ class UserSettings(models.Model):
         ("tenant", "Tenant"),
         ("hybrid", "Hybrid"),
     ]
+
     usage_mode = models.CharField(
-        max_length=20, choices=USAGE_MODE, default="standalone"
+        max_length=20,
+        choices=USAGE_MODE,
+        default="standalone",
+    )
+
+    # --- Benutzer ---
+    language = models.CharField(
+        max_length=10,
+        default="de",
+    )
+
+    TIMEZONE_CHOICES = sorted([(tz, tz) for tz in available_timezones()])
+
+    timezone = models.CharField(
+        max_length=64,
+        choices=TIMEZONE_CHOICES,
+        blank=True,
+        default="",
     )
 
     # --- Onboarding ---
@@ -102,8 +127,6 @@ class UserSettings(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    
-    # ✅ HELPER Onboarding
     @property
     def is_onboarding_done(self):
         return self.onboarding_step == "done"
@@ -166,7 +189,7 @@ class TenantInvite(models.Model):
 
     def __str__(self):
         return f"{self.tenant} invite ({self.role})"
-    
+
 class AuditLog(models.Model):
 
     ACTION_CHOICES = [
@@ -203,7 +226,7 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.action} by {self.user} in {self.tenant}"
-    
+
 
 class MagicLoginToken(models.Model):
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -226,4 +249,3 @@ class MagicLoginToken(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.token}"
-

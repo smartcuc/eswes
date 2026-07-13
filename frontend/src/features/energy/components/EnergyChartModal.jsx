@@ -46,6 +46,29 @@ export default function EnergyChartModal({
         ? seriesData[seriesData.length - 1]
         : null;
 
+    const stats = useMemo(() => {
+
+        if (!seriesData.length) {
+            return null;
+        }
+
+        const min = Math.min(...seriesData);
+        const max = Math.max(...seriesData);
+
+        const avg =
+            seriesData.reduce((a, b) => a + b, 0) /
+            seriesData.length;
+
+        return {
+            current: seriesData[seriesData.length - 1],
+            min,
+            max,
+            avg,
+        };
+
+    }, [seriesData]);
+
+
     /* ✅ ZOOM CONTROLS */
     const handleResetZoom = () => {
         if (chartRef.current) {
@@ -210,11 +233,7 @@ export default function EnergyChartModal({
                             <h3 className="font-semibold text-lg" style={{ color }}>
                                 {displayName} ⚡
                             </h3>
-                            {currentPointValue !== null && (
-                                <div className="text-sm font-medium mt-1" style={{ color }}>
-                                    Aktueller Live-Wert: {currentPointValue.toFixed(2)} {unit}
-                                </div>
-                            )}
+
                         </div>
 
                         {/* RECHTS */}
@@ -274,6 +293,60 @@ export default function EnergyChartModal({
                             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg p-1 transition-colors">✕</button>
                         </div>
                     </div>
+
+                    {stats && (
+                        <div className="mt-4 flex justify-center">
+
+                            <div className="grid grid-cols-4 gap-3 w-1/2 min-w-[500px]">
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Aktuell
+                                    </div>
+
+                                    <div
+                                        className="font-semibold"
+                                        style={{ color }}
+                                    >
+                                        {stats.current.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Minimum
+                                    </div>
+
+                                    <div className="font-semibold text-slate-600">
+                                        {stats.min.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Maximum
+                                    </div>
+
+                                    <div className="font-semibold text-orange-600">
+                                        {stats.max.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-2">
+                                    <div className="text-xs text-gray-500">
+                                        Durchschnitt
+                                    </div>
+
+                                    <div className="font-semibold text-gray-700">
+                                        {stats.avg.toFixed(2)} {unit}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    )}
+
                 </div>
 
                 {/* CHART CONTAINER */}
