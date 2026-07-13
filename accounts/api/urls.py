@@ -15,6 +15,7 @@ from .views import RemoveMemberView
 from .views import DeactivateInviteView
 from .views import RequestMagicLinkView, MagicLoginView, MagicLinkStatsView, LiveLoginsView, TenantStatsView
 from .views import DashboardStatsView
+from .views import DemoLoginView
 ##from .views import TrackEventView
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -85,3 +86,7 @@ urlpatterns += [
     path("timezone/", UserTimezoneView.as_view()),
     path("timezones/", TimezoneListView.as_view()),
 ]
+
+path(
+    "demo/", DemoLoginView.as_view(), name="demo-login",
+),

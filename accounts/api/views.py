@@ -33,6 +33,10 @@ from accounts.models import (
 from accounts.services.email_service import send_magic_link_email
 from django.db.models import Count, Q
 
+from django.contrib.auth import login
+from django.views import View
+from accounts.models import User
+
 
 User = get_user_model()
 
@@ -172,7 +176,6 @@ class TimezoneListView(APIView):
     def get(self, request):
 
         return Response(sorted(list(available_timezones())))
-
 
 
 # ---------------- TENANT / INVITES ---------------- #
@@ -586,3 +589,19 @@ class DashboardStatsView(APIView):
             },
             "live_logins": live_logins
         })
+
+
+# ---------------- DEMO SYSTEM ---------------- #
+class DemoLoginView(View):
+
+    def get(self, request):
+
+        demo_user = User.objects.get(email="demo@sharegy.de")
+
+        login(
+            request,
+            demo_user,
+            backend="django.contrib.auth.backends.ModelBackend",
+        )
+
+        return redirect("/app/dashboard")
