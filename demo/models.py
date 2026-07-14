@@ -38,3 +38,15 @@ class DemoDeviceMap(models.Model):
             f"{self.demo_device_id}"
         )
 
+
+class DemoDeviceSimulation(models.Model):
+
+    device = models.OneToOneField(
+        Device,
+        on_delete=models.CASCADE,
+    )
+
+    hidden_until = models.DateTimeField(
+        null=True,
+        blank=True,
+    )

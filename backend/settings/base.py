@@ -265,84 +265,85 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.tasks.compute_balance_last_24h",
         "schedule": 300.0,
     },
-
     "allocate-user-balance": {
         "task": "billing.tasks.allocate_user_balance_last_24h",
         "schedule": 60.0,
     },
-
     # ✅ DB Aggregation triggern
     "rollup-15min": {
         "task": "core.tasks.rollup_15min",
         "schedule": 60.0,
     },
-
     # ✅ Balance berechnen (dirty slots)
     "process-dirty-balance": {
         "task": "core.tasks.process_dirty_balance",
         "schedule": 60.0,
     },
-
     # ✅ Tibber Daten holen
     "tibber-sync": {
         "task": "integrations.tasks.sync_tibber",
         "schedule": 1800.0,
     },
-
     # ✅ Strompreise (separat ok)
     "fetch-spot-prices-daily": {
         "task": "market.tasks.fetch_spot_prices_retry",
         "schedule": crontab(hour=13, minute=1),
     },
-    
     # ✅ MagicLogin CleanUp
     "cleanup_tokens": {
-            "task": "accounts.tasks.cleanup_tokens",
-            "schedule": crontab(hour=3, minute=0),
-        },
-
+        "task": "accounts.tasks.cleanup_tokens",
+        "schedule": crontab(hour=3, minute=0),
+    },
     # ✅ MQTT Buffer
     "flush-mqtt-buffer": {
-            "task": "integrations.tasks.flush_mqtt_buffer",
-            "schedule": 5.0,  # alle 5 Sekunden
-        },
-
+        "task": "integrations.tasks.flush_mqtt_buffer",
+        "schedule": 5.0,  # alle 5 Sekunden
+    },
     # ✅ 1m Aggregation
     "aggregate-1m": {
         "task": "devices.tasks.run_1m_aggregation",
         "schedule": 60.0,
     },
-
     # ✅ 5m Aggregation
     "aggregate-5m": {
         "task": "devices.tasks.run_5m_aggregation",
         "schedule": 300.0,
     },
-
     # ✅ 15m Aggregation
     "aggregate-15m": {
         "task": "devices.tasks.run_15m_aggregation",
         "schedule": 900.0,
     },
-
     # ✅ 1h Aggregation
     "aggregate-1h": {
         "task": "devices.tasks.run_1h_aggregation",
         "schedule": 3600.0,
     },
-
     # ✅ Device purge
     "purge-pending-devices": {
-            "task": "devices.tasks.purge_pending_devices",
-            "schedule": crontab(hour="*/6"),
-        },
-
+        "task": "devices.tasks.purge_pending_devices",
+        "schedule": crontab(hour="*/6"),
+    },
     # ✅ Sync Demo Live Metrics
     "sync-demo-metrics": {
         "task": "demo.tasks.sync_demo_metrics",
         "schedule": 5.0,
-      }
-
+    },
+    # ✅ Sync Demo Device Metric cleanup
+    "demo-cleanup": {
+        "task": "demo.tasks.cleanup_demo",
+        "schedule": 86400.0,
+    },
+    # ✅ Sync Demo Device delete
+    "demo-device-sync": {
+        "task": "demo.tasks.sync_demo_devices",
+        "schedule": 86400.0,
+    },
+    # ✅ Sync Demo Device config
+    "demo-config-sync": {
+        "task": "demo.tasks.sync_demo_configs",
+        "schedule": 3600.0,
+    },
 }
 
 # =============================
