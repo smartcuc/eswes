@@ -337,11 +337,11 @@ CELERY_BEAT_SCHEDULE = {
             "schedule": crontab(hour="*/6"),
         },
 
-    # ✅ Sync Demo Live Metrics
-    "sync-demo-metrics": {
-        "task": "demo.tasks.sync_demo_metrics",
-        "schedule": 5.0,
-      }
+    # # ✅ Sync Demo Live Metrics
+    # "sync-demo-metrics": {
+    #     "task": "demo.tasks.sync_demo_metrics",
+    #     "schedule": 5.0,
+    #   }
 
 }
 
