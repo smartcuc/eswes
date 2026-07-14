@@ -87,6 +87,6 @@ urlpatterns += [
     path("timezones/", TimezoneListView.as_view()),
 ]
 
-path(
-    "demo/", DemoLoginView.as_view(), name="demo-login",
-),
+urlpatterns += [
+    path("demo/", DemoLoginView.as_view(), name="demo-login",),
+]
