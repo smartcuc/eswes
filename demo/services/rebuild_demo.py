@@ -97,5 +97,3 @@ def rebuild_demo_environment():
         "devices": demo_home.devices.count(),
         "home": demo_home.id,
     }
-
-

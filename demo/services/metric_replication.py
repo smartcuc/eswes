@@ -2,41 +2,43 @@
 # demo/services/metric_replication.py
 #####################################
 
-from django.contrib.auth import get_user_model
+import logging
 
-from devices.models import (
-    Device,
-    DeviceMetric,
-)
+from devices.models import DeviceMetric
+from demo.models import DemoDeviceMap
 
-User = get_user_model()
-
-MASTER_EMAIL = "ruediger.koenen@web.de"
-DEMO_EMAIL = "demo@sharegy.de"
+logger = logging.getLogger(__name__)
 
 
 def replicate_metric(metric):
+    """
+    Replicate a single metric from a master device
+    to its demo clone using DemoDeviceMap.
+    """
 
     try:
 
-        source_device = metric.device
+        mapping = DemoDeviceMap.objects.filter(source_device=metric.device).first()
 
-        demo_user = User.objects.get(email=DEMO_EMAIL)
+        if not mapping:
+            logger.warning(
+                "No demo mapping found for device %s",
+                metric.device_id,
+            )
+            return None
 
-        demo_home = demo_user.homes.first()
+        demo_device = mapping.demo_device
 
-        if not demo_home:
-            return
+        exists = DeviceMetric.objects.filter(
+            device=demo_device,
+            metric_key=metric.metric_key,
+            timestamp=metric.timestamp,
+        ).exists()
 
-        demo_device = Device.objects.filter(
-            home=demo_home,
-            identifier=source_device.identifier,
-        ).first()
+        if exists:
+            return None
 
-        if not demo_device:
-            return
-
-        DeviceMetric.objects.create(
+        return DeviceMetric.objects.create(
             device=demo_device,
             metric_key=metric.metric_key,
             unit=metric.unit,
@@ -46,4 +48,33 @@ def replicate_metric(metric):
         )
 
     except Exception:
-        pass
+        logger.exception(
+            "Metric replication failed for metric %s",
+            getattr(metric, "id", "unknown"),
+        )
+        return None
+
+
+def replicate_recent_metrics(limit=100):
+    """
+    Replicate the most recent metrics.
+    Useful for testing before introducing
+    a scheduler/celery task.
+    """
+
+    metrics = DeviceMetric.objects.select_related("device").order_by("-timestamp")[
+        :limit
+    ]
+
+    replicated = 0
+
+    for metric in metrics:
+        if replicate_metric(metric):
+            replicated += 1
+
+    logger.info(
+        "Replicated %s metrics",
+        replicated,
+    )
+
+    return replicated
