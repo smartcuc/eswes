@@ -88,52 +88,52 @@ def sync_new_metrics():
     """
     Replicate only new metrics since the last run.
     """
+    return None
+    # source_ids = list(
+    #     DemoDeviceMap.objects.values_list(
+    #         "source_device_id",
+    #         flat=True,
+    #     )
+    # )
 
-    source_ids = list(
-        DemoDeviceMap.objects.values_list(
-            "source_device_id",
-            flat=True,
-        )
-    )
+    # if not source_ids:
+    #     return 0
 
-    if not source_ids:
-        return 0
+    # last_metric_id = cache.get(
+    #     SYNC_CACHE_KEY,
+    #     0,
+    # )
 
-    last_metric_id = cache.get(
-        SYNC_CACHE_KEY,
-        0,
-    )
+    # metrics = (
+    #     DeviceMetric.objects.select_related("device")
+    #     .filter(
+    #         device_id__in=source_ids,
+    #         id__gt=last_metric_id,
+    #     )
+    #     .order_by("id")
+    # )
 
-    metrics = (
-        DeviceMetric.objects.select_related("device")
-        .filter(
-            device_id__in=source_ids,
-            id__gt=last_metric_id,
-        )
-        .order_by("id")
-    )
+    # replicated = 0
+    # highest_id = last_metric_id
 
-    replicated = 0
-    highest_id = last_metric_id
+    # for metric in metrics:
 
-    for metric in metrics:
+    #     if metric.id > highest_id:
+    #         highest_id = metric.id
 
-        if metric.id > highest_id:
-            highest_id = metric.id
+    #     if replicate_metric(metric):
+    #         replicated += 1
 
-        if replicate_metric(metric):
-            replicated += 1
+    # if highest_id > last_metric_id:
+    #     cache.set(
+    #         SYNC_CACHE_KEY,
+    #         highest_id,
+    #         None,
+    #     )
 
-    if highest_id > last_metric_id:
-        cache.set(
-            SYNC_CACHE_KEY,
-            highest_id,
-            None,
-        )
+    # logger.info(
+    #     "Replicated %s metrics",
+    #     replicated,
+    # )
 
-    logger.info(
-        "Replicated %s metrics",
-        replicated,
-    )
-
-    return replicated
+    # return replicated
