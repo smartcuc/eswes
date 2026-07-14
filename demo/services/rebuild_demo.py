@@ -98,3 +98,4 @@ def rebuild_demo_environment():
         "home": demo_home.id,
     }
 
+
