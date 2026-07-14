@@ -338,10 +338,10 @@ CELERY_BEAT_SCHEDULE = {
         },
 
     # ✅ Sync Demo Live Metrics
-    "sync-demo-metrics": {
-        "task": "demo.tasks.sync_demo_metrics",
-        "schedule": 5.0,
-      }
+    # "sync-demo-metrics": {
+    #     "task": "demo.tasks.sync_demo_metrics",
+    #     "schedule": 5.0,
+    #   }
 
 }
 
