@@ -2,6 +2,8 @@
 # demo/services/rebuild_demo.py
 ###############################
 
+from demo.models import DemoDeviceMap
+
 from django.contrib.auth import get_user_model
 
 from devices.models import (
@@ -63,6 +65,11 @@ def rebuild_demo_environment():
 
         device_map[device.id] = new_device
 
+        DemoDeviceMap.objects.create(
+            source_device=device,
+            demo_device=new_device,
+        )
+
         if hasattr(device, "config"):
 
             cfg = device.config
@@ -90,3 +97,4 @@ def rebuild_demo_environment():
         "devices": demo_home.devices.count(),
         "home": demo_home.id,
     }
+
