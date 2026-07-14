@@ -335,7 +335,7 @@ CELERY_BEAT_SCHEDULE = {
     "purge-pending-devices": {
             "task": "devices.tasks.purge_pending_devices",
             "schedule": crontab(hour="*/6"),
-        },
+        }
 
     # ✅ Sync Demo Live Metrics
     # "sync-demo-metrics": {
