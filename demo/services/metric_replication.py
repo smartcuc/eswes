@@ -84,56 +84,94 @@ def replicate_metric(metric):
 #     return replicated
 
 
+import logging
+from devices.models import DeviceMetric
+from demo.models import DemoDeviceMap
+from django.core.cache import cache
+
+SYNC_CACHE_KEY = "demo:last_metric_id"
+logger = logging.getLogger(__name__)
+
+
 def sync_new_metrics():
     """
-    Replicate only new metrics since the last run.
+    Repliziert neue Metriken blockweise (Bulk) ohne die DB oder den RAM zu blockieren.
     """
-    return None
-    # source_ids = list(
-    #     DemoDeviceMap.objects.values_list(
-    #         "source_device_id",
-    #         flat=True,
-    #     )
-    # )
+    # 1. Alle Mappings einmalig in den RAM laden
+    mappings = {
+        m.source_device_id: m.demo_device_id for m in DemoDeviceMap.objects.all()
+    }
 
-    # if not source_ids:
-    #     return 0
+    if not mappings:
+        logger.info("Keine Demo-Geräte-Mappings konfiguriert.")
+        return 0
 
-    # last_metric_id = cache.get(
-    #     SYNC_CACHE_KEY,
-    #     0,
-    # )
+    source_ids = list(mappings.keys())
+    last_metric_id = cache.get(SYNC_CACHE_KEY, 0)
 
-    # metrics = (
-    #     DeviceMetric.objects.select_related("device")
-    #     .filter(
-    #         device_id__in=source_ids,
-    #         id__gt=last_metric_id,
-    #     )
-    #     .order_by("id")
-    # )
+    # 2. Neue Metriken holen - Streng limitiert auf 2.000 Stück pro Durchlauf
+    new_metrics = list(
+        DeviceMetric.objects.filter(
+            device_id__in=source_ids, id__gt=last_metric_id
+        ).order_by("id")[:2000]
+    )
 
-    # replicated = 0
-    # highest_id = last_metric_id
+    if not new_metrics:
+        return 0
 
-    # for metric in metrics:
+    # ✅ KORREKTUR: Zeitstempel sicher aus dem ersten und letzten Element der Liste lesen
+    min_ts = new_metrics[0].timestamp
+    max_ts = new_metrics[-1].timestamp
+    demo_device_ids = list(mappings.values())
 
-    #     if metric.id > highest_id:
-    #         highest_id = metric.id
+    # 3. Existierende Einträge im Ziel-Zeitfenster ermitteln
+    existing_pairs = set(
+        DeviceMetric.objects.filter(
+            device_id__in=demo_device_ids, timestamp__gte=min_ts, timestamp__lte=max_ts
+        ).values_list("device_id", "metric_key", "timestamp")
+    )
 
-    #     if replicate_metric(metric):
-    #         replicated += 1
+    # 4. Daten im RAM aufbereiten
+    to_create = []
+    highest_id = last_metric_id
 
-    # if highest_id > last_metric_id:
-    #     cache.set(
-    #         SYNC_CACHE_KEY,
-    #         highest_id,
-    #         None,
-    #     )
+    for metric in new_metrics:
+        if metric.id > highest_id:
+            highest_id = metric.id
 
-    # logger.info(
-    #     "Replicated %s metrics",
-    #     replicated,
-    # )
+        demo_device_id = mappings.get(metric.device_id)
+        if not demo_device_id:
+            continue
 
-    # return replicated
+        # Dubletten-Check im Python-RAM (extrem schnell)
+        check_key = (demo_device_id, metric.metric_key, metric.timestamp)
+        if check_key in existing_pairs:
+            continue
+
+        to_create.append(
+            DeviceMetric(
+                device_id=demo_device_id,
+                metric_key=metric.metric_key,
+                unit=metric.unit,
+                value=metric.value,
+                data=metric.data,
+                timestamp=metric.timestamp,
+            )
+        )
+
+    # 5. Bulk-Insert
+    replicated = 0
+    if to_create:
+        DeviceMetric.objects.bulk_create(to_create, batch_size=1000)
+        replicated = len(to_create)
+
+    # Cache aktualisieren
+    if highest_id > last_metric_id:
+        cache.set(SYNC_CACHE_KEY, highest_id, None)
+
+    logger.info(
+        "Erfolgreich %s Metriken per Bulk repliziert. (Höchste ID: %s)",
+        replicated,
+        highest_id,
+    )
+    return replicated
