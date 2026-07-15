@@ -9,7 +9,7 @@ from demo.services.metric_replication import (
 )
 
 from demo.services.device_sync import (
-    sync_new_devices,
+    sync_devices,
 )
 
 from demo.services.device_config_sync import (
@@ -27,7 +27,7 @@ def sync_demo_metrics():
 
 @shared_task
 def sync_demo_devices():
-    return sync_new_devices()
+    return sync_devices()
 
 
 @shared_task
