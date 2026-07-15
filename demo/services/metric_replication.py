@@ -30,8 +30,7 @@ def sync_latest_metrics():
     for source_device_id, demo_device_id in mappings.items():
 
         latest_metric = (
-            DeviceMetric.objects
-            .filter(device_id=source_device_id)
+            DeviceMetric.objects.filter(device_id=source_device_id)
             .order_by("-timestamp")
             .first()
         )
@@ -39,20 +38,22 @@ def sync_latest_metrics():
         if not latest_metric:
             continue
 
-        DeviceMetric.objects.filter(
-            device_id=demo_device_id
-        ).delete()
-
-        DeviceMetric.objects.create(
+        if not DeviceMetric.objects.filter(
             device_id=demo_device_id,
             metric_key=latest_metric.metric_key,
-            unit=latest_metric.unit,
-            value=latest_metric.value,
-            data=latest_metric.data,
             timestamp=latest_metric.timestamp,
-        )
+        ).exists():
 
-        replicated += 1
+            DeviceMetric.objects.create(
+                device_id=demo_device_id,
+                metric_key=latest_metric.metric_key,
+                unit=latest_metric.unit,
+                value=latest_metric.value,
+                data=latest_metric.data,
+                timestamp=latest_metric.timestamp,
+            )
+
+            replicated += 1
 
     logger.info(
         "Synced latest metrics for %s devices",
