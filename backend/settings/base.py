@@ -259,6 +259,9 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_PUBLISH_RETRY = True
 CELERY_RESULT_EXTENDED = True
 
+CELERY_TIMEZONE = "Europe/Berlin"
+CELERY_ENABLE_UTC = True
+
 CELERY_BEAT_SCHEDULE = {
     # Balance regelmäßig nachziehen
     "compute-balance": {

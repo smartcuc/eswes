@@ -2,6 +2,7 @@
 # src/features/market/components/SpotPriceModal.jsx
 */
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import { apiFetch } from "../../../api/client";
@@ -12,6 +13,16 @@ export default function SpotPriceModal({
 }) {
 
     const [range, setRange] = useState("2d");
+
+
+    /* ✅ ESC schließen */
+    useEffect(() => {
+        function handleKey(e) {
+            if (e.key === "Escape") onClose();
+        }
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
+    }, [onClose]);
 
     const { data } = useQuery({
         queryKey: ["spot-price-chart", range,],
