@@ -142,7 +142,15 @@ def spot_price_chart(request):
         for row in rows
     ]
 
-    current = prices[-1] if prices else None
+    current_price = get_current_spot_price(
+    timezone_name
+    )
+
+    current = (
+        current_price["price_ct"]
+        if current_price
+        else None
+    )
 
     min_price = (
         min(prices)
