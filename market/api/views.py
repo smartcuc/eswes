@@ -165,22 +165,28 @@ def spot_price_chart(request):
         else None
     )
 
-    return Response({
-        "range": range_type,
+    # Aktuelle Viertelstunde bestimmen
+    minute = (local_now.minute // 15) * 15
 
-        "count": rows.count(),
+    current_slot = local_now.replace(
+        minute=minute,
+        second=0,
+        microsecond=0,
+    )
 
-        "timestamps": [
-            row.timestamp
-            .astimezone(tz)
-            .strftime("%d.%m %H:%M")
-            for row in rows
-        ],
-
-        "values": prices,
-
-        "current": current,
-        "min": min_price,
-        "max": max_price,
-        "avg": avg_price,
-    })
+    return Response(
+        {
+            "range": range_type,
+            "count": rows.count(),
+            "now_label": current_slot.strftime("%d.%m %H:%M"),
+            "tomorrow_label": tomorrow_start.strftime("%d.%m %H:%M"),
+            "timestamps": [
+                row.timestamp.astimezone(tz).strftime("%d.%m %H:%M") for row in rows
+            ],
+            "values": prices,
+            "current": current,
+            "min": min_price,
+            "max": max_price,
+            "avg": avg_price,
+        }
+    )
