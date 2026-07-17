@@ -207,13 +207,6 @@ export default function EnergyChartModal({
     }), [handleDataZoom]);
 
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
-    console.log(xAxisData.length);
-    console.log(seriesData.length);
-
-    console.log(
-        xAxisData.slice(-5)
-    );
-
     const option = useMemo(() => {
         const mainColor = color;
 

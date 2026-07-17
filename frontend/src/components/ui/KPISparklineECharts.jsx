@@ -8,6 +8,7 @@ export default function KPISparklineECharts({
     values = [],
     color = "#2563eb",
     chartType = "line",
+    unit = "N/A",
 }) {
 
     const option = {
@@ -36,11 +37,6 @@ export default function KPISparklineECharts({
             {
                 data: values,
                 type: chartType,
-
-                // series: [
-                //     {
-                //         data: values,
-                //         type: "line",
 
                 smooth: chartType === "line",
 
@@ -87,8 +83,30 @@ export default function KPISparklineECharts({
         ],
 
         tooltip: {
-            show: false,
+            trigger: "axis",
+            backgroundColor: "rgba(255,255,255,0.96)",
+            borderColor: "#e5e7eb",
+            borderWidth: 1,
+
+            textStyle: {
+                color: color,
+            },
+
+            formatter: (params) => {
+                const p = params?.[0];
+
+                if (!p || p.value == null) {
+                    return "Keine Daten";
+                }
+
+                return `
+                    <div style="font-weight:600">
+                        ${Number(p.value).toFixed(2)} ${unit}
+                    </div>
+                `;
+            },
         },
+
     };
 
     return (

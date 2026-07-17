@@ -56,32 +56,34 @@ def home(request):
 urlpatterns = [
     path("", home),
     path("admin/", admin.site.urls),
-
     # ✅ GLOBAL TRACKING ROUTES
     path("t/<uuid:token>/", track_magic_click),
     path("email/open/<uuid:token>/", track_open),
     path("email/open/<uuid:token>/", track_email_open),
-
     # ✅ API zentrales include
-    path("api/", include([
-        path("", include("accounts.api.urls")),
-        path("", include("integrations.urls")),
-        path("", include("content.urls_public")),
-        path("energy/", include("energy.api.urls")),
-        path("forecast/", include("forecast.urls")),
-        path("devices/", include("devices.urls")),
-        path("devices/", include("devices.api.urls")),
-        path("user-settings/", include("user_settings.api.urls")),
-        path("api/public/", include("forecast.urls_public")),
-    ])),
-  
+    path(
+        "api/",
+        include(
+            [
+                path("", include("accounts.api.urls")),
+                path("", include("integrations.urls")),
+                path("", include("content.urls_public")),
+                path("energy/", include("energy.api.urls")),
+                path("forecast/", include("forecast.urls")),
+                path("devices/", include("devices.urls")),
+                path("devices/", include("devices.api.urls")),
+                path("market/", include("market.api.urls")),
+                path("user-settings/", include("user_settings.api.urls")),
+                path("api/public/", include("forecast.urls_public")),
+            ]
+        ),
+    ),
     # ✅ Generic / legacy
     path("api/", include("integrations.urls")),
     path("api/", include("accounts.api.urls")),
     path("api/", include("content.urls_public")),
-  #  path("api/devices/", include("devices.urls")),
+    #  path("api/devices/", include("devices.urls")),
     path("api/", include(router.urls)),
-
     path("public/billing/", include("billing.api.urls_public")),
     path("api/v1/", include("integrations.api_urls")),
     path("api/consumption/", consumption_view),

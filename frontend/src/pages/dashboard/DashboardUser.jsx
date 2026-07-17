@@ -148,6 +148,7 @@ export default function DashboardUser() {
                             <KPISparklineECharts
                                 color="#2563eb"
                                 values={charts.load || []}
+                                unit="W"
                             />
                         }
                     />
@@ -182,6 +183,7 @@ export default function DashboardUser() {
                             <KPISparklineECharts
                                 color="#f59e0b"
                                 values={charts.pv || []}
+                                unit="W"
                             />
                         }
                     />
@@ -221,6 +223,7 @@ export default function DashboardUser() {
                             <KPISparklineECharts
                                 color="#10b981"
                                 values={charts.grid || []}
+                                unit="W"
                             />
 
                         }
@@ -255,6 +258,7 @@ export default function DashboardUser() {
                                 color="#8b5cf6"
                                 values={charts.today || []}
                                 chartType="bar"
+                                unit="kWh"
                             />
                         }
                     />
