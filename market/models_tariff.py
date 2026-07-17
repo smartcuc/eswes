@@ -49,7 +49,17 @@ class HomeTariff(models.Model):
     )
 
     class Meta:
+
         ordering = ["-valid_from"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "home",
+                    "valid_from",
+                ],
+                name="unique_home_tariff_date",
+            ),
+        ]
 
     def __str__(self):
 

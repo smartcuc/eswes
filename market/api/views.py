@@ -13,6 +13,7 @@ from rest_framework.response import Response
 
 from market.models import SpotPrice
 from market.services import get_current_spot_price
+from market.services_tariff import calculate_effective_price
 
 
 @api_view(["GET"])
@@ -137,39 +138,57 @@ def spot_price_chart(request):
     prices = [
         round(
             float(row.price_eur_per_kwh) * 100,
-            3,
+            2,
         )
         for row in rows
     ]
+
+    effective_prices = []
+
+    for row in rows:
+
+        spot_ct = round(
+            float(row.price_eur_per_kwh) * 100,
+            2,
+        )
+
+        effective_price = calculate_effective_price(
+            home=home,
+            timestamp=row.timestamp,
+            spot_price_ct=spot_ct,
+        )
+
+        effective_prices.append(effective_price)
 
     current_price = get_current_spot_price(
     timezone_name
     )
 
-    current = (
-        current_price["price_ct"]
-        if current_price
-        else None
-    )
+    # current = (
+    #     current_price["price_ct"]
+    #     if current_price
+    #     else None
+    # )
 
     min_price = (
-        min(prices)
-        if prices
-        else None
+    min(effective_prices)
+    if effective_prices
+    else None
     )
 
     max_price = (
-        max(prices)
-        if prices
+        max(effective_prices)
+        if effective_prices
         else None
     )
 
     avg_price = (
         round(
-            sum(prices) / len(prices),
+            sum(effective_prices)
+            / len(effective_prices),
             2,
         )
-        if prices
+        if effective_prices
         else None
     )
 
@@ -182,6 +201,16 @@ def spot_price_chart(request):
         microsecond=0,
     )
 
+    current_effective = None
+
+    if current_price:
+
+        current_effective = calculate_effective_price(
+            home=home,
+            timestamp=timezone.now(),
+            spot_price_ct=current_price["price_ct"],
+        )
+
     return Response(
         {
             "range": range_type,
@@ -191,10 +220,12 @@ def spot_price_chart(request):
             "timestamps": [
                 row.timestamp.astimezone(tz).strftime("%d.%m %H:%M") for row in rows
             ],
-            "values": prices,
-            "current": current,
+            "spot_values": prices,
+            "effective_values": effective_prices,
             "min": min_price,
             "max": max_price,
             "avg": avg_price,
+            "current_spot": (current_price["price_ct"] if current_price else None),
+            "current_effective": current_effective,
         }
     )
