@@ -6,6 +6,7 @@ from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from django.utils import timezone
+from django.db.models import Sum, Avg
 
 from devices.models import (
     DeviceMetric1m,
@@ -103,20 +104,35 @@ def get_chart_data(
 
         since = now - timedelta(hours=24)
 
-        rows = DeviceMetric1h.objects.filter(
-            device_id__in=device_ids,
-            metric_key="power",
-            bucket__gte=since,
-        ).order_by("bucket")
+        rows = (
+            DeviceMetric1h.objects
+            .filter(
+                device_id__in=device_ids,
+                metric_key="power",
+                bucket__gte=since,
+            )
+            .values("bucket")
+            .annotate(
+                value=Sum("avg")
+            )
+            .order_by("bucket")
+        )
 
         return {
             "period": "24h",
             "unit": "W",
-            "timestamps": [row.bucket.astimezone(tz).strftime("%H:%M") for row in rows],
-            "export_timestamps": [
-                row.bucket.astimezone(tz).strftime("%d.%m.%Y %H:%M") for row in rows
+            "timestamps": [
+                row["bucket"].astimezone(tz).strftime("%H:%M")
+                for row in rows
             ],
-            "values": [round(row.avg, 1) for row in rows],
+            "export_timestamps": [
+                row["bucket"].astimezone(tz).strftime("%d.%m.%Y %H:%M")
+                for row in rows
+            ],
+            "values": [
+                round(row["value"] or 0, 1)
+                for row in rows
+            ],
         }
 
     #
