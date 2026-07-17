@@ -81,19 +81,23 @@ function DeviceChartModal({ device, onClose }) {
         return () => window.removeEventListener("keydown", handleKey);
     }, [onClose]);
 
-    /* ✅ DATA FETCHING */
+    /* ✅ STATE FÜR ZOOM-BEREICH */
+    const [zoomRange, setZoomRange] = useState({ start: 0, end: 100 });
+
+    /* ✅ DATA FETCHING (Absolut stabilisiert für Live-Updates) */
     const query = useQuery({
         queryKey: ["timeseries", device.id, range],
         queryFn: () =>
             apiFetch(`/api/devices/${device.id}/timeseries/?range=${range}`),
-        refetchInterval: live ? 3000 : false
+        refetchInterval: live ? 3000 : false,
+        refetchIntervalInBackground: true,
+        refetchOnWindowFocus: false,
     });
 
     const data = query.data;
     const unit = device.unit || "";
 
     /* ✅ DATA FORMATTING FOR ECHARTS */
-    // ECharts arbeitet am besten mit zwei separaten Arrays für X und Y
     const chartData = useMemo(() => {
         const points = data?.points || [];
         const xAxisData = [];
@@ -107,69 +111,75 @@ function DeviceChartModal({ device, onClose }) {
         return { xAxisData, seriesData };
     }, [data]);
 
-    // Aktuellen Punkt für den Header ermitteln
-    const currentPointValue = chartData.seriesData.length > 0
-        ? chartData.seriesData[chartData.seriesData.length - 1]
-        : null;
-
-    const stats = useMemo(() => {
-
+    /* ✅ REAKTIVE STATS (Präzise Berechnung der sichtbaren Punkte) */
+    const liveStats = useMemo(() => {
         const values = chartData.seriesData;
-
-        if (!values.length) {
-            return null;
+        if (!values || values.length === 0) {
+            return { min: 0, max: 0, avg: 0 };
         }
 
-        const min = Math.min(...values);
-        const max = Math.max(...values);
+        // Berechne die echten Array-Grenzen anhand der Zoom-Prozentwerte
+        const startIndex = Math.max(0, Math.floor((zoomRange.start / 100) * values.length));
+        const endIndex = Math.min(values.length, Math.ceil((zoomRange.end / 100) * values.length));
 
-        const avg =
-            values.reduce((a, b) => a + b, 0) /
-            values.length;
+        // Hole exakt den sichtbaren Ausschnitt
+        const visibleValues = values.slice(startIndex, endIndex);
 
-        return {
-            min,
-            max,
-            avg,
-            current: values[values.length - 1],
-        };
+        if (visibleValues.length === 0) {
+            const fallback = values[values.length - 1] || 0;
+            return { min: fallback, max: fallback, avg: fallback };
+        }
 
-    }, [chartData]);
+        const min = Math.min(...visibleValues);
+        const max = Math.max(...visibleValues);
+        const avg = visibleValues.reduce((a, b) => a + b, 0) / visibleValues.length;
 
-    /* ✅ NATIVES RESET */
+        return { min, max, avg };
+    }, [chartData, zoomRange]);
+
+
+    /* ✅ ABSOLUT SICHERES ECHARTS ZOOM-EVENT */
+    const handleDataZoom = useCallback((event) => {
+        if (!chartRef.current) return;
+
+        // Hole die echten, aktuellen Zoom-Prozentwerte direkt aus der Chart-Instanz
+        const chartInstance = chartRef.current.getEchartsInstance();
+        const option = chartInstance.getOption();
+        const dataZoom = option.dataZoom?.[0];
+
+        if (dataZoom) {
+            const start = dataZoom.start ?? 0;
+            const end = dataZoom.end ?? 100;
+
+            setZoomRange({ start, end });
+            setIsZoomed(start > 0 || end < 100);
+        }
+    }, []);
+
+    // onEvents greift sauber auf das weiter oben deklarierte handleDataZoom zu
+    const onEvents = useMemo(() => ({
+        datazoom: handleDataZoom,
+    }), [handleDataZoom]);
+
+    /* ✅ NATIVES RESET (Wenn der Nutzer den Zoom zurücksetzt) */
     const handleResetZoom = () => {
         if (chartRef.current) {
             const chartInstance = chartRef.current.getEchartsInstance();
-            // Setzt den Zoom-Schieberegler wieder auf 0% - 100%
             chartInstance.dispatchAction({
                 type: 'dataZoom',
                 start: 0,
                 end: 100
             });
+            setZoomRange({ start: 0, end: 100 }); // Stats zurücksetzen
+            setIsZoomed(false);
         }
     };
 
-    const handleDataZoom = useCallback((event) => {
+    /* ✅ ERMITTLE DEN AKTUELLSTEN WERT AUS DER LIVE-KURVE */
+    const trueLiveValue = chartData.seriesData.length > 0
+        ? chartData.seriesData[chartData.seriesData.length - 1]
+        : (device?.value ?? 0.0);
 
-        const start =
-            event.batch?.[0]?.start ??
-            event.start ??
-            0;
-
-        const end =
-            event.batch?.[0]?.end ??
-            event.end ??
-            100;
-
-        setIsZoomed(
-            start > 0 || end < 100
-        );
-
-    }, []);
-
-    const onEvents = useMemo(() => ({
-        datazoom: handleDataZoom,
-    }), [handleDataZoom]);
 
     /* ✅ ECHARTS OPTIONS CONFIGURATION */
     const option = useMemo(() => {
@@ -276,13 +286,10 @@ function DeviceChartModal({ device, onClose }) {
                             {
                                 type: 'max',
                                 name: 'Max',
-                                //lineStyle: { color: '#ef4444', type: 'dashed', width: 1 }, // Rot gepunktet
                                 lineStyle: { color: '#f97316', type: 'dashed', width: 1 },
                                 label: {
                                     position: 'start', // Platziert den Text direkt an der Y-Achse
                                     formatter: (params) => `Max: ${Number(params.value).toFixed(2)} ${unit}`,
-                                    //backgroundColor: '#fef2f2',                        
-                                    //borderColor: '#fee2e2',
                                     backgroundColor: '#fff7ed',
                                     borderColor: '#ffedd5',
                                     borderWidth: 1,
@@ -296,13 +303,10 @@ function DeviceChartModal({ device, onClose }) {
                             {
                                 type: 'min',
                                 name: 'Min',
-                                //lineStyle: { color: '#06b6d4', type: 'dashed', width: 1 }, // Cyan gepunktet
                                 lineStyle: { color: '#64748b', type: 'dashed', width: 1 },
                                 label: {
                                     position: 'start',
                                     formatter: (params) => `Min: ${Number(params.value).toFixed(2)} ${unit}`,
-                                    //backgroundColor: '#ecfeff',
-                                    //borderColor: '#cffafe',
                                     backgroundColor: '#f8fafc',
                                     borderColor: '#e2e8f0',
                                     borderWidth: 1,
@@ -316,7 +320,6 @@ function DeviceChartModal({ device, onClose }) {
                             {
                                 type: 'average',
                                 name: 'Schnitt',
-                                //lineStyle: { color: '#94a3b8', type: 'dashed', width: 1 },
                                 lineStyle: { color: '#cbd5e1', type: 'dotted', width: 1 },
                                 label: {
                                     position: 'end', // Am rechten Rand des Charts platzieren
@@ -365,16 +368,6 @@ function DeviceChartModal({ device, onClose }) {
                             <div className="text-xs text-gray-500">Zeitreihe analysieren</div>
                             <h3 className="font-semibold text-lg text-gray-900">{deviceStyle.icon} {device.display_name}</h3>
                             <div className="text-xs text-gray-500">{device.identifier}</div>
-
-                            {/*                             {currentPointValue !== null && (
-                                <div
-                                    className="text-sm font-medium mt-1"
-                                    style={{ color: mainColor }}
-                                >
-                                    Aktuell: {currentPointValue.toFixed(2)} {unit}
-                                </div>
-                            )} */}
-
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -505,54 +498,60 @@ function DeviceChartModal({ device, onClose }) {
                         </div>
                     </div>
 
-                    {stats && (
+                    {liveStats && (
                         <div className="mt-4 flex justify-center">
-                            <div className="grid grid-cols-4 gap-3 w-1/2 min-w-[500px]">
+                            {/* Schaltet dynamisch zwischen grid-cols-3 und grid-cols-4 um */}
+                            <div className={`grid gap-3 w-1/2 min-w-[500px] ${live ? "grid-cols-4" : "grid-cols-3"}`}>
 
-                                <div className="bg-white/70 rounded-lg p-2">
-                                    <div className="text-xs text-gray-500">
-                                        Aktuell
+                                {/* 🔥 AKTUELL: Wird NUR gerendert, wenn live aktiviert ist */}
+                                {live && (
+                                    <div className="bg-white/70 rounded-lg p-2">
+                                        <div className="text-xs text-gray-500">
+                                            Aktuell
+                                        </div>
+                                        <div
+                                            className="font-semibold"
+                                            style={{ color: mainColor }}
+                                        >
+                                            {Number(trueLiveValue).toFixed(2)} {unit}
+                                        </div>
                                     </div>
-                                    <div
-                                        className="font-semibold"
-                                        style={{ color: mainColor }}
-                                    >
-                                        {stats.current.toFixed(2)} {unit}
-                                    </div>
-                                </div>
+                                )}
 
+                                {/* MINIMUM */}
                                 <div className="bg-white/70 rounded-lg p-2">
                                     <div className="text-xs text-gray-500">
                                         Minimum
                                     </div>
-
                                     <div className="font-semibold text-slate-600">
-                                        {stats.min.toFixed(2)} {unit}
+                                        {liveStats.min.toFixed(2)} {unit}
                                     </div>
                                 </div>
 
+                                {/* MAXIMUM */}
                                 <div className="bg-white/70 rounded-lg p-2">
                                     <div className="text-xs text-gray-500">
                                         Maximum
                                     </div>
-
                                     <div className="font-semibold text-orange-600">
-                                        {stats.max.toFixed(2)} {unit}
+                                        {liveStats.max.toFixed(2)} {unit}
                                     </div>
                                 </div>
 
+                                {/* DURCHSCHNITT */}
                                 <div className="bg-white/70 rounded-lg p-2">
                                     <div className="text-xs text-gray-500">
                                         Durchschnitt
                                     </div>
-
                                     <div className="font-semibold text-gray-700">
-                                        {stats.avg.toFixed(2)} {unit}
+                                        {liveStats.avg.toFixed(2)} {unit}
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     )}
+
                 </div>
                 {/* </div> */}
 
@@ -560,11 +559,10 @@ function DeviceChartModal({ device, onClose }) {
                 <div className="flex-1 p-4 relative min-h-0">
                     <ReactECharts
                         ref={chartRef}
-                        option={option}
+                        option={option} // Hier steht dein bestehendes Option-Objekt
                         onEvents={onEvents}
-                        style={{ width: "100%", height: "100%" }}
-                        notMerge={true}
-                        lazyUpdate={true}
+                        notMerge={true}          // 🔥 Zwingt ECharts, die neuen Live-Punkte sofort zu zeichnen!
+                        style={{ height: "400px", width: "100%" }}
                     />
                 </div>
             </div>

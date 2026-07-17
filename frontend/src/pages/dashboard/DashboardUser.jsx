@@ -126,6 +126,7 @@ export default function DashboardUser() {
                             displayName: "Hausbedarf",
                             unit: "W",
                             color: "#2563eb",
+                            currentValue: kpis.load,
                         })
                     }
                     className="cursor-pointer hover:opacity-90 transition-opacity"
@@ -159,6 +160,7 @@ export default function DashboardUser() {
                             displayName: "PV-Erzeugung",
                             unit: "W",
                             color: "#f59e0b",
+                            currentValue: kpis.pv,
                         })
                     }
                     className="cursor-pointer hover:opacity-90 transition-opacity"
@@ -192,6 +194,7 @@ export default function DashboardUser() {
                             displayName: "Netzanschluss",
                             unit: "W",
                             color: "#10b981",
+                            currentValue: kpis.grid,
                         })
                     }
 
@@ -231,6 +234,7 @@ export default function DashboardUser() {
                             displayName: "Tagesverbrauch",
                             unit: "kWh",
                             color: "#8b5cf6",
+                            currentValue: kpis.today,
                         })
                     }
                     className="cursor-pointer hover:opacity-90 transition-opacity"
@@ -361,6 +365,7 @@ export default function DashboardUser() {
                     displayName={activeSystemChart.displayName}
                     unit={activeSystemChart.unit}
                     color={activeSystemChart.color}
+                    currentValue={activeSystemChart.currentValue}
                     onClose={() => setActiveSystemChart(null)}
                 />
             )}

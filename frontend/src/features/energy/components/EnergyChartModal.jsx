@@ -8,19 +8,80 @@ import { apiFetch } from "../../../api/client";
 
 
 /* =========================================
- COMPONENT
+   HELPERS
+========================================= */
+
+function formatTime(ts) {
+    const d = new Date(ts * 1000);
+    return d.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function getDeviceStyle(device) {
+
+    const config = device.config || {};
+
+    if (config.is_grid_source) {
+        return {
+            color: "#10b981",
+            icon: "🔌",
+        };
+    }
+
+    switch (config.role?.key) {
+
+        case "producer":
+            return {
+                color: "#f59e0b",
+                icon: "☀️",
+            };
+
+        case "consumer":
+            return {
+                color: "#2563eb",
+                icon: "⚡",
+            };
+
+        case "battery":
+            return {
+                color: "#8b5cf6",
+                icon: "🔋",
+            };
+
+        default:
+            return {
+                color: "#64748b",
+                icon: "🔧",
+            };
+    }
+}
+
+
+/* =========================================
+   COMPONENT
 ========================================= */
 export default function EnergyChartModal({
     metricKey,
     displayName,
     unit,
+    currentValue,
     color = "#0ea5e9",
     onClose,
 }) {
     const [range, setRange] = useState("24h");
     const [live, setLive] = useState(false);
-    const [isZoomed, setIsZoomed] = useState(false);
     const chartRef = useRef(null);
+    const deviceStyle = getDeviceStyle(displayName);
+    const mainColor = deviceStyle.color;
+
+    const [isZoomed, setIsZoomed] = useState(false);
+    const [zoomRange, setZoomRange] = useState({
+        start: 0,
+        end: 100,
+    });
+
 
     /* ✅ ESC schließen */
     useEffect(() => {
@@ -38,36 +99,66 @@ export default function EnergyChartModal({
         refetchInterval: live ? 3000 : false,
     });
 
+    const { data: dashboardData } = useQuery({
+        queryKey: ["energy-dashboard-live"],
+        queryFn: () =>
+            apiFetch("/api/energy/dashboard/me/"),
+        refetchInterval: live ? 3000 : false,
+    });
+
+    const liveValue =
+        dashboardData?.kpis?.[metricKey];
+
     // Direkte, schlanke Zuweisung (ersetzt das verschachtelte useMemo)
     const xAxisData = data?.timestamps || [];
     const seriesData = data?.values || [];
 
-    const currentPointValue = seriesData.length > 0
-        ? seriesData[seriesData.length - 1]
-        : null;
+    const visibleData = useMemo(() => {
+
+        if (!seriesData.length) {
+            return [];
+        }
+
+        const startIndex = Math.floor(
+            (zoomRange.start / 100)
+            * seriesData.length
+        );
+
+        const endIndex = Math.ceil(
+            (zoomRange.end / 100)
+            * seriesData.length
+        );
+
+        return seriesData.slice(
+            startIndex,
+            endIndex
+        );
+
+    }, [seriesData, zoomRange]);
 
     const stats = useMemo(() => {
 
-        if (!seriesData.length) {
+        const values = visibleData;
+
+        if (!values.length) {
             return null;
         }
 
-        const min = Math.min(...seriesData);
-        const max = Math.max(...seriesData);
+        const min = Math.min(...values);
+
+        const max = Math.max(...values);
 
         const avg =
-            seriesData.reduce((a, b) => a + b, 0) /
-            seriesData.length;
+            values.reduce((a, b) => a + b, 0)
+            / values.length;
 
         return {
-            current: seriesData[seriesData.length - 1],
             min,
             max,
             avg,
         };
 
-    }, [seriesData]);
-
+    }, [visibleData]);
 
     /* ✅ ZOOM CONTROLS */
     const handleResetZoom = () => {
@@ -78,14 +169,37 @@ export default function EnergyChartModal({
                 end: 100,
             });
             setIsZoomed(false);
+
+            setZoomRange({
+                start: 0,
+                end: 100,
+            });
+
         }
     };
 
     // Callback stabilisiert die Event-Referenz (Verhindert Re-Renders)
     const handleDataZoom = useCallback((event) => {
-        const start = event.batch?.[0]?.start ?? event.start ?? 0;
-        const end = event.batch?.[0]?.end ?? event.end ?? 100;
-        setIsZoomed(start > 0 || end < 100);
+
+        const start =
+            event.batch?.[0]?.start ??
+            event.start ??
+            0;
+
+        const end =
+            event.batch?.[0]?.end ??
+            event.end ??
+            100;
+
+        setZoomRange({
+            start,
+            end,
+        });
+
+        setIsZoomed(
+            start > 0 || end < 100
+        );
+
     }, []);
 
     const onEvents = useMemo(() => ({
@@ -233,7 +347,11 @@ export default function EnergyChartModal({
                             <h3 className="font-semibold text-lg" style={{ color }}>
                                 {displayName} ⚡
                             </h3>
-
+                            {liveValue != null && (
+                                <div className="text-sm font-medium mt-1" style={{ color }}>
+                                    Aktueller Live-Wert: {Number(liveValue).toFixed(2)} {unit}
+                                </div>
+                            )}
                         </div>
 
                         {/* RECHTS */}
@@ -296,21 +414,23 @@ export default function EnergyChartModal({
 
                     {stats && (
                         <div className="mt-4 flex justify-center">
+                            {/* Schaltet dynamisch zwischen grid-cols-3 und grid-cols-4 um */}
+                            <div className={`grid gap-3 w-1/2 min-w-[500px] ${live ? "grid-cols-4" : "grid-cols-3"}`}>
 
-                            <div className="grid grid-cols-4 gap-3 w-1/2 min-w-[500px]">
-
-                                <div className="bg-white/70 rounded-lg p-2">
-                                    <div className="text-xs text-gray-500">
-                                        Aktuell
+                                {/* 🔥 AKTUELL: Wird NUR gerendert, wenn live aktiviert ist */}
+                                {live && (
+                                    <div className="bg-white/70 rounded-lg p-2">
+                                        <div className="text-xs text-gray-500">
+                                            Aktuell
+                                        </div>
+                                        <div
+                                            className="font-semibold"
+                                            style={{ color: mainColor }}
+                                        >
+                                            {Number(liveValue).toFixed(2)} {unit}
+                                        </div>
                                     </div>
-
-                                    <div
-                                        className="font-semibold"
-                                        style={{ color }}
-                                    >
-                                        {stats.current.toFixed(2)} {unit}
-                                    </div>
-                                </div>
+                                )}
 
                                 <div className="bg-white/70 rounded-lg p-2">
                                     <div className="text-xs text-gray-500">
@@ -343,10 +463,8 @@ export default function EnergyChartModal({
                                 </div>
 
                             </div>
-
                         </div>
                     )}
-
                 </div>
 
                 {/* CHART CONTAINER */}

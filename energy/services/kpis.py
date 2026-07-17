@@ -61,12 +61,16 @@ def get_today_consumption(user):
             bucket__gte=today_start,
             metric_key="power",
         )
+        .values("bucket")
+        .annotate(
+            total_wh=Sum("energy_wh")
+        )
         .order_by("bucket")
     )
 
     history = [
         round(
-            (row.energy_wh or 0) / 1000,
+            (row["total_wh"] or 0) / 1000,
             3,
         )
         for row in rows
