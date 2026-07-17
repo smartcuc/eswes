@@ -3,6 +3,7 @@
 */
 
 import { useQuery } from "@tanstack/react-query";
+import ReactECharts from "echarts-for-react";
 import { apiFetch } from "../../../api/client";
 
 export default function SpotPriceModal({
@@ -59,11 +60,11 @@ export default function SpotPriceModal({
                 {data && (
                     <div
                         className="
-            grid
-            grid-cols-4
-            gap-3
-            mb-6
-        "
+                            grid
+                            grid-cols-4
+                            gap-3
+                            mb-6
+                        "
                     >
 
                         <div className="bg-slate-50 rounded-lg p-3">
@@ -108,7 +109,84 @@ export default function SpotPriceModal({
 
                     </div>
                 )}
+                {data && (
+                    <div className="h-[420px]">
+                        <ReactECharts
+                            option={{
+                                tooltip: {
+                                    trigger: "axis",
+                                    formatter: (params) => {
 
+                                        const p = params[0];
+
+                                        return `
+                            <div>
+                                <div style="font-size:12px;color:#64748b;">
+                                    ${p.name}
+                                </div>
+
+                                <div
+                                    style="
+                                        color:#f59e0b;
+                                        font-weight:600;
+                                    "
+                                >
+                                    ${Number(p.value).toFixed(2)} ct/kWh
+                                </div>
+                            </div>
+                        `;
+                                    },
+                                },
+
+                                grid: {
+                                    top: "8%",
+                                    left: "4%",
+                                    right: "4%",
+                                    bottom: "12%",
+                                    containLabel: true,
+                                },
+
+                                xAxis: {
+                                    type: "category",
+                                    data: data.timestamps,
+                                    boundaryGap: false,
+                                },
+
+                                yAxis: {
+                                    type: "value",
+                                    axisLabel: {
+                                        formatter: "{value} ct",
+                                    },
+                                },
+
+                                series: [
+                                    {
+                                        name: "Spotpreis",
+                                        type: "line",
+                                        smooth: true,
+                                        showSymbol: false,
+
+                                        data: data.values,
+
+                                        lineStyle: {
+                                            color: "#f59e0b",
+                                            width: 3,
+                                        },
+
+                                        areaStyle: {
+                                            opacity: 0.15,
+                                            color: "#f59e0b",
+                                        },
+                                    },
+                                ],
+                            }}
+                            style={{
+                                width: "100%",
+                                height: "100%",
+                            }}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
