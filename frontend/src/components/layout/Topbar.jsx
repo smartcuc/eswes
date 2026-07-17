@@ -2,16 +2,39 @@
 # src/components/layout/Topbar.jsx
 */
 
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+
+import { apiFetch } from "../../api/client";
 import { useUser } from "../../hooks/useUser";
 import UserMenu from "../UserMenu";
+import SpotPriceModal from "../../features/market/components/SpotPriceModal";
 
 export default function AppTopbar() {
 
     const { user } = useUser();
-
     // Später aus API beziehen
     const online = 12;
     const total = 14;
+
+    const spotPriceQuery = useQuery({
+        queryKey: ["spot-price"],
+        queryFn: () =>
+            apiFetch("/api/market/current/"),
+        refetchInterval: 60000,
+    });
+
+    const spotPrice = spotPriceQuery.data;
+
+    const spotColor =
+        spotPrice?.status === "good"
+            ? "text-green-600"
+            : spotPrice?.status === "warning"
+                ? "text-amber-600"
+                : "text-red-600";
+
+    const [spotModalOpen, setSpotModalOpen] =
+        useState(false);
 
     return (
         <div className="h-14 bg-white border-b flex items-center justify-between px-4">
@@ -71,8 +94,38 @@ export default function AppTopbar() {
                 </div>
 
                 {/* 👤 User */}
-                <UserMenu user={user} />
 
+                {spotPrice && (
+                    <button
+                        onClick={() => setSpotModalOpen(true)}
+                        className={`
+                            flex
+                            items-center
+                            gap-2
+                            text-sm
+                            font-semibold
+                            ${spotColor}
+
+                            hover:opacity-80
+                            transition-opacity
+                            cursor-pointer
+                        `}
+                    >
+                        <span>⚡</span>
+
+                        <span>
+                            {spotPrice.price_ct.toFixed(2)} ct/kWh
+                        </span>
+                    </button>
+                )}
+
+                <UserMenu user={user} />
+                <SpotPriceModal
+                    open={spotModalOpen}
+                    onClose={() =>
+                        setSpotModalOpen(false)
+                    }
+                />
             </div>
 
         </div>

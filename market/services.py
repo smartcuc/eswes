@@ -23,7 +23,20 @@ def get_current_spot_price(timezone_name="Europe/Berlin"):
         2,
     )
 
+    GOOD_THRESHOLD = 10.0
+    WARNING_THRESHOLD = 25.0
+
+    if price_ct <= GOOD_THRESHOLD:
+        status = "good"
+
+    elif price_ct <= WARNING_THRESHOLD:
+        status = "warning"
+
+    else:
+        status = "expensive"
+
     return {
         "timestamp": current.timestamp,
         "price_ct": price_ct,
+        "status":status,
     }
