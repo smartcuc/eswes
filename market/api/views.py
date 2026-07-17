@@ -38,16 +38,101 @@ def current_spot_price(request):
 @permission_classes([IsAuthenticated])
 def spot_price_chart(request):
 
+    range_type = request.GET.get(
+        "range",
+        "2d",
+    )
+
     home = request.user.homes.first()
 
-    timezone_name = home.timezone if home and home.timezone else "Europe/Berlin"
+    timezone_name = (
+        home.timezone
+        if home and home.timezone
+        else "Europe/Berlin"
+    )
 
     tz = ZoneInfo(timezone_name)
 
-    # DEBUG:
-    # Noch NICHT auf heute filtern.
-    # Erst prüfen was tatsächlich gespeichert ist.
-    rows = SpotPrice.objects.order_by("timestamp")
+    local_now = timezone.now().astimezone(tz)
+
+    today_start = local_now.replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    tomorrow_start = (
+        today_start
+        + timezone.timedelta(days=1)
+    )
+
+    day_after_tomorrow = (
+        today_start
+        + timezone.timedelta(days=2)
+    )
+
+    if range_type == "2d":
+
+        start = today_start.astimezone(
+            ZoneInfo("UTC")
+        )
+
+        end = day_after_tomorrow.astimezone(
+            ZoneInfo("UTC")
+        )
+
+    elif range_type == "today":
+
+        start = today_start.astimezone(
+            ZoneInfo("UTC")
+        )
+
+        end = tomorrow_start.astimezone(
+            ZoneInfo("UTC")
+        )
+
+    elif range_type == "tomorrow":
+
+        start = tomorrow_start.astimezone(
+            ZoneInfo("UTC")
+        )
+
+        end = day_after_tomorrow.astimezone(
+            ZoneInfo("UTC")
+        )
+
+    elif range_type == "5d":
+
+        start = (
+            today_start
+            - timezone.timedelta(days=4)
+        ).astimezone(
+            ZoneInfo("UTC")
+        )
+
+        end = day_after_tomorrow.astimezone(
+            ZoneInfo("UTC")
+        )
+
+    else:
+
+        start = today_start.astimezone(
+            ZoneInfo("UTC")
+        )
+
+        end = day_after_tomorrow.astimezone(
+            ZoneInfo("UTC")
+        )
+
+    rows = (
+        SpotPrice.objects
+        .filter(
+            timestamp__gte=start,
+            timestamp__lt=end,
+        )
+        .order_by("timestamp")
+    )
 
     prices = [
         round(
@@ -59,9 +144,17 @@ def spot_price_chart(request):
 
     current = prices[-1] if prices else None
 
-    min_price = min(prices) if prices else None
+    min_price = (
+        min(prices)
+        if prices
+        else None
+    )
 
-    max_price = max(prices) if prices else None
+    max_price = (
+        max(prices)
+        if prices
+        else None
+    )
 
     avg_price = (
         round(
@@ -72,26 +165,22 @@ def spot_price_chart(request):
         else None
     )
 
-    return Response(
-        {
-            "count": rows.count(),
-            "first_timestamp": (
-                rows.first().timestamp.astimezone(tz).isoformat()
-                if rows.exists()
-                else None
-            ),
-            "last_timestamp": (
-                rows.last().timestamp.astimezone(tz).isoformat()
-                if rows.exists()
-                else None
-            ),
-            "timestamps": [
-                row.timestamp.astimezone(tz).strftime("%d.%m %H:%M") for row in rows
-            ],
-            "values": prices,
-            "current": current,
-            "min": min_price,
-            "max": max_price,
-            "avg": avg_price,
-        }
-    )
+    return Response({
+        "range": range_type,
+
+        "count": rows.count(),
+
+        "timestamps": [
+            row.timestamp
+            .astimezone(tz)
+            .strftime("%d.%m %H:%M")
+            for row in rows
+        ],
+
+        "values": prices,
+
+        "current": current,
+        "min": min_price,
+        "max": max_price,
+        "avg": avg_price,
+    })

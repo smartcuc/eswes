@@ -11,11 +11,13 @@ export default function SpotPriceModal({
     onClose,
 }) {
 
+    const [range, setRange] = useState("2d");
+
     const { data } = useQuery({
-        queryKey: ["spot-price-chart"],
+        queryKey: ["spot-price-chart", range,],
         queryFn: () =>
             apiFetch(
-                "/api/market/chart/"
+                `/api/market/chart/?range=${range}`
             ),
         enabled: open,
     });
@@ -56,6 +58,53 @@ export default function SpotPriceModal({
                 >
                     ⚡ Spotpreis
                 </h3>
+                <div className="flex gap-2 mb-5">
+
+                    <button
+                        onClick={() => setRange("2d")}
+                        className={
+                            range === "2d"
+                                ? "px-3 py-1 rounded bg-indigo-600 text-white text-sm"
+                                : "px-3 py-1 rounded bg-gray-100 text-sm"
+                        }
+                    >
+                        Heute + Morgen
+                    </button>
+
+                    <button
+                        onClick={() => setRange("today")}
+                        className={
+                            range === "today"
+                                ? "px-3 py-1 rounded bg-indigo-600 text-white text-sm"
+                                : "px-3 py-1 rounded bg-gray-100 text-sm"
+                        }
+                    >
+                        Heute
+                    </button>
+
+                    <button
+                        onClick={() => setRange("tomorrow")}
+                        className={
+                            range === "tomorrow"
+                                ? "px-3 py-1 rounded bg-indigo-600 text-white text-sm"
+                                : "px-3 py-1 rounded bg-gray-100 text-sm"
+                        }
+                    >
+                        Morgen
+                    </button>
+
+                    <button
+                        onClick={() => setRange("5d")}
+                        className={
+                            range === "5d"
+                                ? "px-3 py-1 rounded bg-indigo-600 text-white text-sm"
+                                : "px-3 py-1 rounded bg-gray-100 text-sm"
+                        }
+                    >
+                        5 Tage
+                    </button>
+
+                </div>
 
                 {data && (
                     <div
