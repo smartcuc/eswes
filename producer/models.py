@@ -82,6 +82,73 @@ class GeneratorSystem(models.Model):
             "name",
         ]
 
+    @property
+    def string_count(self):
+
+        return self.strings.count()
+
+    @property
+    def total_string_power_kwp(self):
+
+        return sum(float(s.peak_power_kwp) for s in self.strings.all())
+
     def __str__(self):
 
         return f"{self.home.name} | " f"{self.name}"
+
+
+class GeneratorString(models.Model):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    generator = models.ForeignKey(
+        GeneratorSystem,
+        on_delete=models.CASCADE,
+        related_name="strings",
+    )
+
+    name = models.CharField(
+        max_length=100,
+    )
+
+    module_count = models.PositiveIntegerField(
+        default=0,
+    )
+
+    peak_power_kwp = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    azimuth_deg = models.IntegerField(
+        help_text="0=N, 90=O, 180=S, 270=W",
+    )
+
+    tilt_deg = models.IntegerField(
+        default=35,
+        help_text="Dachneigung",
+    )
+
+    shading_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+
+        ordering = [
+            "name",
+        ]
+
+    def __str__(self):
+
+        return f"{self.generator.name} | " f"{self.name}"
