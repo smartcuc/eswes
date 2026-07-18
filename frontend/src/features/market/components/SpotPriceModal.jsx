@@ -35,7 +35,7 @@ export default function SpotPriceModal({
     const chartData = useMemo(() => {
         return {
             xAxisData: data?.timestamps || [],
-            seriesData: data?.values || []
+            seriesData: data?.effective_values || [],
         };
     }, [data]);
 
@@ -104,75 +104,10 @@ export default function SpotPriceModal({
         }
     };
 
-    /* ✅ ECHARTS OPTIONS CONFIGURATION (Vorbereitet für dein File) */
-    const option = useMemo(() => {
-        const mainColor = "#0ea5e9"; // Standard-Marktfarbe (Cyan), kannst du anpassen
-
-        return {
-            tooltip: {
-                trigger: 'axis',
-                formatter: (params) => {
-                    const p = params[0]; // Sichert ab, dass ECharts wegen Array-Struktur nicht crasht
-                    if (!p) return "";
-                    return `${p.name}<br/><span style="color:${mainColor};font-weight:bold;">${Number(p.value).toFixed(2)} ct/kWh</span>`;
-                },
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                borderColor: '#e2e8f0',
-                borderWidth: 1,
-                textStyle: { color: '#1e293b' }
-            },
-            grid: { top: '8%', left: '3%', right: '4%', bottom: '15%', containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: chartData.xAxisData,
-                axisLine: { lineStyle: { color: '#cbd5e1' } },
-                axisLabel: { color: '#64748b' }
-            },
-            yAxis: {
-                type: 'value',
-                axisLine: { show: false },
-                axisLabel: { color: '#64748b', formatter: (value) => `${Number(value).toFixed(1)} ct` },
-                splitLine: { lineStyle: { color: '#f1f5f9' } }
-            },
-            dataZoom: [
-                { type: 'inside', start: 0, end: 100 },
-                {
-                    type: 'slider',
-                    start: 0,
-                    end: 100,
-                    foregroundColor: mainColor,
-                    textStyle: { color: '#64748b' },
-                    borderColor: '#f1f5f9'
-                }
-            ],
-            series: [
-                {
-                    name: "Börsenstrompreis",
-                    type: "line",
-                    data: chartData.seriesData,
-                    showSymbol: false,
-                    smooth: true,
-                    lineStyle: { color: mainColor, width: 2.5 },
-                    areaStyle: {
-                        color: {
-                            type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: `${mainColor}25` },
-                                { offset: 1, color: `${mainColor}00` },
-                            ],
-                        },
-                    }
-                }
-            ]
-        };
-    }, [chartData]);
-
     // ✅ FIX: Der Modal-Guard steht jetzt regelkonform GANZ unten vor dem Return
     if (!open) {
         return null;
     }
-
-
 
     return (
         <div
@@ -222,7 +157,7 @@ export default function SpotPriceModal({
                             </div>
 
                             <h3 className="font-semibold text-lg text-gray-900">
-                                ⚡ EPEX Spot DE-LU
+                                💰 EPEX Spotpreise DE-LU
                             </h3>
 
                             <div className="text-xs text-gray-500">
@@ -323,31 +258,42 @@ export default function SpotPriceModal({
                     {/* STATISTIK-KACHELN (Jetzt reaktiv gekoppelt an liveStats!) */}
                     {data && (
                         <div className="mt-4 flex justify-center">
-                            <div className="grid grid-cols-4 gap-3 w-1/2 min-w-[500px]">
+                            <div className="grid grid-cols-5 gap-3 w-[70%] min-w-[700px]">
 
-                                <div className="bg-white/70 rounded-lg p-2 border border-amber-100 shadow-sm">
-                                    <div className="text-xs text-gray-500">Aktuell</div>
+                                <div className="bg-white/70 rounded-lg p-3 min-h-[64px] flex flex-col justify-center shadow-sm">
+                                    <div className="text-xs text-gray-500">
+                                        Spotpreis
+                                    </div>
                                     <div className="font-semibold text-amber-600">
-                                        {(data.current ?? 0).toFixed(2)} ct
+                                        {(data.current_spot ?? 0).toFixed(2)} ct
                                     </div>
                                 </div>
 
-                                <div className="bg-white/70 rounded-lg p-2 border border-slate-100 shadow-sm">
-                                    <div className="text-xs text-gray-500">Minimum (sichtbar)</div>
+                                <div className="bg-white/70 rounded-lg p-3 min-h-[64px] flex flex-col justify-center shadow-sm">
+                                    <div className="text-xs text-gray-500">
+                                        Endpreis
+                                    </div>
+                                    <div className="font-semibold text-red-600">
+                                        {(data.current_effective ?? 0).toFixed(2)} ct
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/70 rounded-lg p-3 min-h-[64px] flex flex-col justify-center shadow-sm">
+                                    <div className="text-xs text-gray-500">Minimum</div>
                                     <div className="font-semibold text-green-600">
                                         {liveStats.min.toFixed(2)} ct
                                     </div>
                                 </div>
 
-                                <div className="bg-white/70 rounded-lg p-2 border border-slate-100 shadow-sm">
-                                    <div className="text-xs text-gray-500">Maximum (sichtbar)</div>
+                                <div className="bg-white/70 rounded-lg p-3 min-h-[64px] flex flex-col justify-center shadow-sm">
+                                    <div className="text-xs text-gray-500">Maximum</div>
                                     <div className="font-semibold text-red-600">
                                         {liveStats.max.toFixed(2)} ct
                                     </div>
                                 </div>
 
-                                <div className="bg-white/70 rounded-lg p-2 border border-slate-100 shadow-sm">
-                                    <div className="text-xs text-gray-500">Durchschnitt (sichtbar)</div>
+                                <div className="bg-white/70 rounded-lg p-3 min-h-[64px] flex flex-col justify-center shadow-sm">
+                                    <div className="text-xs text-gray-500">Durchschnitt</div>
                                     <div className="font-semibold text-gray-700">
                                         {liveStats.avg.toFixed(2)} ct
                                     </div>
@@ -370,85 +316,170 @@ export default function SpotPriceModal({
                             option={{
                                 tooltip: {
                                     trigger: "axis",
+
                                     formatter: (params) => {
-                                        const p = params[0];
-                                        if (!p) return "";
+
+                                        const endpreis = params[0];
+                                        const spotpreis = params[1];
+
+                                        if (!endpreis) {
+                                            return "";
+                                        }
+
                                         return `
-                                        <div>
-                                            <div style="font-size:12px;color:#64748b;">${p.name}</div>
-                                            <div style="color:#f59e0b;font-weight:600;">
-                                                ${Number(p.value).toLocaleString(
+                <div>
+
+                    <div
+                        style="
+                            font-size:12px;
+                            color:#64748b;
+                            margin-bottom:6px;
+                        "
+                    >
+                        ${endpreis.name}
+                    </div>
+
+                    <div
+                        style="
+                            color:#dc2626;
+                            font-weight:600;
+                        "
+                    >
+                        Endpreis:
+                        ${Number(endpreis.value).toLocaleString(
                                             "de-DE",
                                             {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             }
                                         )} ct/kWh
-                                            </div>
-                                        </div>
-                                    `;
+                    </div>
+
+                    ${spotpreis
+                                                ? `
+                            <div
+                                style="
+                                    color:#f59e0b;
+                                    font-weight:600;
+                                "
+                            >
+                                Spotpreis:
+                                ${Number(spotpreis.value).toLocaleString(
+                                                    "de-DE",
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    }
+                                                )} ct/kWh
+                            </div>
+                        `
+                                                : ""
+                                            }
+
+                </div>
+            `;
                                     },
                                 },
+
                                 grid: {
                                     top: "8%",
                                     left: "4%",
-                                    right: "4%",
-                                    bottom: "15%", // Etwas mehr Platz nach unten für den Slider
+                                    right: "10%",
+                                    bottom: "15%",
                                     containLabel: true,
                                 },
+
                                 xAxis: {
                                     type: "category",
                                     data: chartData.xAxisData,
+
                                     boundaryGap: false,
-                                    axisLine: { lineStyle: { color: '#cbd5e1' } },
+
+                                    axisLine: {
+                                        lineStyle: {
+                                            color: "#cbd5e1",
+                                        },
+                                    },
+
                                     axisLabel: {
                                         color: "#64748b",
-
-                                        interval: 15,
+                                        interval:
+                                            range === "5d"
+                                                ? 95
+                                                : 15,
 
                                         formatter: (value) => {
+                                            const [date, time] = value.split(" ");
 
-                                            const parts = value.split(" ");
+                                            if (range === "5d") {
+                                                if (time === "00:00") {
+                                                    return date;
+                                                }
 
-                                            return parts[1] || value;
+                                                return "";
+                                            }
+
+                                            return time;
                                         },
                                     },
                                 },
+
                                 yAxis: {
                                     type: "value",
-                                    axisLine: { show: false },
-                                    splitLine: { lineStyle: { color: '#f1f5f9' } },
+                                    axisLine: {
+                                        show: false,
+                                    },
+
+                                    splitLine: {
+                                        lineStyle: {
+                                            color: "#f1f5f9",
+                                        },
+                                    },
+
                                     axisLabel: {
-                                        color: '#64748b',
+                                        color: "#64748b",
                                         formatter: "{value} ct",
                                     },
                                 },
+
                                 series: [
+
                                     {
-                                        name: "Spotpreis",
+                                        name: "Endpreis",
                                         type: "line",
                                         smooth: true,
                                         showSymbol: false,
-                                        data: chartData.seriesData,
+                                        data: data.effective_values,
                                         lineStyle: {
-                                            color: "#f59e0b",
+                                            color: "#dc2626",
                                             width: 3,
                                         },
+
                                         areaStyle: {
                                             color: {
-                                                type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+                                                type: "linear",
+                                                x: 0,
+                                                y: 0,
+                                                x2: 0,
+                                                y2: 1,
+
                                                 colorStops: [
-                                                    { offset: 0, color: "rgba(245,158,11,0.25)" },
-                                                    { offset: 1, color: "rgba(245,158,11,0.00)" },
+                                                    {
+                                                        offset: 0,
+                                                        color: "rgba(220,38,38,0.18)",
+                                                    },
+                                                    {
+                                                        offset: 1,
+                                                        color: "rgba(220,38,38,0.00)",
+                                                    },
                                                 ],
                                             },
                                         },
+
                                         markLine: {
                                             symbol: ["none", "none"],
                                             silent: true,
-
                                             data: [
-
                                                 ...(data?.now_label
                                                     ? [{
                                                         xAxis: data.now_label,
@@ -484,7 +515,6 @@ export default function SpotPriceModal({
 
                                                 {
                                                     yAxis: liveStats.min,
-
                                                     label: {
                                                         formatter: `Min ${liveStats.min.toFixed(2)} ct`,
                                                     },
@@ -497,7 +527,6 @@ export default function SpotPriceModal({
 
                                                 {
                                                     yAxis: liveStats.max,
-
                                                     label: {
                                                         formatter: `Max ${liveStats.max.toFixed(2)} ct`,
                                                     },
@@ -510,7 +539,6 @@ export default function SpotPriceModal({
 
                                                 {
                                                     yAxis: liveStats.avg,
-
                                                     label: {
                                                         formatter: `Ø ${liveStats.avg.toFixed(2)} ct`,
                                                     },
@@ -525,8 +553,21 @@ export default function SpotPriceModal({
                                             ],
                                         },
                                     },
+
+                                    {
+                                        name: "Spotpreis",
+                                        type: "line",
+                                        smooth: true,
+                                        showSymbol: false,
+                                        data: data.spot_values,
+                                        lineStyle: {
+                                            color: "#f59e0b",
+                                            width: 2,
+                                        },
+                                    },
+
                                 ],
-                                /* ✅ DATAZOOM BLOCK (Slider farblich angepasst und komplett geschlossen!) */
+
                                 dataZoom: [
                                     {
                                         type: "inside",
@@ -540,12 +581,11 @@ export default function SpotPriceModal({
 
                                         foregroundColor: "#f59e0b",
                                         borderColor: "#f1f5f9",
-
                                         textStyle: {
-                                            color: "#64748b"
-                                        }
-                                    }
-                                ]
+                                            color: "#64748b",
+                                        },
+                                    },
+                                ],
                             }}
 
                         />

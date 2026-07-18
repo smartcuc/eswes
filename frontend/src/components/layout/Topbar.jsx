@@ -98,10 +98,11 @@ export default function AppTopbar() {
                 {spotPrice && (
                     <button
                         onClick={() => setSpotModalOpen(true)}
+                        title="Aktueller Börsenstrompreis (EPEX Spot)"
                         className={`
                             flex
                             items-center
-                            gap-2
+                            gap-1
                             text-sm
                             font-semibold
                             ${spotColor}
@@ -111,7 +112,7 @@ export default function AppTopbar() {
                             cursor-pointer
                         `}
                     >
-                        <span>⚡</span>
+                        <span>💰</span>
 
                         <span>
                             {spotPrice.price_ct.toFixed(2)} ct/kWh

@@ -4,8 +4,11 @@
 
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
+
 from devices.models import Home
+
 
 class HomeTariff(models.Model):
 
@@ -51,6 +54,7 @@ class HomeTariff(models.Model):
     class Meta:
 
         ordering = ["-valid_from"]
+
         constraints = [
             models.UniqueConstraint(
                 fields=[
@@ -60,6 +64,37 @@ class HomeTariff(models.Model):
                 name="unique_home_tariff_date",
             ),
         ]
+
+    def clean(self):
+
+        if (
+            self.tariff_type == self.TARIFF_STATIC
+            and self.static_price_eur_per_kwh is None
+        ):
+            raise ValidationError(
+                {
+                    "static_price_eur_per_kwh": "Für statische Tarife muss ein Strompreis hinterlegt werden."
+                }
+            )
+
+        if (
+            self.tariff_type == self.TARIFF_DYNAMIC
+            and self.static_price_eur_per_kwh is not None
+        ):
+            raise ValidationError(
+                {
+                    "static_price_eur_per_kwh": "Bei dynamischen Tarifen darf kein statischer Preis eingetragen werden."
+                }
+            )
+
+    def save(self, *args, **kwargs):
+
+        self.full_clean()
+
+        super().save(
+            *args,
+            **kwargs,
+        )
 
     def __str__(self):
 

@@ -142,6 +142,7 @@ INSTALLED_APPS = [
     "accounts",
     "billing",
     "market",
+    "producer",
     "user_settings",
     "energy",
     "tracking",
