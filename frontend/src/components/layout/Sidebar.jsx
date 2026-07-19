@@ -50,7 +50,16 @@ const sections = [
     {
         title: "⚙️ Einstellungen",
         items: [
-            { name: "Metrics", path: "/app/metrics", icon: "📊" },
+            {
+                name: "Erzeuger",
+                path: "/app/producers",
+                icon: "☀️",
+            },
+            {
+                name: "App-Einstellungen",
+                path: "/app/settings",
+                icon: "⚙️",
+            },
         ],
     },
 

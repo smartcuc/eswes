@@ -91,6 +91,7 @@ class GeneratorSystem(models.Model):
     def total_string_power_kwp(self):
 
         return sum(float(s.peak_power_kwp) for s in self.strings.all())
+    
 
     def __str__(self):
 
@@ -124,10 +125,31 @@ class GeneratorString(models.Model):
         decimal_places=2,
     )
 
-    azimuth_deg = models.IntegerField(
-        help_text="0=N, 90=O, 180=S, 270=W",
-    )
+    ORIENTATION_N = "N"
+    ORIENTATION_NE = "NE"
+    ORIENTATION_E = "E"
+    ORIENTATION_SE = "SE"
+    ORIENTATION_S = "S"
+    ORIENTATION_SW = "SW"
+    ORIENTATION_W = "W"
+    ORIENTATION_NW = "NW"
 
+    ORIENTATION_CHOICES = [
+        (ORIENTATION_N, "Nord"),
+        (ORIENTATION_NE, "Nordost"),
+        (ORIENTATION_E, "Ost"),
+        (ORIENTATION_SE, "Südost"),
+        (ORIENTATION_S, "Süd"),
+        (ORIENTATION_SW, "Südwest"),
+        (ORIENTATION_W, "West"),
+        (ORIENTATION_NW, "Nordwest"),
+    ]
+
+    orientation = models.CharField(
+        max_length=2,
+        choices=ORIENTATION_CHOICES,
+        default=ORIENTATION_S,
+    )
     tilt_deg = models.IntegerField(
         default=35,
         help_text="Dachneigung",
@@ -148,6 +170,22 @@ class GeneratorString(models.Model):
         ordering = [
             "name",
         ]
+
+    @property
+    def azimuth_deg(self):
+
+        mapping = {
+            "N": 0,
+            "NE": 45,
+            "E": 90,
+            "SE": 135,
+            "S": 180,
+            "SW": 225,
+            "W": 270,
+            "NW": 315,
+        }
+
+        return mapping[self.orientation]
 
     def __str__(self):
 
