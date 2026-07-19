@@ -39,100 +39,35 @@ def generator_list(request):
             strings.append(
                 {
                     "id": str(string.id),
-
                     "name": string.name,
-
-                    "module_count":
-                        string.module_count,
-
-                    "peak_power_kwp":
-                        float(string.peak_power_kwp),
-
-                    "orientation":
-                        string.get_orientation_display(),
-
-                    "tilt_deg":
-                        string.tilt_deg,
-
-                    "shading_percent":
-                        float(
-                            string.shading_percent
-                        ),
+                    "module_count": string.module_count,
+                    "peak_power_kwp": float(string.peak_power_kwp),
+                    "orientation": string.get_orientation_display(),
+                    "tilt_deg": string.tilt_deg,
+                    "shading_percent": float(string.shading_percent),
                 }
             )
 
-            data.append(
-                {
-                    "id": str(system.id),
-
-                    "name": system.name,
-
-                    "type": system.system_type,
-
-                    "peak_power_kw":
-                        float(system.peak_power_kw),
-
-                    "inverter_power_kw":
-                        (
-                            float(system.inverter_power_kw)
-                            if system.inverter_power_kw
-                            else None
-                        ),
-
-                    "battery_capacity_kwh":
-                        (
-                            float(system.battery_capacity_kwh)
-                            if system.battery_capacity_kwh
-                            else None
-                        ),
-
-                    "string_count":
-                        system.string_count,
-
-                    "total_string_power_kwp":
-                        system.total_string_power_kwp,
-
-                    "strings":
-                        strings,
-                }
-            )
-
-        return Response(data)
-
-    data.append(
-        {
-            "id": str(system.id),
-
-            "name": system.name,
-
-            "type": system.system_type,
-
-            "peak_power_kw":
-                float(system.peak_power_kw),
-
-            "inverter_power_kw":
-                (
+        data.append(
+            {
+                "id": str(system.id),
+                "name": system.name,
+                "type": system.system_type,
+                "peak_power_kw": float(system.peak_power_kw),
+                "inverter_power_kw": (
                     float(system.inverter_power_kw)
                     if system.inverter_power_kw
                     else None
                 ),
-
-            "battery_capacity_kwh":
-                (
+                "battery_capacity_kwh": (
                     float(system.battery_capacity_kwh)
                     if system.battery_capacity_kwh
                     else None
                 ),
-
-            "string_count":
-                system.string_count,
-
-            "total_string_power_kwp":
-                system.total_string_power_kwp,
-
-            "strings":
-                strings,
-        }
-    )
+                "string_count": system.string_count,
+                "total_string_power_kwp": system.total_string_power_kwp,
+                "strings": strings,
+            }
+        )
 
     return Response(data)
