@@ -7,7 +7,7 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from producer.models import GeneratorSystem, GeneratorString
+from producer.models import GeneratorSystem, GeneratorString, GeneratorType,  Orientation
 
 
 @api_view(["GET"])
@@ -24,7 +24,7 @@ def generator_list(request):
             home=home,
             active=True,
         )
-        .prefetch_related("strings")
+        .prefetch_related("strings", "generator_type")
         .order_by("name")
     )
 
@@ -42,7 +42,8 @@ def generator_list(request):
                     "name": string.name,
                     "module_count": string.module_count,
                     "peak_power_kwp": float(string.peak_power_kwp),
-                    "orientation": string.get_orientation_display(),
+                    "orientation": string.orientation.name,
+                    "orientation_id": string.orientation.id,
                     "tilt_deg": string.tilt_deg,
                     "shading_percent": float(string.shading_percent),
                 }
@@ -51,8 +52,14 @@ def generator_list(request):
         data.append(
             {
                 "id": str(system.id),
+                "device_id": (
+                        system.device.id
+                        if system.device
+                        else None
+                    ),
                 "name": system.name,
-                "type": system.system_type,
+                "type": system.generator_type.key,
+                "type_label": system.generator_type.name,
                 "peak_power_kw": float(system.peak_power_kw),
                 "inverter_power_kw": (
                     float(system.inverter_power_kw)
@@ -84,9 +91,14 @@ def generator_create(request):
             {"detail": "Kein Home gefunden."},
             status=400,
         )
+    
+    generator_type = GeneratorType.objects.get(
+        id=request.data["generator_type"]
+    )
 
     system = GeneratorSystem.objects.create(
         home=home,
+        generator_type=generator_type,
         name=request.data.get("name"),
         system_type=request.data.get("system_type"),
         peak_power_kw=request.data.get("peak_power_kw"),
@@ -106,13 +118,15 @@ def generator_create(request):
 def string_create(request):
 
     generator = GeneratorSystem.objects.get(id=request.data["generator_id"])
+    orientation = Orientation.objects.get(id=request.data["orientation_id"]
+    )
 
     string = GeneratorString.objects.create(
         generator=generator,
         name=request.data["name"],
         module_count=request.data["module_count"],
         peak_power_kwp=request.data["peak_power_kwp"],
-        orientation=request.data["orientation"],
+        orientation=orientation,
         tilt_deg=request.data["tilt_deg"],
         shading_percent=request.data.get(
             "shading_percent",

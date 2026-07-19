@@ -6,44 +6,107 @@ import uuid
 
 from django.db import models
 
-from devices.models import Home
+from devices.models import Home, Device
 
 
-class GeneratorSystem(models.Model):
+class GeneratorType(models.Model):
 
-    TYPE_PV = "pv"
-    TYPE_FUEL_CELL = "fuel_cell"
-    TYPE_DIESEL = "diesel"
-    TYPE_CHP = "chp"
-    TYPE_WIND = "wind"
-
-    SYSTEM_TYPES = [
-        (TYPE_PV, "Photovoltaik"),
-        (TYPE_FUEL_CELL, "Brennstoffzelle"),
-        (TYPE_DIESEL, "Dieselgenerator"),
-        (TYPE_CHP, "Blockheizkraftwerk"),
-        (TYPE_WIND, "Windenergie"),
-    ]
-
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
-    )
-
-    home = models.ForeignKey(
-        Home,
-        on_delete=models.CASCADE,
-        related_name="generator_systems",
+    key = models.CharField(
+        max_length=50,
+        unique=True,
     )
 
     name = models.CharField(
         max_length=100,
     )
 
-    system_type = models.CharField(
-        max_length=20,
-        choices=SYSTEM_TYPES,
+    active = models.BooleanField(
+        default=True,
+    )
+
+    sort_order = models.IntegerField(
+        default=0,
+    )
+
+    class Meta:
+
+        ordering = [
+            "sort_order",
+            "name",
+        ]
+
+        verbose_name = "Generator Typ"
+        verbose_name_plural = "Generator Typen"
+
+        def __str__(self):
+            return self.name
+
+
+class Orientation(models.Model):
+
+    key = models.CharField(
+        max_length=10,
+        unique=True,
+    )
+
+    name = models.CharField(
+        max_length=50,
+    )
+
+    azimuth_deg = models.IntegerField()
+
+    sort_order = models.IntegerField(
+        default=0,
+    )
+
+    active = models.BooleanField(
+        default=True,
+    )
+
+    class Meta:
+
+        ordering = [
+                "sort_order",
+            ]
+
+        verbose_name = "Ausrichtung"
+        verbose_name_plural = "Ausrichtungen"
+
+    def __str__(self):
+        return self.name
+
+
+class GeneratorSystem(models.Model):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    home = models.ForeignKey(
+        Home,
+        on_delete=models.CASCADE,
+        related_name="generator_systems",
+    )
+
+    device = models.OneToOneField(
+        Device,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="generator_system",
+    )
+
+    name = models.CharField(
+        max_length=100,
+    )
+
+    generator_type = models.ForeignKey(
+        GeneratorType,
+        on_delete=models.PROTECT,
+        related_name="generator_systems",
+        null=True,
+        blank=True,
     )
 
     peak_power_kw = models.DecimalField(
@@ -79,6 +142,7 @@ class GeneratorSystem(models.Model):
     class Meta:
 
         ordering = [
+
             "name",
         ]
 
@@ -91,7 +155,6 @@ class GeneratorSystem(models.Model):
     def total_string_power_kwp(self):
 
         return sum(float(s.peak_power_kwp) for s in self.strings.all())
-    
 
     def __str__(self):
 
@@ -125,31 +188,14 @@ class GeneratorString(models.Model):
         decimal_places=2,
     )
 
-    ORIENTATION_N = "N"
-    ORIENTATION_NE = "NE"
-    ORIENTATION_E = "E"
-    ORIENTATION_SE = "SE"
-    ORIENTATION_S = "S"
-    ORIENTATION_SW = "SW"
-    ORIENTATION_W = "W"
-    ORIENTATION_NW = "NW"
-
-    ORIENTATION_CHOICES = [
-        (ORIENTATION_N, "Nord"),
-        (ORIENTATION_NE, "Nordost"),
-        (ORIENTATION_E, "Ost"),
-        (ORIENTATION_SE, "Südost"),
-        (ORIENTATION_S, "Süd"),
-        (ORIENTATION_SW, "Südwest"),
-        (ORIENTATION_W, "West"),
-        (ORIENTATION_NW, "Nordwest"),
-    ]
-
-    orientation = models.CharField(
-        max_length=2,
-        choices=ORIENTATION_CHOICES,
-        default=ORIENTATION_S,
+    orientation = models.ForeignKey(
+        Orientation,
+        on_delete=models.PROTECT,
+        related_name="strings",
+        null=True,
+        blank=True,
     )
+
     tilt_deg = models.IntegerField(
         default=35,
         help_text="Dachneigung",
@@ -171,22 +217,11 @@ class GeneratorString(models.Model):
             "name",
         ]
 
-    @property
-    def azimuth_deg(self):
-
-        mapping = {
-            "N": 0,
-            "NE": 45,
-            "E": 90,
-            "SE": 135,
-            "S": 180,
-            "SW": 225,
-            "W": 270,
-            "NW": 315,
-        }
-
-        return mapping[self.orientation]
-
     def __str__(self):
 
         return f"{self.generator.name} | " f"{self.name}"
+
+    @property
+    def azimuth_deg(self):
+
+        return self.orientation.azimuth_deg

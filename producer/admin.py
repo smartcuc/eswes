@@ -7,11 +7,12 @@ from django.contrib import admin
 from producer.models import (
     GeneratorSystem,
     GeneratorString,
+    GeneratorType,
+    Orientation,
 )
 
 
 class GeneratorStringInline(admin.TabularInline):
-
     model = GeneratorString
 
     extra = 1
@@ -26,26 +27,47 @@ class GeneratorStringInline(admin.TabularInline):
     )
 
 
+@admin.register(GeneratorType)
+class GeneratorTypeAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "name",
+        "key",
+        "sort_order",
+        "active",
+    )
+
+    list_filter = ("active",)
+
+
+@admin.register(Orientation)
+class OrientationAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "name",
+        "key",
+        "azimuth_deg",
+        "sort_order",
+        "active",
+    )
+
+    list_filter = ("active",)
+
+
 @admin.register(GeneratorSystem)
 class GeneratorSystemAdmin(admin.ModelAdmin):
 
     list_display = (
         "name",
         "home",
-        "system_type",
+        "generator_type",
         "peak_power_kw",
-        "string_count",
         "active",
     )
 
     list_filter = (
-        "system_type",
+        "generator_type",
         "active",
-    )
-
-    search_fields = (
-        "name",
-        "home__name",
     )
 
     inlines = [

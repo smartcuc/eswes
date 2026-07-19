@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import AddProducerModal from "../components/AddProducerModal";
+import AddStringModal from "../components/AddStringModal";
 
 
 export default function ProducerPage() {
@@ -264,6 +265,21 @@ export default function ProducerPage() {
                 open={openAdd}
                 onClose={() =>
                     setOpenAdd(false)
+                }
+                onCreated={() =>
+                    queryClient.invalidateQueries({
+                        queryKey: ["producers"],
+                    })
+                }
+            />
+
+            <AddStringModal
+                open={openString}
+                generatorId={
+                    selectedGenerator
+                }
+                onClose={() =>
+                    setOpenString(false)
                 }
                 onCreated={() =>
                     queryClient.invalidateQueries({
