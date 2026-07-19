@@ -139,3 +139,47 @@ def string_create(request):
             "id": str(string.id),
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def generator_type_list(request):
+
+    data = []
+
+    for item in GeneratorType.objects.filter(
+        active=True,
+    ):
+
+        data.append(
+            {
+                "id": item.id,
+                "key": item.key,
+                "name": item.name,
+            }
+        )
+
+    return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def orientation_list(request):
+
+    data = []
+
+    for item in Orientation.objects.filter(
+        active=True,
+    ):
+
+        data.append(
+            {
+                "id": item.id,
+                "key": item.key,
+                "name": item.name,
+                "azimuth_deg": item.azimuth_deg,
+            }
+        )
+
+    return Response(data)
+

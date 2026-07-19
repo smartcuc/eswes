@@ -4,17 +4,8 @@
 
 import { useState } from "react";
 import { apiFetch } from "../../../api/client";
-
-const ORIENTATIONS = [
-    "N",
-    "NE",
-    "E",
-    "SE",
-    "S",
-    "SW",
-    "W",
-    "NW",
-];
+import { useQuery } from "@tanstack/react-query";
+import { getOrientations } from "../api";
 
 export default function AddStringModal({
     open,
@@ -32,8 +23,13 @@ export default function AddStringModal({
     const [power, setPower] =
         useState("");
 
-    const [orientation, setOrientation] =
-        useState("S");
+    const { data: orientations = [] } =
+        useQuery({
+            queryKey: ["orientations"],
+            queryFn: getOrientations,
+        });
+
+    const [orientationId, setOrientationId] = useState("");
 
     const [tilt, setTilt] =
         useState(35);
@@ -57,7 +53,8 @@ export default function AddStringModal({
                     peak_power_kwp:
                         Number(power),
 
-                    orientation,
+                    orientation_id:
+                        orientationId,
 
                     tilt_deg:
                         Number(tilt),
@@ -129,27 +126,6 @@ export default function AddStringModal({
                         placeholder="Leistung (kWp)"
                         className="w-full border rounded p-2"
                     />
-
-                    <select
-                        value={orientation}
-                        onChange={(e) =>
-                            setOrientation(
-                                e.target.value
-                            )
-                        }
-                        className="w-full border rounded p-2"
-                    >
-
-                        {ORIENTATIONS.map((o) => (
-                            <option
-                                key={o}
-                                value={o}
-                            >
-                                {o}
-                            </option>
-                        ))}
-
-                    </select>
 
                     <input
                         value={tilt}

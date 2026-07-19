@@ -4,12 +4,25 @@
 
 import { useState } from "react";
 import { apiFetch } from "../../../api/client";
+import { useQuery } from "@tanstack/react-query";
+import { getGeneratorTypes } from "../api";
 
 export default function AddProducerModal({
     open,
     onClose,
     onCreated,
 }) {
+
+    // const [generatorType, setGeneratorType] =
+    //     useState("");
+
+    const { data: generatorTypes = [] } =
+        useQuery({
+            queryKey: ["generator-types"],
+            queryFn: getGeneratorTypes,
+        });
+
+    const [generatorType, setGeneratorType] = useState("");
 
     const [name, setName] = useState("");
 
@@ -30,13 +43,23 @@ export default function AddProducerModal({
                 method: "POST",
 
                 body: JSON.stringify({
+
                     name,
-                    system_type: "pv",
-                    peak_power_kw: peakPower,
-                    inverter_power_kw: inverterPower,
+
+                    generator_type:
+                        generatorType,
+
+                    peak_power_kw:
+                        peakPower,
+
+                    inverter_power_kw:
+                        inverterPower,
+
                     battery_capacity_kwh:
                         batteryCapacity,
+
                 }),
+
             }
         );
 
@@ -86,6 +109,33 @@ export default function AddProducerModal({
                         placeholder="Name"
                         className="w-full border rounded p-2"
                     />
+
+                    <select
+                        value={generatorType}
+                        onChange={(e) =>
+                            setGeneratorType(
+                                e.target.value
+                            )
+                        }
+                        className="w-full border rounded p-2"
+                    >
+
+                        <option value="">
+                            Typ auswählen
+                        </option>
+
+                        {generatorTypes.map((type) => (
+
+                            <option
+                                key={type.id}
+                                value={type.id}
+                            >
+                                {type.name}
+                            </option>
+
+                        ))}
+
+                    </select>
 
                     <input
                         value={peakPower}
