@@ -4,6 +4,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../../../api/client";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import AddProducerModal from "../components/AddProducerModal";
+
 
 export default function ProducerPage() {
 
@@ -12,6 +17,19 @@ export default function ProducerPage() {
         queryFn: () =>
             apiFetch("/api/producer/"),
     });
+
+    const [openAdd, setOpenAdd] =
+        useState(false);
+
+    const queryClient = useQueryClient();
+
+    const [selectedGenerator,
+        setSelectedGenerator] =
+        useState(null);
+
+    const [openString,
+        setOpenString] =
+        useState(false);
 
     return (
         <div className="p-6">
@@ -30,6 +48,7 @@ export default function ProducerPage() {
                 </div>
 
                 <button
+                    onClick={() => setOpenAdd(true)}
                     className="
                         px-4
                         py-2
@@ -64,7 +83,7 @@ export default function ProducerPage() {
 
             )}
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
                 {data.map((producer) => (
 
@@ -76,7 +95,7 @@ export default function ProducerPage() {
                             border
                             border-gray-200
                             shadow-sm
-                            p-5
+                            p-4
                         "
                     >
 
@@ -91,17 +110,36 @@ export default function ProducerPage() {
                                 <div className="text-sm text-gray-500 capitalize">
                                     {producer.type}
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        setSelectedGenerator(
+                                            producer.id
+                                        );
 
+                                        setOpenString(true);
+                                    }}
+                                    className="
+                                        px-3
+                                        py-1
+                                        text-xs
+                                        rounded-lg
+                                        bg-amber-100
+                                        text-amber-700
+                                        hover:bg-amber-200
+                                    "
+                                >
+                                    + String
+                                </button>
                             </div>
 
                         </div>
 
                         <div
                             className="
-                                mt-5
+                                mt-4
                                 grid
-                                grid-cols-4
-                                gap-4
+                                grid-cols-2
+                                gap-3
                             "
                         >
 
@@ -156,6 +194,7 @@ export default function ProducerPage() {
                             <div className="font-semibold text-amber-600">
                                 {producer.total_string_power_kwp} kWp
                             </div>
+
                             <div className="mt-4">
 
                                 <div className="text-sm font-medium text-gray-700 mb-2">
@@ -169,19 +208,19 @@ export default function ProducerPage() {
                                         <div
                                             key={string.id}
                                             className="
-                    flex
-                    items-center
-                    justify-between
-                    rounded-lg
-                    bg-slate-50
-                    p-3
-                "
+                        flex
+                        items-center
+                        justify-between
+                        rounded-lg
+                        bg-slate-50
+                        p-3
+                    "
                                         >
 
                                             <div>
 
                                                 <div className="font-medium">
-                                                    {string.name}
+                                                    ☀️ {string.name}
                                                 </div>
 
                                                 <div className="text-xs text-gray-500">
@@ -190,16 +229,18 @@ export default function ProducerPage() {
                                                     {string.tilt_deg}°
                                                     {" • "}
                                                     {string.module_count} Module
+                                                    {" • "}
+                                                    Verschattung {string.shading_percent}%
                                                 </div>
 
                                             </div>
 
                                             <div
                                                 className="
-                        text-sm
-                        font-semibold
-                        text-amber-600
-                    "
+                            text-sm
+                            font-semibold
+                            text-amber-600
+                        "
                                             >
                                                 {string.peak_power_kwp} kWp
                                             </div>
@@ -211,6 +252,7 @@ export default function ProducerPage() {
                                 </div>
 
                             </div>
+
                         </div>
 
                     </div>
@@ -218,6 +260,17 @@ export default function ProducerPage() {
                 ))}
 
             </div>
+            <AddProducerModal
+                open={openAdd}
+                onClose={() =>
+                    setOpenAdd(false)
+                }
+                onCreated={() =>
+                    queryClient.invalidateQueries({
+                        queryKey: ["producers"],
+                    })
+                }
+            />
 
         </div>
     );

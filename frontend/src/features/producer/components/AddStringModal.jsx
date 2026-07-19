@@ -1,0 +1,197 @@
+/*
+# src/features/producer/components/AddStringModal.jsx
+*/
+
+import { useState } from "react";
+import { apiFetch } from "../../../api/client";
+
+const ORIENTATIONS = [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW",
+];
+
+export default function AddStringModal({
+    open,
+    onClose,
+    generatorId,
+    onCreated,
+}) {
+
+    const [name, setName] =
+        useState("");
+
+    const [modules, setModules] =
+        useState("");
+
+    const [power, setPower] =
+        useState("");
+
+    const [orientation, setOrientation] =
+        useState("S");
+
+    const [tilt, setTilt] =
+        useState(35);
+
+    async function handleSave() {
+
+        await apiFetch(
+            "/api/producer/string/create/",
+            {
+                method: "POST",
+
+                body: JSON.stringify({
+                    generator_id:
+                        generatorId,
+
+                    name,
+
+                    module_count:
+                        Number(modules),
+
+                    peak_power_kwp:
+                        Number(power),
+
+                    orientation,
+
+                    tilt_deg:
+                        Number(tilt),
+                }),
+            }
+        );
+
+        onCreated();
+        onClose();
+    }
+
+    if (!open) {
+        return null;
+    }
+
+    return (
+        <div
+            className="
+                fixed inset-0
+                bg-black/40
+                flex items-center justify-center
+                z-50
+            "
+            onClick={onClose}
+        >
+
+            <div
+                className="
+                    bg-white
+                    rounded-xl
+                    p-6
+                    w-full
+                    max-w-lg
+                "
+                onClick={(e) =>
+                    e.stopPropagation()
+                }
+            >
+
+                <h2 className="text-lg font-semibold mb-4">
+                    String hinzufügen
+                </h2>
+
+                <div className="space-y-3">
+
+                    <input
+                        value={name}
+                        onChange={(e) =>
+                            setName(e.target.value)
+                        }
+                        placeholder="Name"
+                        className="w-full border rounded p-2"
+                    />
+
+                    <input
+                        value={modules}
+                        onChange={(e) =>
+                            setModules(e.target.value)
+                        }
+                        placeholder="Module"
+                        className="w-full border rounded p-2"
+                    />
+
+                    <input
+                        value={power}
+                        onChange={(e) =>
+                            setPower(e.target.value)
+                        }
+                        placeholder="Leistung (kWp)"
+                        className="w-full border rounded p-2"
+                    />
+
+                    <select
+                        value={orientation}
+                        onChange={(e) =>
+                            setOrientation(
+                                e.target.value
+                            )
+                        }
+                        className="w-full border rounded p-2"
+                    >
+
+                        {ORIENTATIONS.map((o) => (
+                            <option
+                                key={o}
+                                value={o}
+                            >
+                                {o}
+                            </option>
+                        ))}
+
+                    </select>
+
+                    <input
+                        value={tilt}
+                        onChange={(e) =>
+                            setTilt(
+                                e.target.value
+                            )
+                        }
+                        placeholder="Neigung"
+                        className="w-full border rounded p-2"
+                    />
+
+                </div>
+
+                <div className="flex justify-end gap-2 mt-5">
+
+                    <button
+                        onClick={onClose}
+                        className="
+                            px-4 py-2
+                            border rounded
+                        "
+                    >
+                        Abbrechen
+                    </button>
+
+                    <button
+                        onClick={handleSave}
+                        className="
+                            px-4 py-2
+                            bg-amber-500
+                            text-white
+                            rounded
+                        "
+                    >
+                        Speichern
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    );
+}

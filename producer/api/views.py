@@ -7,7 +7,7 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from producer.models import GeneratorSystem
+from producer.models import GeneratorSystem, GeneratorString
 
 
 @api_view(["GET"])
@@ -71,3 +71,57 @@ def generator_list(request):
         )
 
     return Response(data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def generator_create(request):
+
+    home = request.user.homes.first()
+
+    if not home:
+        return Response(
+            {"detail": "Kein Home gefunden."},
+            status=400,
+        )
+
+    system = GeneratorSystem.objects.create(
+        home=home,
+        name=request.data.get("name"),
+        system_type=request.data.get("system_type"),
+        peak_power_kw=request.data.get("peak_power_kw"),
+        inverter_power_kw=request.data.get("inverter_power_kw"),
+        battery_capacity_kwh=request.data.get("battery_capacity_kwh"),
+    )
+
+    return Response(
+        {
+            "id": str(system.id),
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def string_create(request):
+
+    generator = GeneratorSystem.objects.get(id=request.data["generator_id"])
+
+    string = GeneratorString.objects.create(
+        generator=generator,
+        name=request.data["name"],
+        module_count=request.data["module_count"],
+        peak_power_kwp=request.data["peak_power_kwp"],
+        orientation=request.data["orientation"],
+        tilt_deg=request.data["tilt_deg"],
+        shading_percent=request.data.get(
+            "shading_percent",
+            0,
+        ),
+    )
+
+    return Response(
+        {
+            "id": str(string.id),
+        }
+    )
