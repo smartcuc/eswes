@@ -49,7 +49,7 @@ def generator_list(request):
                         float(string.peak_power_kwp),
 
                     "orientation":
-                        string.orientation,
+                        string.get_orientation_display(),
 
                     "tilt_deg":
                         string.tilt_deg,
@@ -60,6 +60,44 @@ def generator_list(request):
                         ),
                 }
             )
+
+            data.append(
+                {
+                    "id": str(system.id),
+
+                    "name": system.name,
+
+                    "type": system.system_type,
+
+                    "peak_power_kw":
+                        float(system.peak_power_kw),
+
+                    "inverter_power_kw":
+                        (
+                            float(system.inverter_power_kw)
+                            if system.inverter_power_kw
+                            else None
+                        ),
+
+                    "battery_capacity_kwh":
+                        (
+                            float(system.battery_capacity_kwh)
+                            if system.battery_capacity_kwh
+                            else None
+                        ),
+
+                    "string_count":
+                        system.string_count,
+
+                    "total_string_power_kwp":
+                        system.total_string_power_kwp,
+
+                    "strings":
+                        strings,
+                }
+            )
+
+        return Response(data)
 
     data.append(
         {
