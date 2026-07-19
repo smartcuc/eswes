@@ -105,8 +105,6 @@ class GeneratorSystem(models.Model):
         GeneratorType,
         on_delete=models.PROTECT,
         related_name="generator_systems",
-        null=True,
-        blank=True,
     )
 
     peak_power_kw = models.DecimalField(
@@ -192,8 +190,6 @@ class GeneratorString(models.Model):
         Orientation,
         on_delete=models.PROTECT,
         related_name="strings",
-        null=True,
-        blank=True,
     )
 
     tilt_deg = models.IntegerField(
