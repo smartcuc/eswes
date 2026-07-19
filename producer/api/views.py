@@ -100,7 +100,6 @@ def generator_create(request):
         home=home,
         generator_type=generator_type,
         name=request.data.get("name"),
-        system_type=request.data.get("system_type"),
         peak_power_kw=request.data.get("peak_power_kw"),
         inverter_power_kw=request.data.get("inverter_power_kw"),
         battery_capacity_kwh=request.data.get("battery_capacity_kwh"),
