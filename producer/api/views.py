@@ -103,9 +103,13 @@ def generator_create(request):
             status=400,
         )
 
-    generator_type = GeneratorType.objects.get(
-        id=request.data["generator_type"]
-    )
+    generator_type = None
+
+    if request.data.get("generator_type"):
+
+        generator_type = GeneratorType.objects.get(
+            id=request.data["generator_type"]
+        )
 
     system = GeneratorSystem.objects.create(
         home=home,

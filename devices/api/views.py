@@ -166,7 +166,6 @@ def configure_device(request, device_id):
             defaults={
                 "home": device.home,
                 "name": config.display_name(),
-                "generator_type": None,
             },
         )
 
