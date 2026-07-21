@@ -38,8 +38,8 @@ class GeneratorType(models.Model):
         verbose_name = "Generator Typ"
         verbose_name_plural = "Generator Typen"
 
-        def __str__(self):
-            return self.name
+    def __str__(self):
+        return self.name
 
 
 class Orientation(models.Model):
@@ -111,6 +111,8 @@ class GeneratorSystem(models.Model):
     peak_power_kw = models.DecimalField(
         max_digits=10,
         decimal_places=2,
+        null=True,
+        blank=True,
         help_text="Gesamtleistung des Systems in kW/kWp",
     )
 

@@ -24,7 +24,10 @@ def generator_list(request):
             home=home,
             active=True,
         )
-        .prefetch_related("strings", "generator_type")
+        .prefetch_related(
+            "strings",
+            "generator_type",
+        )
         .order_by("name")
     )
 
@@ -52,13 +55,23 @@ def generator_list(request):
         data.append(
             {
                 "id": str(system.id),
-                "generator_type_id": system.generator_type.id,
+                "generator_type_id": (
+                    system.generator_type.id if system.generator_type else None
+                ),
                 "device_id": (system.device.id if system.device else None),
                 "name": system.name,
-                "type": system.generator_type.key,
-                "type_label": system.generator_type.name,
+                "type": (system.generator_type.key if system.generator_type else None),
+                "type_label": (
+                    system.generator_type.name
+                    if system.generator_type
+                    else "Nicht konfiguriert"
+                ),
                 "needs_configuration": system.needs_configuration,
-                "peak_power_kw": float(system.peak_power_kw),
+                "peak_power_kw": (
+                    float(system.peak_power_kw)
+                    if system.peak_power_kw is not None
+                    else None
+                ),
                 "inverter_power_kw": (
                     float(system.inverter_power_kw)
                     if system.inverter_power_kw
