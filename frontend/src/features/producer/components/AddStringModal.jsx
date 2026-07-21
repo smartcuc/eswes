@@ -2,7 +2,7 @@
 # src/features/producer/components/AddStringModal.jsx
 */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiFetch } from "../../../api/client";
 import { useQuery } from "@tanstack/react-query";
 import { getOrientations } from "../api";
@@ -20,6 +20,7 @@ export default function AddStringModal({
     onClose,
     generatorId,
     onCreated,
+    string = null,
 }) {
 
     const [name, setName] =
@@ -30,6 +31,8 @@ export default function AddStringModal({
 
     const [power, setPower] =
         useState("");
+
+    const isEdit = !!string;
 
     const { data: orientations = [] } =
         useQuery({
@@ -42,33 +45,85 @@ export default function AddStringModal({
     const [tilt, setTilt] =
         useState(35);
 
+    useEffect(() => {
+
+        if (!string) {
+            return;
+        }
+
+        setName(
+            string.name ?? ""
+        );
+
+        setModules(
+            string.module_count ?? ""
+        );
+
+        setPower(
+            string.peak_power_kwp ?? ""
+        );
+
+        setOrientationId(
+            string.orientation_id ?? ""
+        );
+
+        setTilt(
+            string.tilt_deg ?? 35
+        );
+
+    }, [string]);
+
     async function handleSave() {
 
-        await apiFetch(
-            "/api/producer/string/create/",
-            {
-                method: "POST",
+        const payload = {
 
-                body: JSON.stringify({
-                    generator_id:
-                        generatorId,
+            name,
 
-                    name,
+            module_count:
+                Number(modules),
 
-                    module_count:
-                        Number(modules),
+            peak_power_kwp:
+                String(power)
+                    .replace(",", "."),
 
-                    peak_power_kwp:
-                        normalizeDecimal(power),
+            orientation_id:
+                orientationId,
 
-                    orientation_id:
-                        orientationId,
+            tilt_deg:
+                Number(tilt),
 
-                    tilt_deg:
-                        Number(tilt),
-                }),
-            }
-        );
+        };
+
+        if (isEdit) {
+
+            await apiFetch(
+                `/api/producer/string/${string.id}/`,
+                {
+                    method: "PATCH",
+
+                    body: JSON.stringify(
+                        payload
+                    ),
+                }
+            );
+
+        } else {
+
+            await apiFetch(
+                "/api/producer/string/create/",
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        generator_id:
+                            generatorId,
+
+                        ...payload,
+                    }),
+                }
+            );
+
+        }
 
         onCreated();
         onClose();
@@ -103,7 +158,11 @@ export default function AddStringModal({
             >
 
                 <h2 className="text-lg font-semibold mb-4">
-                    String hinzufügen
+
+                    {isEdit
+                        ? "String bearbeiten"
+                        : "String hinzufügen"}
+
                 </h2>
 
                 <div className="space-y-3">

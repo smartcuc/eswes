@@ -105,8 +105,9 @@ class GeneratorSystem(models.Model):
         GeneratorType,
         on_delete=models.PROTECT,
         related_name="generator_systems",
+        null=True,
+        blank=True,
     )
-
     peak_power_kw = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -153,6 +154,20 @@ class GeneratorSystem(models.Model):
     def total_string_power_kwp(self):
 
         return sum(float(s.peak_power_kwp) for s in self.strings.all())
+
+    @property
+    def needs_configuration(self):
+
+        if not self.generator_type:
+            return True
+
+        if (
+            self.generator_type.key == "pv"
+            and self.strings.count() == 0
+        ):
+            return True
+
+        return False
 
     def __str__(self):
 

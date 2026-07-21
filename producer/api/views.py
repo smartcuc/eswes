@@ -57,6 +57,7 @@ def generator_list(request):
                 "name": system.name,
                 "type": system.generator_type.key,
                 "type_label": system.generator_type.name,
+                "needs_configuration": system.needs_configuration,
                 "peak_power_kw": float(system.peak_power_kw),
                 "inverter_power_kw": (
                     float(system.inverter_power_kw)

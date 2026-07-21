@@ -33,6 +33,14 @@ export default function ProducerPage() {
         setOpenString] =
         useState(false);
 
+    const [editString,
+        setEditString] =
+        useState(null);
+
+    const [openEditString,
+        setOpenEditString] =
+        useState(false);
+
     return (
         <div className="p-6">
 
@@ -134,9 +142,9 @@ export default function ProducerPage() {
                 py-1
                 text-xs
                 rounded
-                bg-blue-100
-                text-blue-700
-                hover:bg-blue-200
+                bg-slate-100
+                text-slate-700
+                hover:bg-slate-200
             "
                                 >
                                     ✏️
@@ -166,13 +174,13 @@ export default function ProducerPage() {
 
                                     }}
                                     className="
-                px-2
-                py-1
-                text-xs
-                rounded
-                bg-red-100
-                text-red-700
-                hover:bg-red-200
+                                        px-2
+                                        py-1
+                                        text-xs
+                                        rounded
+                                        bg-zinc-100
+                                        text-zinc-700
+                                        hover:bg-zinc-200
             "
                                 >
                                     🗑️
@@ -191,13 +199,13 @@ export default function ProducerPage() {
 
                                     }}
                                     className="
-                px-3
-                py-1
-                text-xs
-                rounded-lg
-                bg-amber-100
-                text-amber-700
-                hover:bg-amber-200
+                                        px-3
+                                        py-1
+                                        text-xs
+                                        rounded-lg
+                                        bg-amber-500
+                                        text-white
+                                        hover:bg-amber-600
             "
                                 >
                                     + String
@@ -308,14 +316,77 @@ export default function ProducerPage() {
 
                                             </div>
 
-                                            <div
-                                                className="
-                            text-sm
-                            font-semibold
-                            text-amber-600
-                        "
-                                            >
-                                                {string.peak_power_kwp} kWp
+                                            <div className="flex items-center gap-2">
+
+                                                <div
+                                                    className="
+            text-sm
+            font-semibold
+            text-amber-600
+        "
+                                                >
+                                                    {string.peak_power_kwp} kWp
+                                                </div>
+
+                                                <button
+                                                    onClick={() => {
+
+                                                        setEditString(string);
+
+                                                        setOpenEditString(
+                                                            true
+                                                        );
+
+                                                    }}
+                                                    className="
+                                                        px-2
+                                                        py-1
+                                                        text-xs
+                                                        rounded
+                                                        bg-slate-100
+                                                        text-slate-700
+                                                        hover:bg-slate-200
+        "
+                                                >
+                                                    ✏️
+                                                </button>
+
+                                                <button
+                                                    onClick={async () => {
+
+                                                        if (
+                                                            !window.confirm(
+                                                                `String "${string.name}" löschen?`
+                                                            )
+                                                        ) {
+                                                            return;
+                                                        }
+
+                                                        await apiFetch(
+                                                            `/api/producer/string/${string.id}/delete/`,
+                                                            {
+                                                                method: "DELETE",
+                                                            }
+                                                        );
+
+                                                        queryClient.invalidateQueries({
+                                                            queryKey: ["producers"],
+                                                        });
+
+                                                    }}
+                                                    className="
+                                                        px-2
+                                                        py-1
+                                                        text-xs
+                                                        rounded
+                                                        bg-zinc-100
+                                                        text-zinc-700
+                                                        hover:bg-zinc-200
+        "
+                                                >
+                                                    🗑️
+                                                </button>
+
                                             </div>
 
                                         </div>
@@ -373,6 +444,30 @@ export default function ProducerPage() {
                 onClose={() =>
                     setOpenString(false)
                 }
+                onCreated={() =>
+                    queryClient.invalidateQueries({
+                        queryKey: ["producers"],
+                    })
+                }
+            />
+
+            <AddStringModal
+                open={openEditString}
+                string={editString}
+                generatorId={
+                    selectedGenerator
+                }
+                onClose={() => {
+
+                    setOpenEditString(
+                        false
+                    );
+
+                    setEditString(
+                        null
+                    );
+
+                }}
                 onCreated={() =>
                     queryClient.invalidateQueries({
                         queryKey: ["producers"],

@@ -23,16 +23,16 @@ from devices.models import (
 
 from devices.models import MetricDefinition
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
-from devices.services.metrics import get_latest_powers
 
+from producer.models import GeneratorSystem
+
+from devices.services.metrics import get_latest_powers
 from .serializers import (
     DeviceSerializer,
     DeviceConfigSerializer,
     HomeSerializer,
     DeviceRoleSerializer,
     MQTTProfileSerializer,
-#    RoomSerializer,
-#    FloorSerializer,
 )
 
 from collections import defaultdict
@@ -155,6 +155,21 @@ def configure_device(request, device_id):
 
     # ✅ ✅ ✅ HIER IST DER FIX
     config.refresh_from_db()
+
+    #
+    # Producer automatisch anlegen
+    #
+    if config.role and config.role.key == "producer":
+
+        GeneratorSystem.objects.get_or_create(
+            device=device,
+            defaults={
+                "home": device.home,
+                "name": config.display_name(),
+                "generator_type": None,
+            },
+        )
+
     device.configured = config.is_classified()
     device.save(update_fields=["configured"])
 
