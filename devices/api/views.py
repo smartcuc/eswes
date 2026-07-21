@@ -24,7 +24,7 @@ from devices.models import (
 from devices.models import MetricDefinition
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
 
-from producer.models import GeneratorSystem
+from producer.models import GeneratorSystem, GeneratorType
 
 from devices.services.metrics import get_latest_powers
 from .serializers import (
@@ -52,28 +52,28 @@ def device_setup_options(request):
     # ✅ wenn du measurement types brauchst:
     from devices.models import MetricDefinition
     metrics = MetricDefinition.objects.all()
+    generator_types = GeneratorType.objects.filter(active=True)
 
-    return Response({
-        "roles": DeviceRoleSerializer(
-            roles,
-            many=True,
-        ).data,
-
-        "rooms": [
-            {"id": r.id, "name": r.name}
-            for r in rooms
-        ],
-
-        "floors": [
-            {"id": f.id, "name": f.name}
-            for f in floors
-        ],
-
-        "measurement_types": [
-            {"key": m.key, "name": m.name}
-            for m in metrics
-        ],
-    })
+    return Response(
+        {
+            "roles": DeviceRoleSerializer(
+                roles,
+                many=True,
+            ).data,
+            "rooms": [{"id": r.id, "name": r.name} for r in rooms],
+            "floors": [{"id": f.id, "name": f.name} for f in floors],
+            "measurement_types": [{"key": m.key, "name": m.name} for m in metrics],
+            "generator_types": [
+                {
+                    "id": g.id,
+                    "key": g.key,
+                    "name": g.name,
+                    "icon": g.icon,
+                }
+                for g in generator_types
+            ],
+        }
+    )
 
 
 # ============================================================
@@ -159,13 +159,19 @@ def configure_device(request, device_id):
     #
     # Producer automatisch anlegen
     #
-    if config.role and config.role.key == "producer":
+    if (
+        config.role
+        and config.role.key == "producer"
+        and config.generator_type
+    ):
 
         GeneratorSystem.objects.get_or_create(
             device=device,
             defaults={
                 "home": device.home,
                 "name": config.display_name(),
+                "generator_type":
+                    config.generator_type,
             },
         )
 

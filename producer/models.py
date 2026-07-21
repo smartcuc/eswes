@@ -20,6 +20,12 @@ class GeneratorType(models.Model):
         max_length=100,
     )
 
+    icon = models.CharField(
+        max_length=20,
+        blank=True,
+        default="⚡",
+    )
+
     active = models.BooleanField(
         default=True,
     )

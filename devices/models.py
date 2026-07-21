@@ -11,6 +11,7 @@ from zoneinfo import available_timezones
 from django.contrib.auth import get_user_model
 
 from channels.layers import get_channel_layer
+
 from asgiref.sync import async_to_sync
 
 
@@ -211,9 +212,11 @@ class DeviceConfig(models.Model):
         on_delete=models.SET_NULL
     )
 
-    measurement_type = models.CharField(
-        max_length=50,
-        blank=True
+    generator_type = models.ForeignKey(
+        "producer.GeneratorType",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
     )
 
     # ✅ Location (frei!)
@@ -244,10 +247,18 @@ class DeviceConfig(models.Model):
         return self.name or self.device.identifier
 
     def is_classified(self):
-        return (
-            self.role is not None
-            and bool(self.measurement_type)
-            and bool(self.room or self.floor)
+        if self.role is None:
+            return False
+
+        if self.role.key == "producer":
+
+            return (
+                self.generator_type
+                is not None
+            )
+
+        return bool(
+            self.room or self.floor
         )
 
     def __str__(self):
