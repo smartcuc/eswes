@@ -52,11 +52,8 @@ def generator_list(request):
         data.append(
             {
                 "id": str(system.id),
-                "device_id": (
-                        system.device.id
-                        if system.device
-                        else None
-                    ),
+                "generator_type_id": system.generator_type.id,
+                "device_id": (system.device.id if system.device else None),
                 "name": system.name,
                 "type": system.generator_type.key,
                 "type_label": system.generator_type.name,
