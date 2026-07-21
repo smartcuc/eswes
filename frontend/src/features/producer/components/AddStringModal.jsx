@@ -7,6 +7,14 @@ import { apiFetch } from "../../../api/client";
 import { useQuery } from "@tanstack/react-query";
 import { getOrientations } from "../api";
 
+
+function normalizeDecimal(value) {
+    return value
+        ?.toString()
+        .replace(",", ".");
+}
+
+
 export default function AddStringModal({
     open,
     onClose,
@@ -51,7 +59,7 @@ export default function AddStringModal({
                         Number(modules),
 
                     peak_power_kwp:
-                        Number(power),
+                        normalizeDecimal(power),
 
                     orientation_id:
                         orientationId,
@@ -108,6 +116,33 @@ export default function AddStringModal({
                         placeholder="Name"
                         className="w-full border rounded p-2"
                     />
+
+                    <select
+                        value={orientationId}
+                        onChange={(e) =>
+                            setOrientationId(
+                                e.target.value
+                            )
+                        }
+                        className="w-full border rounded p-2"
+                    >
+
+                        <option value="">
+                            Ausrichtung auswählen
+                        </option>
+
+                        {orientations.map((orientation) => (
+
+                            <option
+                                key={orientation.id}
+                                value={orientation.id}
+                            >
+                                {orientation.name}
+                            </option>
+
+                        ))}
+
+                    </select>
 
                     <input
                         value={modules}

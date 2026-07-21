@@ -91,7 +91,7 @@ def generator_create(request):
             {"detail": "Kein Home gefunden."},
             status=400,
         )
-    
+
     generator_type = GeneratorType.objects.get(
         id=request.data["generator_type"]
     )
@@ -108,6 +108,63 @@ def generator_create(request):
     return Response(
         {
             "id": str(system.id),
+        }
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def generator_delete(request, generator_id):
+
+    generator = GeneratorSystem.objects.get(
+        id=generator_id,
+        home=request.user.homes.first(),
+    )
+
+    generator.delete()
+
+    return Response(
+        {
+            "success": True,
+        }
+    )
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def generator_update(
+    request,
+    generator_id,
+):
+
+    generator = GeneratorSystem.objects.get(
+        id=generator_id,
+        home=request.user.homes.first(),
+    )
+
+    if "name" in request.data:
+        generator.name = request.data["name"]
+
+    if "peak_power_kw" in request.data:
+        generator.peak_power_kw = request.data["peak_power_kw"]
+
+    if "inverter_power_kw" in request.data:
+        generator.inverter_power_kw = request.data["inverter_power_kw"]
+
+    if "battery_capacity_kwh" in request.data:
+        generator.battery_capacity_kwh = request.data["battery_capacity_kwh"]
+
+    if "generator_type" in request.data:
+
+        generator.generator_type = GeneratorType.objects.get(
+            id=request.data["generator_type"]
+        )
+
+    generator.save()
+
+    return Response(
+        {
+            "success": True,
         }
     )
 
@@ -182,3 +239,57 @@ def orientation_list(request):
 
     return Response(data)
 
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def string_delete(
+    request,
+    string_id,
+):
+
+    string = GeneratorString.objects.get(id=string_id)
+
+    string.delete()
+
+    return Response(
+        {
+            "success": True,
+        }
+    )
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def string_update(
+    request,
+    string_id,
+):
+
+    string = GeneratorString.objects.get(id=string_id)
+
+    if "name" in request.data:
+        string.name = request.data["name"]
+
+    if "module_count" in request.data:
+        string.module_count = request.data["module_count"]
+
+    if "peak_power_kwp" in request.data:
+        string.peak_power_kwp = request.data["peak_power_kwp"]
+
+    if "orientation_id" in request.data:
+
+        string.orientation = Orientation.objects.get(id=request.data["orientation_id"])
+
+    if "tilt_deg" in request.data:
+        string.tilt_deg = request.data["tilt_deg"]
+
+    if "shading_percent" in request.data:
+        string.shading_percent = request.data["shading_percent"]
+
+    string.save()
+
+    return Response(
+        {
+            "success": True,
+        }
+    )

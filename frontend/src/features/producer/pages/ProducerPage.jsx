@@ -19,8 +19,9 @@ export default function ProducerPage() {
             apiFetch("/api/producer/"),
     });
 
-    const [openAdd, setOpenAdd] =
-        useState(false);
+    const [openAdd, setOpenAdd] = useState(false);
+    const [editProducer, setEditProducer] = useState(null);
+    const [openEditProducer, setOpenEditProducer] = useState(false);
 
     const queryClient = useQueryClient();
 
@@ -109,28 +110,99 @@ export default function ProducerPage() {
                                 </div>
 
                                 <div className="text-sm text-gray-500 capitalize">
-                                    {producer.type}
+                                    {producer.type_label ?? producer.type}
                                 </div>
+
+                            </div>
+
+                            <div className="flex gap-2">
+
                                 <button
                                     onClick={() => {
+
+                                        setEditProducer(
+                                            producer
+                                        );
+
+                                        setOpenEditProducer(
+                                            true
+                                        );
+
+                                    }}
+                                    className="
+                px-2
+                py-1
+                text-xs
+                rounded
+                bg-blue-100
+                text-blue-700
+                hover:bg-blue-200
+            "
+                                >
+                                    ✏️
+                                </button>
+
+                                <button
+                                    onClick={async () => {
+
+                                        if (
+                                            !window.confirm(
+                                                `Erzeuger "${producer.name}" löschen?`
+                                            )
+                                        ) {
+                                            return;
+                                        }
+
+                                        await apiFetch(
+                                            `/api/producer/${producer.id}/delete/`,
+                                            {
+                                                method: "DELETE",
+                                            }
+                                        );
+
+                                        queryClient.invalidateQueries({
+                                            queryKey: ["producers"],
+                                        });
+
+                                    }}
+                                    className="
+                px-2
+                py-1
+                text-xs
+                rounded
+                bg-red-100
+                text-red-700
+                hover:bg-red-200
+            "
+                                >
+                                    🗑️
+                                </button>
+
+                                <button
+                                    onClick={() => {
+
                                         setSelectedGenerator(
                                             producer.id
                                         );
 
-                                        setOpenString(true);
+                                        setOpenString(
+                                            true
+                                        );
+
                                     }}
                                     className="
-                                        px-3
-                                        py-1
-                                        text-xs
-                                        rounded-lg
-                                        bg-amber-100
-                                        text-amber-700
-                                        hover:bg-amber-200
-                                    "
+                px-3
+                py-1
+                text-xs
+                rounded-lg
+                bg-amber-100
+                text-amber-700
+                hover:bg-amber-200
+            "
                                 >
                                     + String
                                 </button>
+
                             </div>
 
                         </div>
@@ -266,6 +338,26 @@ export default function ProducerPage() {
                 onClose={() =>
                     setOpenAdd(false)
                 }
+                onCreated={() =>
+                    queryClient.invalidateQueries({
+                        queryKey: ["producers"],
+                    })
+                }
+            />
+            <AddProducerModal
+                open={openEditProducer}
+                producer={editProducer}
+                onClose={() => {
+
+                    setOpenEditProducer(
+                        false
+                    );
+
+                    setEditProducer(
+                        null
+                    );
+
+                }}
                 onCreated={() =>
                     queryClient.invalidateQueries({
                         queryKey: ["producers"],

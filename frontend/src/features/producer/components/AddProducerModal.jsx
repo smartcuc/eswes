@@ -2,19 +2,25 @@
 # src/features/producer/components/AddProducerModal.jsx
 */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "../../../api/client";
 import { useQuery } from "@tanstack/react-query";
 import { getGeneratorTypes } from "../api";
+
+
+function normalizeDecimal(value) {
+    return value
+        ?.toString()
+        .replace(",", ".");
+}
+
 
 export default function AddProducerModal({
     open,
     onClose,
     onCreated,
+    producer = null,
 }) {
-
-    // const [generatorType, setGeneratorType] =
-    //     useState("");
 
     const { data: generatorTypes = [] } =
         useQuery({
@@ -35,33 +41,87 @@ export default function AddProducerModal({
     const [batteryCapacity, setBatteryCapacity] =
         useState("");
 
+    const isEdit = !!producer;
+
+    useEffect(() => {
+
+        if (!producer) {
+            return;
+        }
+
+        setName(
+            producer.name ?? ""
+        );
+
+        setPeakPower(
+            producer.peak_power_kw ?? ""
+        );
+
+        setInverterPower(
+            producer.inverter_power_kw ?? ""
+        );
+
+        setBatteryCapacity(
+            producer.battery_capacity_kwh ?? ""
+        );
+
+        setGeneratorType(
+            producer.generator_type_id ?? ""
+        );
+
+    }, [producer]);
+
     async function handleSave() {
 
-        await apiFetch(
-            "/api/producer/create/",
-            {
-                method: "POST",
+        const payload = {
 
-                body: JSON.stringify({
+            name,
 
-                    name,
+            generator_type:
+                generatorType,
 
-                    generator_type:
-                        generatorType,
+            peak_power_kw:
+                normalizeDecimal(
+                    peakPower
+                ),
 
-                    peak_power_kw:
-                        peakPower,
+            inverter_power_kw:
+                normalizeDecimal(
+                    inverterPower
+                ),
 
-                    inverter_power_kw:
-                        inverterPower,
+            battery_capacity_kwh:
+                normalizeDecimal(
+                    batteryCapacity
+                ),
+        };
 
-                    battery_capacity_kwh:
-                        batteryCapacity,
+        if (isEdit) {
 
-                }),
+            await apiFetch(
+                `/api/producer/${producer.id}/`,
+                {
+                    method: "PATCH",
 
-            }
-        );
+                    body: JSON.stringify(
+                        payload
+                    ),
+                }
+            );
+
+        } else {
+
+            await apiFetch(
+                "/api/producer/create/",
+                {
+                    method: "POST",
+
+                    body: JSON.stringify(
+                        payload
+                    ),
+                }
+            );
+        }
 
         onCreated();
         onClose();
@@ -96,7 +156,11 @@ export default function AddProducerModal({
             >
 
                 <h2 className="text-lg font-semibold mb-4">
-                    ☀️ Erzeuger anlegen
+
+                    {isEdit
+                        ? "☀️ Erzeuger bearbeiten"
+                        : "☀️ Erzeuger anlegen"}
+
                 </h2>
 
                 <div className="space-y-3">
