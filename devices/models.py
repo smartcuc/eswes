@@ -253,26 +253,23 @@ class DeviceConfig(models.Model):
     def display_name(self):
         return self.name or self.device.identifier
 
+    def is_classified(self):
 
-def is_classified(self):
+        if self.role is None:
+            return False
 
-    if self.role is None:
-        return False
+        if self.metric_definition is None:
+            return False
 
-    if self.metric_definition is None:
-        return False
+        if self.role.key == "producer":
 
-    if self.role.key == "producer":
-
-        return ( self.generator_type is not None and (
-            self.room is not None or self.floor is not None
+            return self.generator_type is not None and (
+                self.room is not None or self.floor is not None
             )
-        )
 
-    return ( self.room is not None or self.floor is not None
-    )
+        return self.room is not None or self.floor is not None
 
-def __str__(self):
+    def __str__(self):
         return self.display_name()
 
 
