@@ -71,7 +71,7 @@ def rebuild_demo_environment():
                 device=new_device,
                 name=f"{cfg.name} (Demo)",
                 role=cfg.role,
-                measurement_type=cfg.measurement_type,
+                generator_type=cfg.generator_type,
                 home=demo_home,
                 floor=cfg.floor,
                 room=cfg.room,

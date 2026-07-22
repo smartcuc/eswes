@@ -13,9 +13,9 @@ export function useDeviceRoles() {
     });
 }
 
-export function useMeasurementTypes() {
+export function useGeneratorTypes() {
     return useQuery({
-        queryKey: ["measurement_types"],
-        queryFn: () => apiFetch("/api/measurement-types/"),
+        queryKey: ["generator_types"],
+        queryFn: () => apiFetch("/api/producer/types/"),
     });
 }

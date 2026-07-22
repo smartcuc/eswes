@@ -102,7 +102,7 @@ def sync_devices():
                     device=demo_device,
                     name=f"{cfg.name} (Demo)",
                     role=cfg.role,
-                    measurement_type=cfg.measurement_type,
+                    generator_type=cfg.generator_type,
                     home=demo_home,
                     floor=cfg.floor,
                     room=cfg.room,
@@ -141,7 +141,7 @@ def sync_devices():
                 defaults={
                     "name": f"{cfg.name} (Demo)",
                     "role": cfg.role,
-                    "measurement_type": cfg.measurement_type,
+                    "generator_type": cfg.generator_type,
                     "home": demo_home,
                     "floor": cfg.floor,
                     "room": cfg.room,
@@ -150,7 +150,7 @@ def sync_devices():
 
             demo_cfg.name = f"{cfg.name} (Demo)"
             demo_cfg.role = cfg.role
-            demo_cfg.measurement_type = cfg.measurement_type
+            demo_cfg.generator_type = cfg.generator_type
             demo_cfg.floor = cfg.floor
             demo_cfg.room = cfg.room
 
