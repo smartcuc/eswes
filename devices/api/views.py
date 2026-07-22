@@ -339,7 +339,6 @@ def latest_device_values(request):
 
 
 @api_view(["GET"])
-@ permission_classes([IsAuthenticated]) @ api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
 
