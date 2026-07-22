@@ -464,7 +464,7 @@ export default function DeviceSetupModal({
                                             key={m.id}
                                             value={m.id}
                                         >
-                                            {m.name}
+                                            {m.name} ({m.unit})
                                         </option>
 
                                     ))}

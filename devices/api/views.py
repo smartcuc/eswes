@@ -306,8 +306,6 @@ def latest_device_values(request):
 
     powers = get_latest_powers([d.id for d in devices])
 
-    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
-
     result = []
 
     for d in devices:
@@ -319,9 +317,11 @@ def latest_device_values(request):
 
         config = getattr(d, "config", None)
 
-        metric_key = "value"
-
-        metric = metric_map.get(metric_key)
+        metric = (
+            config.metric_definition
+            if config and config.metric_definition
+            else None
+        )
 
         result.append(
             {
@@ -381,17 +381,18 @@ def device_dashboard_values(request):
     for row in sparkline_rows:
         sparkline_map[row["device_id"]].append(round(float(row["avg"] or 0), 2))
 
-    metric_map = {m.key: m for m in MetricDefinition.objects.all()}
-
     result = []
 
     for d in devices:
 
         config = getattr(d, "config", None)
 
-        metric_key = "value"
+        metric = (
+            config.metric_definition
+            if config and config.metric_definition
+            else None
+        )
 
-        metric = metric_map.get(metric_key)
 
         result.append(
             {
