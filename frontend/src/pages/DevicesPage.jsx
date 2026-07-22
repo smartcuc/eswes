@@ -80,7 +80,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
 
     const config = device.config || {};
     const isOnline = device.status === "online";
-    const missing = !config.measurement_type || !config.role;
+    const missing = !config.generator_type || !config.role;
 
     const roleStyle = getRoleColor(config);
 
@@ -391,7 +391,7 @@ export default function DevicesPage() {
 
                 return (
                     !c.role ||
-                    !c.measurement_type
+                    !c.generator_type
                 );
 
             }).length,
@@ -428,7 +428,7 @@ export default function DevicesPage() {
             list = list.filter(d => {
                 const c = d.config || {};
 
-                return !c.role || !c.measurement_type;
+                return !c.role || !c.generator_type;
             });
         }
 
@@ -465,7 +465,7 @@ export default function DevicesPage() {
 
             return (
                 !c.role ||
-                !c.measurement_type
+                !c.generator_type
             );
         });
 

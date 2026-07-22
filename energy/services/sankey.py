@@ -111,7 +111,10 @@ def build_live_sankey(
         if role.key != "consumer":
             continue
 
-        if config.measurement_type != "power":
+        if (
+            config.generator_type
+            and config.generator_type.key == "grid"
+        ):
             continue
 
         node_id = f"device_{device.id}"

@@ -42,7 +42,7 @@ export default function DeviceSetupModal({
 
     const { data: structure } = useStructure();
     const roles = structure?.roles || [];
-    const measurementTypes = structure?.measurement_types || [];
+    const generatorTypes = structure?.generator_types || [];
     const floors = structure?.floors || [];
     const rooms = structure?.rooms || [];
 
@@ -50,9 +50,13 @@ export default function DeviceSetupModal({
         a.label.localeCompare(b.label, "de")
     );
 
-    const sortedMeasurementTypes = [...measurementTypes].sort((a, b) =>
-        (a.name || "").localeCompare(b.name || "", "de")
-    );
+    const sortedGeneratorTypes =
+        [...generatorTypes].sort((a, b) =>
+            (a.name || "").localeCompare(
+                b.name || "",
+                "de"
+            )
+        );
 
     const sortedRooms = [...rooms].sort((a, b) =>
         a.name.localeCompare(b.name, "de")
@@ -131,12 +135,10 @@ export default function DeviceSetupModal({
             const payload = {
                 display_name: values.display_name ?? server.display_name ?? "",
                 role_id: values.role_id ?? server.config?.role?.id ?? null,
-                measurement_type: values.measurement_type ?? server.config?.measurement_type ?? null,
+                generator_type_id: values.generator_type_id ?? server.config?.generator_type?.id ?? null,
                 room_id: values.room_id ?? server.config?.room?.id ?? null,
                 floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
                 home_id: values.home_id ?? server.config?.home?.id ?? null,
-                is_pv_source_write: values.is_pv_source_write,
-                is_grid_source_write: values.is_grid_source_write,
             }
             // ✅ FIX: Home aus room/floor ableiten, wenn es fehlt
             if (!payload.home_id) {
@@ -207,7 +209,10 @@ export default function DeviceSetupModal({
         // ✅ AUTO ADVANCE (unverändert korrekt)
         if (
             values.role_id &&
-            values.measurement_type &&
+            (
+                values.generator_type_id ||
+                selectedRole?.key !== "producer"
+            ) &&
             index < devices.length - 1
         ) {
             if (autoTimer.current) clearTimeout(autoTimer.current);
@@ -253,7 +258,7 @@ export default function DeviceSetupModal({
 
     const displayName = local.display_name ?? server.display_name ?? "";
     const roleId = local.role_id ?? server.config?.role?.id ?? "";
-    const measurementType = local.measurement_type ?? server.config?.measurement_type ?? "";
+    const generatorTypeId = local.generator_type_id ?? server.config?.generator_type?.id ?? "";
     const homeId = local.home_id ?? server.config?.home?.id ?? "";
     const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
     const roomId = local.room_id ?? server.config?.room?.id ?? "";
@@ -262,11 +267,6 @@ export default function DeviceSetupModal({
         r => Number(r.id) === Number(roleId)
     );
 
-    console.log({
-        roleId,
-        selectedRole,
-        roles,
-    });
     const progress = ((index + 1) / devices.length) * 100;
 
     return (
@@ -364,6 +364,7 @@ export default function DeviceSetupModal({
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
+
                             {/* ROLE */}
 
                             <div>
@@ -394,111 +395,72 @@ export default function DeviceSetupModal({
                                     </option>
 
                                     {sortedRoles.map(r => (
+
                                         <option
                                             key={r.id}
                                             value={r.id}
                                         >
                                             {r.label}
                                         </option>
+
                                     ))}
+
                                 </select>
 
                                 <p className="text-xs text-gray-400 mt-1">
                                     Erzeuger, Verbraucher oder Speicher
                                 </p>
 
-                                {selectedRole?.key === "producer" && (
-
-                                    <div className="flex gap-6 mt-2">
-
-                                        <label className="flex items-center gap-2">
-
-                                            <input
-                                                type="checkbox"
-                                                checked={
-                                                    local.is_pv_source_write ??
-                                                    server.config?.is_pv_source ??
-                                                    false
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        device.id,
-                                                        "is_pv_source_write",
-                                                        e.target.checked
-                                                    )
-                                                }
-                                            />
-
-                                            ☀️ PV-Erzeugung
-
-                                        </label>
-
-                                        <label className="flex items-center gap-2">
-
-                                            <input
-                                                type="checkbox"
-                                                checked={
-                                                    local.is_grid_source_write ??
-                                                    server.config?.is_grid_source ??
-                                                    false
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        device.id,
-                                                        "is_grid_source_write",
-                                                        e.target.checked
-                                                    )
-                                                }
-                                            />
-
-                                            🔌 Netzanschluss
-
-                                        </label>
-
-                                    </div>
-                                )}
-
-
                             </div>
 
-                            {/* MEASUREMENT */}
+                            {/* PRODUCER TYPE */}
+
+                            {/* TYP */}
 
                             <div>
 
                                 <label className="text-xs text-gray-400">
-                                    Messdaten *
+                                    Typ *
                                 </label>
 
                                 <select
-                                    value={measurementType}
+                                    value={generatorTypeId}
                                     onChange={(e) =>
                                         handleChange(
                                             device.id,
-                                            "measurement_type",
-                                            e.target.value || null
+                                            "generator_type_id",
+                                            e.target.value
+                                                ? Number(
+                                                    e.target.value
+                                                )
+                                                : null
                                         )
                                     }
-                                    className={`border px-3 py-2 w-full rounded ${!measurementType
+                                    className={`border px-3 py-2 w-full rounded ${!generatorTypeId
                                         ? "border-red-300 bg-red-50"
                                         : ""
                                         }`}
                                 >
+
                                     <option value="">
-                                        📊 Messwert
+                                        ⚡ Typ auswählen
                                     </option>
 
-                                    {sortedMeasurementTypes.map(m => (
+                                    {sortedGeneratorTypes.map(type => (
+
                                         <option
-                                            key={m.key || m.id}
-                                            value={m.key || m.value}
+                                            key={type.id}
+                                            value={type.id}
                                         >
-                                            {m.label || m.name}
+                                            {type.icon} {type.name}
                                         </option>
+
                                     ))}
+
                                 </select>
 
                                 <p className="text-xs text-gray-400 mt-1">
-                                    Welche Werte liefert dieses Gerät?
+                                    Generator oder Netz
                                 </p>
 
                             </div>

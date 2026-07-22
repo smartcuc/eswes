@@ -313,9 +313,7 @@ def latest_device_values(request):
 
         config = getattr(d, "config", None)
 
-        metric_key = (
-            config.measurement_type if config and config.measurement_type else "value"
-        )
+        metric_key = "value"
 
         metric = metric_map.get(metric_key)
 
@@ -385,9 +383,7 @@ def device_dashboard_values(request):
 
         config = getattr(d, "config", None)
 
-        metric_key = (
-            config.measurement_type if config and config.measurement_type else "value"
-        )
+        metric_key = "value"
 
         metric = metric_map.get(metric_key)
 
