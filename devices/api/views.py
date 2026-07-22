@@ -337,7 +337,9 @@ def latest_device_values(request):
 # ✅ DEVICE DASHBOARD VALUES
 # ============================================================
 
+
 @api_view(["GET"])
+@ permission_classes([IsAuthenticated]) @ api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def device_dashboard_values(request):
 
@@ -346,20 +348,25 @@ def device_dashboard_values(request):
             home__user=request.user,
             active=True,
             pending_delete=False,
-        ).select_related("config")
+        ).select_related(
+            "config",
+            "config__metric_definition",
+        )
     )
 
     device_ids = [d.id for d in devices]
 
-    #
-    # Aktuelle Werte
-    #
     values = get_latest_powers(device_ids)
 
-    #
-    # Letzte 60 Minuten Sparkline
-    #
     since = timezone.now() - timedelta(hours=1)
+
+    metric_map = {}
+
+    for d in devices:
+        config = getattr(d, "config", None)
+
+        if config and config.metric_definition:
+            metric_map[d.id] = config.metric_definition.key
 
     sparkline_rows = (
         DeviceMetric1m.objects.filter(
@@ -368,6 +375,7 @@ def device_dashboard_values(request):
         )
         .values(
             "device_id",
+            "metric_key",
             "avg",
         )
         .order_by(
@@ -379,7 +387,18 @@ def device_dashboard_values(request):
     sparkline_map = defaultdict(list)
 
     for row in sparkline_rows:
-        sparkline_map[row["device_id"]].append(round(float(row["avg"] or 0), 2))
+
+        expected_key = metric_map.get(row["device_id"])
+
+        if row["metric_key"] != expected_key:
+            continue
+
+        sparkline_map[row["device_id"]].append(
+            round(
+                float(row["avg"] or 0),
+                2,
+            )
+        )
 
     result = []
 
@@ -388,11 +407,8 @@ def device_dashboard_values(request):
         config = getattr(d, "config", None)
 
         metric = (
-            config.metric_definition
-            if config and config.metric_definition
-            else None
+            config.metric_definition if config and config.metric_definition else None
         )
-
 
         result.append(
             {
@@ -454,46 +470,87 @@ def device_timeseries(request, device_id):
     try:
         config = get_range_config(range_str)
     except ValueError:
-        return Response({"error": "invalid_range"}, status=400)
+        return Response(
+            {"error": "invalid_range"},
+            status=400,
+        )
+
+    device = get_object_or_404(
+        Device.objects.select_related("config__metric_definition"),
+        id=device_id,
+    )
+
+    metric_key = None
+
+    if hasattr(device, "config") and device.config and device.config.metric_definition:
+        metric_key = device.config.metric_definition.key
+
+    if not metric_key:
+        return Response(
+            {
+                "device": device_id,
+                "range": range_str,
+                "points": [],
+            }
+        )
 
     now = timezone.now()
 
-    # Ende immer sauber runden
     field = config["field"]
 
     if field == "bucket":
-        now = now.replace(second=0, microsecond=0)
+        now = now.replace(
+            second=0,
+            microsecond=0,
+        )
 
     start = now - config["delta"]
 
     qs = (
-        config["model"].objects
-        .filter(device_id=device_id)
-        .filter(**{
-            f"{field}__gte": start,
-            f"{field}__lte": now,
-        })
+        config["model"]
+        .objects.filter(
+            device_id=device_id,
+            metric_key=metric_key,
+        )
+        .filter(
+            **{
+                f"{field}__gte": start,
+                f"{field}__lte": now,
+            }
+        )
         .order_by(field)
     )
 
     points = []
 
     for row in qs:
-        t = getattr(row, field).timestamp()
-        v = getattr(row, config["value_field"])
 
-        points.append({
-            "t": int(t),
-            "v": v,
-            "min": getattr(row, "min", None),
-            "max": getattr(row, "max", None),
-        })
+        t = getattr(
+            row,
+            field,
+        ).timestamp()
 
-    return Response({
-        "device": device_id,
-        "range": range_str,
-        "points": points,
-    })
+        v = getattr(
+            row,
+            config["value_field"],
+        )
+
+        points.append(
+            {
+                "t": int(t),
+                "v": v,
+                "min": getattr(row, "min", None),
+                "max": getattr(row, "max", None),
+            }
+        )
+
+    return Response(
+        {
+            "device": device_id,
+            "range": range_str,
+            "points": points,
+        }
+    )
 
 
 # ============================================================

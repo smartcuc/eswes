@@ -26,6 +26,32 @@ function ensureOrder(items, storedOrder) {
     return [...existing, ...missing];
 }
 
+
+function isIncomplete(config) {
+
+    if (!config?.role) {
+        return true;
+    }
+
+    if (!config?.metric_definition) {
+        return true;
+    }
+
+    if (
+        config?.role?.key === "producer" &&
+        !config.generator_type
+    ) {
+        return true;
+    }
+
+    if (!config?.room && !config?.floor) {
+        return true;
+    }
+
+    return false;
+}
+
+
 function getRoleColor(config) {
 
     if (config?.is_grid_source) {
@@ -80,7 +106,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
 
     const config = device.config || {};
     const isOnline = device.status === "online";
-    const missing = !config.generator_type || !config.role;
+    const missing = isIncomplete(config);
 
     const roleStyle = getRoleColor(config);
 
@@ -385,16 +411,9 @@ export default function DevicesPage() {
                 d => d.status !== "online"
             ).length,
 
-            missing: merged.filter(d => {
-
-                const c = d.config || {};
-
-                return (
-                    !c.role ||
-                    !c.generator_type
-                );
-
-            }).length,
+            missing: merged.filter(d =>
+                isIncomplete(d.config)
+            ).length,
 
         };
 
@@ -425,11 +444,10 @@ export default function DevicesPage() {
         }
 
         if (statusFilter === "missing") {
-            list = list.filter(d => {
-                const c = d.config || {};
 
-                return !c.role || !c.generator_type;
-            });
+            list = list.filter(d =>
+                isIncomplete(d.config)
+            );
         }
 
         list = list.filter(d => {
@@ -459,15 +477,9 @@ export default function DevicesPage() {
 
     const unconfiguredDevices = useMemo(() => {
 
-        return filtered.filter(d => {
-
-            const c = d.config || {};
-
-            return (
-                !c.role ||
-                !c.generator_type
-            );
-        });
+        return filtered.filter(d =>
+            isIncomplete(d.config)
+        );
 
     }, [filtered]);
 
