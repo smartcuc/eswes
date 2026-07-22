@@ -12,6 +12,7 @@ from devices.models import (
     Floor,
     Home,
     MQTTProfile,
+    MetricDefinition,
 )
 
 from energy.models import EMSSignalSource
@@ -73,6 +74,7 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
     room = RoomSerializer(read_only=True)
     floor = FloorSerializer(read_only=True)
     generator_type = serializers.SerializerMethodField()
+    metric_definition = serializers.SerializerMethodField()
 
     # WRITE
     role_id = serializers.PrimaryKeyRelatedField(
@@ -86,6 +88,14 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
     generator_type_id = serializers.PrimaryKeyRelatedField(
         queryset=GeneratorType.objects.all(),
         source="generator_type",
+        write_only=True,
+        allow_null=True,
+        required=False,
+    )
+
+    metric_definition_id = serializers.PrimaryKeyRelatedField(
+        queryset=MetricDefinition.objects.all(),
+        source="metric_definition",
         write_only=True,
         allow_null=True,
         required=False,
@@ -120,24 +130,19 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
         fields = (
             "display_name",
-
             "role",
             "role_id",
-
             "generator_type",
             "generator_type_id",
-
+            "metric_definition",
+            "metric_definition_id",
             "room",
             "room_id",
-
             "floor",
             "floor_id",
-
             "home_id",
-
             "is_pv_source",
             "is_grid_source",
-
             "is_pv_source_write",
             "is_grid_source_write",
         )
@@ -243,7 +248,6 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
         return instance
 
-
     def get_generator_type(self, obj):
 
         if not obj.generator_type:
@@ -254,6 +258,18 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             "key": obj.generator_type.key,
             "name": obj.generator_type.name,
             "icon": obj.generator_type.icon,
+        }
+
+    def get_metric_definition(self, obj):
+
+        if not obj.metric_definition:
+            return None
+
+        return {
+            "id": obj.metric_definition.id,
+            "key": obj.metric_definition.key,
+            "name": obj.metric_definition.name,
+            "unit": obj.metric_definition.unit,
         }
 
 

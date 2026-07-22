@@ -103,6 +103,7 @@ def sync_devices():
                     name=f"{cfg.name} (Demo)",
                     role=cfg.role,
                     generator_type=cfg.generator_type,
+                    metric_definition=cfg.metric_definition,
                     home=demo_home,
                     floor=cfg.floor,
                     room=cfg.room,
@@ -142,6 +143,7 @@ def sync_devices():
                     "name": f"{cfg.name} (Demo)",
                     "role": cfg.role,
                     "generator_type": cfg.generator_type,
+                    "metric_definition": cfg.metric_definition,
                     "home": demo_home,
                     "floor": cfg.floor,
                     "room": cfg.room,
@@ -151,6 +153,7 @@ def sync_devices():
             demo_cfg.name = f"{cfg.name} (Demo)"
             demo_cfg.role = cfg.role
             demo_cfg.generator_type = cfg.generator_type
+            demo_cfg.metric_definition = cfg.metric_definition
             demo_cfg.floor = cfg.floor
             demo_cfg.room = cfg.room
 

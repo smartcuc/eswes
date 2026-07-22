@@ -72,13 +72,13 @@ def aggregate_1m():
         )
     )
 
-    
     configs = dict(
         DeviceConfig.objects.filter(
-            device__configured=True
+            device__configured=True,
+            metric_definition__isnull=False,
         ).values_list(
             "device_id",
-            "measurement_type",
+            "metric_definition__key",
         )
     )
 

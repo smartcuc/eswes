@@ -219,6 +219,13 @@ class DeviceConfig(models.Model):
         on_delete=models.SET_NULL,
     )
 
+    metric_definition = models.ForeignKey(
+        MetricDefinition,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
     # ✅ Location (frei!)
     home = models.ForeignKey(
         Home,
@@ -246,22 +253,26 @@ class DeviceConfig(models.Model):
     def display_name(self):
         return self.name or self.device.identifier
 
-    def is_classified(self):
-        if self.role is None:
-            return False
 
-        if self.role.key == "producer":
+def is_classified(self):
 
-            return (
-                self.generator_type
-                is not None
+    if self.role is None:
+        return False
+
+    if self.metric_definition is None:
+        return False
+
+    if self.role.key == "producer":
+
+        return ( self.generator_type is not None and (
+            self.room is not None or self.floor is not None
             )
-
-        return bool(
-            self.room or self.floor
         )
 
-    def __str__(self):
+    return ( self.room is not None or self.floor is not None
+    )
+
+def __str__(self):
         return self.display_name()
 
 

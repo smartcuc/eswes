@@ -72,6 +72,7 @@ def rebuild_demo_environment():
                 name=f"{cfg.name} (Demo)",
                 role=cfg.role,
                 generator_type=cfg.generator_type,
+                metric_definition=cfg.metric_definition,
                 home=demo_home,
                 floor=cfg.floor,
                 room=cfg.room,

@@ -19,9 +19,9 @@ from devices.models import (
     Floor,
     Home,
     MQTTProfile,
+    MetricDefinition,
 )
 
-from devices.models import MetricDefinition
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
 
 from producer.models import GeneratorSystem, GeneratorType
@@ -48,10 +48,8 @@ def device_setup_options(request):
     roles = DeviceRole.objects.all()
     rooms = Room.objects.all()
     floors = Floor.objects.all()
-
-    # ✅ wenn du measurement types brauchst:
-    from devices.models import MetricDefinition
     metrics = MetricDefinition.objects.all()
+
     generator_types = GeneratorType.objects.filter(active=True)
 
     return Response(
@@ -62,7 +60,15 @@ def device_setup_options(request):
             ).data,
             "rooms": [{"id": r.id, "name": r.name} for r in rooms],
             "floors": [{"id": f.id, "name": f.name} for f in floors],
-            "measurement_types": [{"key": m.key, "name": m.name} for m in metrics],
+            "measurement_types": [
+                {
+                    "id": m.id,
+                    "key": m.key,
+                    "name": m.name,
+                    "unit": m.unit,
+                }
+                for m in metrics
+            ],
             "generator_types": [
                 {
                     "id": g.id,

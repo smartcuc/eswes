@@ -43,12 +43,24 @@ export default function DeviceSetupModal({
     const { data: structure } = useStructure();
     const roles = structure?.roles || [];
     const generatorTypes = structure?.generator_types || [];
+
     const floors = structure?.floors || [];
     const rooms = structure?.rooms || [];
 
     const sortedRoles = [...roles].sort((a, b) =>
         a.label.localeCompare(b.label, "de")
     );
+
+    const measurementTypes =
+        structure?.measurement_types || [];
+
+    const sortedMeasurementTypes =
+        [...measurementTypes].sort((a, b) =>
+            (a.name || "").localeCompare(
+                b.name || "",
+                "de"
+            )
+        );
 
     const sortedGeneratorTypes =
         [...generatorTypes].sort((a, b) =>
@@ -135,6 +147,7 @@ export default function DeviceSetupModal({
             const payload = {
                 display_name: values.display_name ?? server.display_name ?? "",
                 role_id: values.role_id ?? server.config?.role?.id ?? null,
+                metric_definition_id: values.metric_definition_id ?? server.config?.metric_definition?.id ?? null,
                 generator_type_id: values.generator_type_id ?? server.config?.generator_type?.id ?? null,
                 room_id: values.room_id ?? server.config?.room?.id ?? null,
                 floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
@@ -209,9 +222,10 @@ export default function DeviceSetupModal({
         // ✅ AUTO ADVANCE (unverändert korrekt)
         if (
             values.role_id &&
+            values.metric_definition_id &&
             (
-                values.generator_type_id ||
-                selectedRole?.key !== "producer"
+                selectedRole?.key !== "producer" ||
+                values.generator_type_id
             ) &&
             index < devices.length - 1
         ) {
@@ -259,6 +273,8 @@ export default function DeviceSetupModal({
     const displayName = local.display_name ?? server.display_name ?? "";
     const roleId = local.role_id ?? server.config?.role?.id ?? "";
     const generatorTypeId = local.generator_type_id ?? server.config?.generator_type?.id ?? "";
+    const metricDefinitionId = local.metric_definition_id ?? server.config?.metric_definition?.id ?? "";
+
     const homeId = local.home_id ?? server.config?.home?.id ?? "";
     const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
     const roomId = local.room_id ?? server.config?.room?.id ?? "";
@@ -415,12 +431,59 @@ export default function DeviceSetupModal({
 
                             {/* PRODUCER TYPE */}
 
-                            {/* TYP */}
+                            <div>
+
+                                <label className="text-xs text-gray-400">
+                                    Messgröße *
+                                </label>
+
+                                <select
+                                    value={metricDefinitionId}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "metric_definition_id",
+                                            e.target.value
+                                                ? Number(e.target.value)
+                                                : null
+                                        )
+                                    }
+                                    className={`border px-3 py-2 w-full rounded ${!metricDefinitionId
+                                        ? "border-red-300 bg-red-50"
+                                        : ""
+                                        }`}
+                                >
+
+                                    <option value="">
+                                        📊 Messgröße
+                                    </option>
+
+                                    {sortedMeasurementTypes.map(m => (
+
+                                        <option
+                                            key={m.id}
+                                            value={m.id}
+                                        >
+                                            {m.name}
+                                        </option>
+
+                                    ))}
+
+                                </select>
+
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Leistung, Spannung, Temperatur ...
+                                </p>
+
+                            </div>
+
+                        </div>
+                        {selectedRole?.key === "producer" && (
 
                             <div>
 
                                 <label className="text-xs text-gray-400">
-                                    Typ *
+                                    Erzeugertyp
                                 </label>
 
                                 <select
@@ -430,20 +493,15 @@ export default function DeviceSetupModal({
                                             device.id,
                                             "generator_type_id",
                                             e.target.value
-                                                ? Number(
-                                                    e.target.value
-                                                )
+                                                ? Number(e.target.value)
                                                 : null
                                         )
                                     }
-                                    className={`border px-3 py-2 w-full rounded ${!generatorTypeId
-                                        ? "border-red-300 bg-red-50"
-                                        : ""
-                                        }`}
+                                    className="border px-3 py-2 w-full rounded"
                                 >
 
                                     <option value="">
-                                        ⚡ Typ auswählen
+                                        ☀️ Erzeugertyp
                                     </option>
 
                                     {sortedGeneratorTypes.map(type => (
@@ -459,13 +517,9 @@ export default function DeviceSetupModal({
 
                                 </select>
 
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Generator oder Netz
-                                </p>
-
                             </div>
 
-                        </div>
+                        )}
 
                         {/* LOCATION */}
 
