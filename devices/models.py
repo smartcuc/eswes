@@ -66,6 +66,28 @@ class Home(models.Model):
         choices=TIMEZONE_CHOICES,
     )
 
+    postal_code = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+    )
+
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+
+    latitude = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    longitude = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
     # ✅ MQTT (nur Transport!)
     mqtt_token = models.CharField(
         max_length=16,
