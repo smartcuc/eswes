@@ -9,8 +9,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 
 
-from forecast.models import TenantWeatherSnapshot
-
+from forecast.models import WeatherForecast
 
 def fetch_historical_weather(lat, lon, start_date, end_date):
     url = "https://archive-api.open-meteo.com/v1/archive"
@@ -74,7 +73,7 @@ def store_historical_weather_for_tenant(tenant, start_date, end_date):
         if temp is None or cloud is None or sw is None:
             missing_values += 1
 
-        _, created = TenantWeatherSnapshot.objects.update_or_create(
+        _, created = WeatherForecast.objects.update_or_create(
             tenant=tenant,
             ts=ts,
             defaults={

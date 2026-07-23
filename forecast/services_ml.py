@@ -1,7 +1,7 @@
 ########################
 # forecast/services_ml.py
 ########################
-
+WeatherForecast
 from pathlib import Path
 from datetime import timedelta
 
@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from core.models import AggregatedReading
 
-from forecast.models import TenantWeatherSnapshot
+from forecast.models import WeatherForecast
 from forecast.services_ml_features import (
     build_training_matrix,
     build_recursive_feature_vector,
@@ -84,7 +84,7 @@ def _load_tenant_hourly_actuals(tenant):
 
 def _load_historical_weather_map(tenant):
     rows = (
-        TenantWeatherSnapshot.objects.filter(tenant=tenant)
+        WeatherForecast.objects.filter(tenant=tenant)
         .order_by("ts")
         .values("ts", "temperature_c", "cloud_cover_pct", "shortwave_radiation_wm2")
     )

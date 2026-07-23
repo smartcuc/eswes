@@ -3,25 +3,25 @@
 #########################################
 
 from django.utils import timezone
-from forecast.models import TenantWeatherSnapshot
+from forecast.models import WeatherForecast
 
 
-def validate_weather_data(tenant):
+def validate_weather_data(home):
 
-    print("WEATHER DEBUG → tenant:", tenant)
-    print("WEATHER DEBUG → type:", type(tenant))
+    print("WEATHER DEBUG → home:", home)
+    print("WEATHER DEBUG → type:", type(home))
 
     now = timezone.now()
 
     start = now.replace(minute=0, second=0, microsecond=0)
     end = start + timezone.timedelta(hours=48)
 
-    print("BEFORE FILTER: → tenant:", tenant)
-    print("BEFORE FILTER: → type:", type(tenant))
+    print("BEFORE FILTER: → home:", home)
+    print("BEFORE FILTER: → type:", type(home))
 
     rows = list(
-        TenantWeatherSnapshot.objects.filter(
-            tenant=tenant,
+        WeatherForecast.objects.filter(
+            home=home,
             ts__gte=start,
             ts__lt=end,
         ).order_by("ts")

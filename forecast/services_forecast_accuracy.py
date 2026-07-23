@@ -8,7 +8,7 @@
 
 from django.utils.dateparse import parse_datetime
 
-from forecast.models import TenantWeatherSnapshot
+from forecast.models import WeatherForecast
 from forecast.services_weather_history import fetch_historical_weather
 
 
@@ -20,7 +20,7 @@ def calculate_forecast_accuracy(tenant, start_date, end_date):
     # 🔵 Forecast aus DB (✅ saubere Zeit-Normalisierung!)
     forecast_rows = {
         row.ts.replace(minute=0, second=0, microsecond=0): row
-        for row in TenantWeatherSnapshot.objects.filter(
+        for row in WeatherForecast.objects.filter(
             tenant=tenant,
             ts__date__gte=start_date,
             ts__date__lte=end_date,

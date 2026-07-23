@@ -10,7 +10,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from forecast.models import TenantWeatherSnapshot
+from forecast.models import WeatherForecast
 from forecast.services_bias import calculate_bias, apply_bias
 from datetime import date, timedelta
 
@@ -23,9 +23,9 @@ DEFAULT_LON = getattr(settings, "DEFAULT_WEATHER_LON", 6.97)
 # =========================
 
 
-def resolve_forecast_coordinates(tenant):
-    lat = getattr(tenant, "latitude", None)
-    lon = getattr(tenant, "longitude", None)
+def resolve_forecast_coordinates(home):
+    lat = getattr(home, "latitude", None)
+    lon = getattr(home, "longitude", None)
 
     if lat is None or lon is None:
         lat = DEFAULT_LAT
@@ -39,17 +39,17 @@ def resolve_forecast_coordinates(tenant):
 # =========================
 
 
-def get_location_group_key(tenant):
-    lat, lon = resolve_forecast_coordinates(tenant)
+def get_location_group_key(home):
+    lat, lon = resolve_forecast_coordinates(home)
     return (round(lat, 2), round(lon, 2))
 
 
-def group_tenants_by_location(tenants):
+def group_homes_by_location(homes):
     groups = defaultdict(list)
 
-    for tenant in tenants:
-        key = get_location_group_key(tenant)
-        groups[key].append(tenant)
+    for home in homes:
+        key = get_location_group_key(home)
+        groups[key].append(home)
 
     return groups
 
@@ -133,7 +133,10 @@ def validate_weather_payload(payload):
 # =========================
 
 
-def store_weather_payload_for_tenant(tenant, payload):
+def store_weather_payload_for_home(
+    home,
+    payload,
+):
 
     timestamps = payload["timestamps"]
     radiation = payload["radiation"]
@@ -149,7 +152,7 @@ def store_weather_payload_for_tenant(tenant, payload):
     today = date.today()
     start = today - timedelta(days=2)
 
-    bias = calculate_bias(tenant, start, today)
+    bias = None
 
     for i in range(total):
 
@@ -159,6 +162,12 @@ def store_weather_payload_for_tenant(tenant, payload):
             skipped += 1
             continue
 
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(
+                dt,
+                timezone.UTC,
+            )
+
         rad = radiation[i] if i < len(radiation) else None
         temp = temperature[i] if i < len(temperature) else None
         clouds = cloud_cover[i] if i < len(cloud_cover) else None
@@ -166,8 +175,8 @@ def store_weather_payload_for_tenant(tenant, payload):
         if rad is None or temp is None or clouds is None:
             missing_values += 1
 
-        row_obj, created = TenantWeatherSnapshot.objects.update_or_create(
-            tenant=tenant,
+        row_obj, created = WeatherForecast.objects.update_or_create(
+            home=home,
             ts=dt,
             defaults={
                 "temperature_c": Decimal(str(temp)) if temp is not None else None,
@@ -179,7 +188,7 @@ def store_weather_payload_for_tenant(tenant, payload):
         )
 
         # 🔥 Bias anwenden (JETZT passiert was!)
-        row_obj = apply_bias(row_obj, bias)
+        #row_obj = apply_bias(row_obj, bias)
 
         row_obj.save()
 
@@ -198,18 +207,18 @@ def store_weather_payload_for_tenant(tenant, payload):
 # =========================
 
 
-def fetch_and_store_weather_for_group(tenants, hours=48):
+def fetch_and_store_weather_for_group(homes, hours=48):
 
-    tenants = list(tenants)
+    homes = list(homes)
 
-    if not tenants:
+    if not homes:
         return {
             "status": "ok",
             "count": 0,
-            "tenant_count": 0,
+            "home_count": 0,
         }
 
-    lat, lon = resolve_forecast_coordinates(tenants[0])
+    lat, lon = resolve_forecast_coordinates(homes[0])
 
     payload = get_weather_forecast(lat, lon, hours=hours)
 
@@ -217,20 +226,24 @@ def fetch_and_store_weather_for_group(tenants, hours=48):
     validation = validate_weather_payload(payload)
 
     total_written = 0
-    per_tenant_stats = []
+    per_home_stats = []
 
-    for tenant in tenants:
-        stats = store_weather_payload_for_tenant(tenant, payload)
+    for home in homes:
+        stats = store_weather_payload_for_home(
+            home,
+            payload,
+        )
+
         total_written += stats["written"]
-        per_tenant_stats.append(stats)
+        per_home_stats.append(stats)
 
     return {
         "status": "ok",
         "count": len(payload["timestamps"]),
-        "tenant_count": len(tenants),
+        "home_count": len(homes),
         "lat": lat,
         "lon": lon,
         "written_total": total_written,
         "validation": validation,
-        "tenant_stats": per_tenant_stats,
+        "home_stats": per_home_stats,
     }

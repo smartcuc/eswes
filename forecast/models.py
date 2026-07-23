@@ -10,7 +10,10 @@ from tenants.models import Tenant
 class SolarForecast(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    tenant = models.ForeignKey("core.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey(
+        "core.Tenant",
+        on_delete=models.CASCADE,
+    )
     timestamp = models.DateTimeField()
     forecast_kwh = models.DecimalField(max_digits=12, decimal_places=3)
 
@@ -25,7 +28,10 @@ class SolarForecast(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["tenant", "timestamp"], name="forecast_tenant_ts_idx"),
+            models.Index(
+                fields=["tenant", "timestamp"],
+                name="forecast_tenant_ts_idx",
+            ),
             models.Index(
                 fields=["tenant", "source", "timestamp"],
                 name="forecast_tenant_source_ts_idx",
@@ -36,36 +42,59 @@ class SolarForecast(models.Model):
         return f"{self.tenant} {self.timestamp} → {self.forecast_kwh} kWh"
 
 
-class TenantWeatherSnapshot(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class WeatherForecast(models.Model):
 
-    tenant = models.ForeignKey(
-        Tenant,
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    home = models.ForeignKey(
+        "devices.Home",
         on_delete=models.CASCADE,
-        related_name="weather_snapshots",
+        related_name="weather_forecasts",
     )
 
     ts = models.DateTimeField()
 
-    temperature_c = models.FloatField(null=True, blank=True)
-    cloud_cover_pct = models.FloatField(null=True, blank=True)
-    shortwave_radiation_wm2 = models.FloatField(null=True, blank=True)
+    temperature_c = models.FloatField(
+        null=True,
+        blank=True,
+    )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    cloud_cover_pct = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    shortwave_radiation_wm2 = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     class Meta:
+
         constraints = [
             models.UniqueConstraint(
-                fields=["tenant", "ts"],
-                name="unique_weather_snapshot_per_tenant_ts",
+                fields=["home", "ts"],
+                name="unique_weather_forecast_per_home_ts",
             )
         ]
+
         indexes = [
-            models.Index(fields=["tenant", "ts"], name="weather_tenant_ts_idx"),
+            models.Index(
+                fields=["home", "ts"],
+                name="weather_home_ts_idx",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.tenant} @ {self.ts}"
+        return f"{self.home} @ {self.ts}"
 
 
 class WeatherObservation(models.Model):
