@@ -3,8 +3,7 @@
 ########################################
 
 from celery import shared_task
-
-from core.models import Tenant
+from devices.models import Home
 
 from forecast.services_weather_observations import (
     store_sensor_community_observations,
@@ -16,16 +15,21 @@ def fetch_weather_observations():
 
     results = []
 
-    for tenant in Tenant.objects.all():
+    for home in Home.objects.all():
 
-        if tenant.latitude is None or tenant.longitude is None:
+        if home.latitude is None or home.longitude is None:
             continue
 
         result = store_sensor_community_observations(
-            lat=tenant.latitude,
-            lon=tenant.longitude,
+            lat=home.latitude,
+            lon=home.longitude,
         )
 
-        results.append(result)
+        results.append(
+            {
+                "home": home.name,
+                **result,
+            }
+        )
 
     return results
