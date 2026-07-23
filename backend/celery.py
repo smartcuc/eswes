@@ -26,16 +26,6 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 # ✅ findet automatisch tasks.py in Apps
 app.autodiscover_tasks()
 
-
-# ✅ ✅ ✅ HIER richtig platzieren!
-app.conf.beat_schedule = {
-    "update-forecasts-every-hour": {
-        "task": "forecast.tasks.update_all_forecasts",
-        "schedule": crontab(hour=2, minute=0),  # jeden Tag um 02:00
-    },
-}
-
-
 # =========================================================
 # MQTT Worker Step
 # =========================================================

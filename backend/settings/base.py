@@ -343,10 +343,25 @@ CELERY_BEAT_SCHEDULE = {
         "task": "demo.tasks.sync_demo_devices",
         "schedule": 86400.0,
     },
-    # ✅ Sync Demo Device config
+    # ✅ Sync Demo Device Config
     "demo-config-sync": {
         "task": "demo.tasks.sync_demo_configs",
         "schedule": 3600.0,
+    },
+    # ✅ Forecast Weather Update
+    "update-forecasts-every-hour": {
+        "task": "forecast.tasks.update_all_forecasts",
+        "schedule": crontab(hour=2, minute=0),
+    },
+    # ✅ Forecast Weather Data
+    "fetch-weather-data": {
+        "task": "forecast.tasks_weather.fetch_weather_data",
+        "schedule": 60 * 30,
+    },
+    #  ✅ Forecast Weather Realtime Update
+    "fetch-weather-observations": {
+        "task": "forecast.tasks_weather_observations.fetch_weather_observations",
+        "schedule": 60 * 15,
     },
 }
 
