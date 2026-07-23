@@ -51,11 +51,11 @@ export default function DeviceSetupModal({
         a.label.localeCompare(b.label, "de")
     );
 
-    const measurementTypes =
-        structure?.measurement_types || [];
+    const metricDefinitions =
+        structure?.metric_definitions || [];
 
-    const sortedMeasurementTypes =
-        [...measurementTypes].sort((a, b) =>
+    const sortedMetricDefinitions =
+        [...metricDefinitions].sort((a, b) =>
             (a.name || "").localeCompare(
                 b.name || "",
                 "de"
@@ -458,7 +458,7 @@ export default function DeviceSetupModal({
                                         📊 Messgröße
                                     </option>
 
-                                    {sortedMeasurementTypes.map(m => (
+                                    {sortedMetricDefinitions.map(m => (
 
                                         <option
                                             key={m.id}

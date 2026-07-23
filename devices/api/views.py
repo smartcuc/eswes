@@ -26,7 +26,7 @@ from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
 
 from producer.models import GeneratorSystem, GeneratorType
 
-from devices.services.metrics import get_latest_powers
+from devices.services.metrics import get_latest_values
 from .serializers import (
     DeviceSerializer,
     DeviceConfigSerializer,
@@ -60,7 +60,7 @@ def device_setup_options(request):
             ).data,
             "rooms": [{"id": r.id, "name": r.name} for r in rooms],
             "floors": [{"id": f.id, "name": f.name} for f in floors],
-            "measurement_types": [
+            "metric_definitions": [
                 {
                     "id": m.id,
                     "key": m.key,
@@ -304,13 +304,13 @@ def latest_device_values(request):
         ).select_related("config")
     )
 
-    powers = get_latest_powers([d.id for d in devices])
+    values = get_latest_values([d.id for d in devices])
 
     result = []
 
     for d in devices:
 
-        value = powers.get(d.id)
+        value = values.get(d.id)
 
         if value is None:
             continue
@@ -355,7 +355,7 @@ def device_dashboard_values(request):
 
     device_ids = [d.id for d in devices]
 
-    values = get_latest_powers(device_ids)
+    values = get_latest_values(device_ids)
 
     since = timezone.now() - timedelta(hours=1)
 

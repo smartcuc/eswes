@@ -39,12 +39,8 @@ function isIncomplete(config) {
 
     if (
         config?.role?.key === "producer" &&
-        !config.generator_type
+        !config?.generator_type
     ) {
-        return true;
-    }
-
-    if (!config?.room && !config?.floor) {
         return true;
     }
 
@@ -211,6 +207,7 @@ function DeviceCard({ device, onSelect, onEdit }) {
                     <KPISparklineECharts
                         values={device.sparkline}
                         color={roleStyle.chart}
+                        unit={device.unit}
                     />
                 </div>
             )}

@@ -15,16 +15,17 @@ from devices.models import DeviceMetric
 
 logger = logging.getLogger("django")
 
-def get_latest_powers(device_ids):
+
+def get_latest_values(device_ids):
     if not device_ids:
         return {}
 
     # 1. Keys für Redis aufbauen
     cache_keys = {f"device:{d_id}:latest_power": d_id for d_id in device_ids}
-    
+
     result = {}
     missing_ids = []
-    
+
     # 2. Daten aus Redis laden
     try:
         cached_data = cache.get_many(cache_keys.keys())
@@ -60,8 +61,6 @@ def get_latest_powers(device_ids):
                 result[d_id] = 0.0
 
     return result
-
-
 
 
 # def get_latest_powers(device_ids):

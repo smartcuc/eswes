@@ -3,7 +3,7 @@
 ###########################
 
 from devices.models import Device
-from devices.services.metrics import get_latest_powers
+from devices.services.metrics import get_latest_values
 
 
 def build_live_sankey(
@@ -31,9 +31,7 @@ def build_live_sankey(
 
     devices = list(devices)
 
-    powers = get_latest_powers(
-        [device.id for device in devices]
-    )
+    values = get_latest_values([device.id for device in devices])
 
     total_consumption = (
         signals["load"]["consumption"]
@@ -103,6 +101,12 @@ def build_live_sankey(
         if not config:
             continue
 
+        if (
+            not config.metric_definition
+            or config.metric_definition.key != "power"
+        ):
+            continue
+        
         role = config.role
 
         if not role:
@@ -125,7 +129,7 @@ def build_live_sankey(
             else device.identifier
         )
 
-        power = powers.get(device.id, 0)
+        power = values.get(device.id, 0)
 
         if power <= 0:
             continue

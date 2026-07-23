@@ -66,3 +66,89 @@ class TenantWeatherSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.tenant} @ {self.ts}"
+
+
+class WeatherObservation(models.Model):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+
+    timestamp = models.DateTimeField()
+
+    provider = models.CharField(
+        max_length=50,
+    )
+
+    station_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+    )
+
+    temperature_c = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    humidity_pct = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    pressure_hpa = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    cloud_cover_pct = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    shortwave_radiation_wm2 = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    rainfall_mm = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    wind_speed_ms = models.FloatField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "latitude",
+                    "longitude",
+                    "timestamp",
+                ],
+                name="weather_obs_loc_ts_idx",
+            ),
+            models.Index(
+                fields=[
+                    "provider",
+                    "timestamp",
+                ],
+                name="weather_obs_provider_ts_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.provider} " f"{self.timestamp}"
