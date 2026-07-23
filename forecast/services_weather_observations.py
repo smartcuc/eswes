@@ -126,6 +126,7 @@ def store_sensor_community_observations(
             temperature_c is None
             and humidity_pct is None
         ):
+
             continue
 
         obj, created = WeatherObservation.objects.update_or_create(
