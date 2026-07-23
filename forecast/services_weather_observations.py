@@ -46,9 +46,11 @@ def distance_km(
 
 
 def store_sensor_community_observations(
-    lat,
-    lon,
+    home,
 ):
+
+    lat = home.latitude
+    lon = home.longitude
 
     rows = fetch_nearby_observations(
         lat=lat,
@@ -134,6 +136,7 @@ def store_sensor_community_observations(
             station_id=station_id,
             timestamp=timestamp,
             defaults={
+                "home": home,
                 "latitude": obs_lat,
                 "longitude": obs_lon,
                 "temperature_c": temperature_c,
@@ -147,4 +150,3 @@ def store_sensor_community_observations(
     return {
         "saved": count,
     }
-

@@ -21,8 +21,7 @@ def fetch_weather_observations():
             continue
 
         result = store_sensor_community_observations(
-            lat=home.latitude,
-            lon=home.longitude,
+            home=home,
         )
 
         results.append(

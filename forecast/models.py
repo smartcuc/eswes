@@ -76,6 +76,14 @@ class WeatherObservation(models.Model):
         editable=False,
     )
 
+    home = models.ForeignKey(
+        "devices.Home",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="weather_observations",
+    )
+
     latitude = models.FloatField()
     longitude = models.FloatField()
 
