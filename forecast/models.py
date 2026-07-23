@@ -130,7 +130,19 @@ class WeatherObservation(models.Model):
         auto_now_add=True,
     )
 
+
     class Meta:
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "provider",
+                    "station_id",
+                    "timestamp",
+                ],
+                name="weather_obs_unique_station_ts",
+            ),
+        ]
 
         indexes = [
             models.Index(
