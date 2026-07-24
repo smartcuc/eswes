@@ -490,7 +490,7 @@ def device_timeseries(request, device_id):
         and device.config.metric_definition
     ):
         metric_key = device.config.metric_definition.key  
-        
+
 
     if hasattr(device, "config") and device.config and device.config.metric_definition:
         metric_key = device.config.metric_definition.key
@@ -532,6 +532,10 @@ def device_timeseries(request, device_id):
     )
 
     points = []
+    print("RANGE:", range_str)
+    print("MODEL:", config["model"].__name__)
+    print("METRIC:", metric_key)
+    print("COUNT:", qs.count())
 
     for row in qs:
 
