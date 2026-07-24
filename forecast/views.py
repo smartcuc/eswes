@@ -343,3 +343,30 @@ def global_forecast(request):
             "data": data,
         }
     )
+
+# =========================================================
+# GLOBAL FORECAST PV- String
+# =========================================================
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def generator_string_forecast(request, string_id):
+
+    rows = SolarForecast.objects.filter(
+        generator_string_id=string_id,
+        source="physics",
+    ).order_by("timestamp")
+
+    return Response(
+        {
+            "generator_string": string_id,
+            "points": [
+                {
+                    "t": int(row.timestamp.timestamp()),
+                    "v": float(row.forecast_kwh),
+                }
+                for row in rows
+            ],
+        }
+    )
