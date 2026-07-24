@@ -482,18 +482,15 @@ def device_timeseries(request, device_id):
     metric_key = None
 
     if range_str == "1h":
+
+        # Rohdaten werden seit dem Umbau immer als "value"
+        # gespeichert.
         metric_key = "value"
 
-    elif (
-        hasattr(device, "config")
-        and device.config
-        and device.config.metric_definition
-    ):
-        metric_key = device.config.metric_definition.key  
+    else:
 
-
-    if hasattr(device, "config") and device.config and device.config.metric_definition:
-        metric_key = device.config.metric_definition.key
+        if hasattr(device, "config") and device.config and device.config.metric_definition:
+            metric_key = device.config.metric_definition.key
 
     if not metric_key:
         return Response(
