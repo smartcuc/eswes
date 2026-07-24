@@ -4,16 +4,20 @@
 
 import uuid
 from django.db import models
-from tenants.models import Tenant
 
+from producer.models import GeneratorString
 
 class SolarForecast(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    tenant = models.ForeignKey(
-        "core.Tenant",
+    generator_string = models.ForeignKey(
+        "producer.GeneratorString",
         on_delete=models.CASCADE,
+        related_name="solar_forecasts",
+        null=True,
+        blank=True,
     )
+
     timestamp = models.DateTimeField()
     forecast_kwh = models.DecimalField(max_digits=12, decimal_places=3)
 
@@ -24,22 +28,27 @@ class SolarForecast(models.Model):
         constraints = [
             models.UniqueConstraint(
                 name="unique_forecast_per_source",
-                fields=["tenant", "timestamp", "source"],
+                fields=["generator_string", "timestamp", "source"],
             )
         ]
         indexes = [
             models.Index(
-                fields=["tenant", "timestamp"],
-                name="forecast_tenant_ts_idx",
+                fields=["generator_string", "timestamp"],
+                name="forecast_string_ts_idx",
             ),
+
             models.Index(
-                fields=["tenant", "source", "timestamp"],
-                name="forecast_tenant_source_ts_idx",
+                fields=["generator_string", "source", "timestamp"],
+                name="forecast_string_source_ts_idx",
             ),
         ]
 
     def __str__(self):
-        return f"{self.tenant} {self.timestamp} → {self.forecast_kwh} kWh"
+        return (
+            f"{self.generator_string} "
+            f"{self.timestamp} "
+            f"→ {self.forecast_kwh} kWh"
+        )
 
 
 class WeatherForecast(models.Model):

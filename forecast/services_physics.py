@@ -6,59 +6,91 @@ from datetime import timedelta, timezone as dt_timezone
 from django.utils import timezone
 
 
-def predict_next_24h_physics_for_tenant(tenant):
+from forecast.models import WeatherForecast
+
+
+def predict_next_24h_physics_for_generator_string(
+    generator_string,
+):
     """
-    Sehr einfacher Physics-Fallback:
-    nutzt historische Werte als Basis und gibt eine naive Prognose zurück.
+    Erste echte Producer-basierte Physics-Version.
 
-    Ziel:
-    - NIEMALS None zurückgeben
-    - stabile fallback Prognose liefern
+    Nutzt:
+    - WeatherForecast
+    - peak_power_kwp
+    - shading_percent
+
+    Orientierung und Dachneigung folgen im
+    nächsten Schritt.
     """
 
-    from core.models import AggregatedReading
+    home = generator_string.generator.home
 
+    weather_rows = WeatherForecast.objects.filter(
+        home=home,
+        ts__gte=timezone.now(),
+    ).order_by("ts")[:24]
 
-    # ✅ hole letzte Stundenwerte (falls vorhanden)
-    rows = list(
-        AggregatedReading.objects.filter(tenant=tenant)
-        .order_by("-period_start")
-        .values("period_start", "value")[:48]
-    )
-
-    # ✅ kein Input → leere Liste (kein Crash)
-    if not rows:
+    if not weather_rows:
         return []
 
-    # ✅ sortieren (chronologisch)
-    rows = list(reversed(rows))
+    peak_power = float(generator_string.peak_power_kwp or 0)
 
-    # ✅ einfache durchschnittliche Leistung
-    values = [float(r["value"] or 0.0) for r in rows]
-    avg_value = sum(values) / len(values) if values else 0.0
+    shading_factor = 1.0 - float(generator_string.shading_percent or 0) / 100.0
 
-    # ✅ Startzeit bestimmen
-    last_ts = rows[-1]["period_start"]
+    azimuth = generator_string.orientation.azimuth_deg
 
-    if timezone.is_naive(last_ts):
-        last_ts = timezone.make_aware(last_ts, dt_timezone.utc)
+    if azimuth == 180:
+        orientation_factor = 1.0
+    elif azimuth in (135, 225):
+        orientation_factor = 0.9
+    elif azimuth in (90, 270):
+        orientation_factor = 0.8
+    elif azimuth in (45, 315):
+        orientation_factor = 0.65
+    else:
+        orientation_factor = 0.5
 
-    start_ts = last_ts.replace(minute=0, second=0, microsecond=0)
+    tilt = int(generator_string.tilt_deg or 35)
 
-    # ✅ Prognose bauen (24h)
+    if tilt <= 10:
+        tilt_factor = 0.85
+    elif tilt <= 20:
+        tilt_factor = 0.95
+    elif tilt <= 40:
+        tilt_factor = 1.00
+    elif tilt <= 60:
+        tilt_factor = 0.90
+    else:
+        tilt_factor = 0.75
+
     results = []
 
-    for i in range(24):
-        ts = start_ts + timedelta(hours=i + 1)
+    for row in weather_rows:
 
-        # einfacher Verlauf: konstant durchschnitt
+        radiation = float(row.shortwave_radiation_wm2 or 0)
+
+        forecast_kw = (
+            peak_power
+            * (radiation / 1000.0)
+            * orientation_factor
+            * tilt_factor
+            * shading_factor
+        )
+
         results.append(
             {
-                "timestamp": ts,
-                "forecast_kw": max(0.0, avg_value),
-                "radiation_wm2": None,
-                "temperature_c": None,
-                "cloud_cover_pct": None,
+                "timestamp": row.ts,
+                "forecast_kw": max(
+                    0.0,
+                    forecast_kw,
+                ),
+                "radiation_wm2": radiation,
+                "orientation_factor": orientation_factor,
+                "tilt_factor": tilt_factor,
+                "shading_factor": shading_factor,
+                "temperature_c": row.temperature_c,
+                "cloud_cover_pct": row.cloud_cover_pct,
             }
         )
 

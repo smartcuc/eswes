@@ -5,17 +5,17 @@
 from celery import shared_task
 from django.utils import timezone
 
-from core.models import Tenant
+from devices.models import Home
+from producer.models import GeneratorString
 
-from forecast.services_ml import train_tenant_model
-from forecast.services_store import save_all_forecasts_for_tenant
+#from forecast.services_ml import train_tenant_model
+from forecast.services_store import save_all_forecasts_for_generator_string
 
 # 🔥 NEU IMPORTIEREN
 from forecast.services_weather import (
-    group_tenants_by_location,
+    group_homes_by_location,
     fetch_and_store_weather_for_group,
 )
-
 
 @shared_task
 def update_all_forecasts():
@@ -27,25 +27,28 @@ def update_all_forecasts():
     """
 
     # ✅ STEP 2 → HIER REIN
-    tenants = list(Tenant.objects.all())
+    homes = list(Home.objects.all())
 
-    if not tenants:
-        return {"status": "no tenants"}
+    if not homes:
+        return {"status": "no homes"}
 
-    location_groups = group_tenants_by_location(tenants)
+    location_groups = group_homes_by_location(homes)
 
     results = []
 
-    for location_key, tenant_group in location_groups.items():
+    for location_key, home_group in location_groups.items():
 
         try:
-            weather_result = fetch_and_store_weather_for_group(tenant_group, hours=48)
+            weather_result = fetch_and_store_weather_for_group(
+                home_group,
+                hours=48,
+            )
 
         except Exception as e:
-            for tenant in tenant_group:
+            for home in home_group:
                 results.append(
                     {
-                        "tenant_id": str(tenant.id),
+                        "home_id": str(home.id),
                         "status": "error",
                         "stage": "weather",
                         "error": str(e),
@@ -54,30 +57,42 @@ def update_all_forecasts():
             continue
 
         # ✅ zweiter try (Forecast)
-        for tenant in tenant_group:
-            try:
-                train_result = train_tenant_model(tenant)
-                forecast_result = save_all_forecasts_for_tenant(tenant)
+        for home in home_group:
 
-                results.append(
-                    {
-                        "tenant_id": str(tenant.id),
-                        "status": "ok",
-                        "location_key": str(location_key),
-                        "weather_points": weather_result.get("count"),
-                        "counts": forecast_result.get("counts"),
-                    }
-                )
+            for generator in home.generator_systems.all():
 
-            except Exception as e:
-                results.append(
-                    {
-                        "tenant_id": str(tenant.id),
-                        "status": "error",
-                        "stage": "forecast",
-                        "error": str(e),
-                    }
-                )
+                for generator_string in generator.strings.all():
+
+                    try:
+
+                        forecast_result = (
+                            save_all_forecasts_for_generator_string(
+                                generator_string,
+                            )
+                        )
+
+                        results.append(
+                            {
+                                "home_id": str(home.id),
+                                "generator_string": str(generator_string.id),
+                                "status": "ok",
+                                "location_key": str(location_key),
+                                "weather_points": weather_result.get("count"),
+                                "counts": forecast_result.get("counts"),
+                            }
+                        )
+
+                    except Exception as e:
+
+                        results.append(
+                            {
+                                "home_id": str(home.id),
+                                "generator_string": str(generator_string.id),
+                                "status": "error",
+                                "stage": "forecast",
+                                "error": str(e),
+                            }
+                        )
 
     return {
         "run_at": str(timezone.now()),

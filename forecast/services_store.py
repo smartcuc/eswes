@@ -4,17 +4,17 @@
 
 from forecast.models import SolarForecast
 from forecast.services_compare import build_hybrid_series
-from forecast.services_ml import predict_next_24h_ml_for_tenant
-from forecast.services_physics import predict_next_24h_physics_for_tenant
+from producer.models import GeneratorString
+from forecast.services_physics import predict_next_24h_physics_for_generator_string
 
 
-def _store_series(tenant, rows, source):
+def _store_series(generator_string, rows, source):
     rows = rows or []
     saved = 0
 
     for row in rows:
         SolarForecast.objects.update_or_create(
-            tenant=tenant,
+            generator_string=generator_string,
             timestamp=row["timestamp"],
             source=source,
             defaults={
@@ -26,10 +26,16 @@ def _store_series(tenant, rows, source):
     return saved
 
 
-def save_all_forecasts_for_tenant(tenant):
+def save_all_forecasts_for_generator_string(generator_string):
 
-    phys = predict_next_24h_physics_for_tenant(tenant) or []
-    ml = predict_next_24h_ml_for_tenant(tenant) or []
+    phys = (
+        predict_next_24h_physics_for_generator_string(
+            generator_string,
+        )
+        or []
+    )
+
+    ml = []
 
     # ✅ kein Input → fertig
     if not ml and not phys:
@@ -46,9 +52,23 @@ def save_all_forecasts_for_tenant(tenant):
     else:
         hybrid = build_hybrid_series(ml, phys, use_dynamic_weight=True)
 
-    saved_phys = _store_series(tenant, phys, "physics")
-    saved_ml = _store_series(tenant, ml, "ml")
-    saved_hybrid = _store_series(tenant, hybrid, "hybrid")
+    saved_phys = _store_series(
+        generator_string,
+        phys,
+        "physics",
+    )
+
+    saved_ml = _store_series(
+        generator_string,
+        ml,
+        "ml",
+    )
+
+    saved_hybrid = _store_series(
+        generator_string,
+        hybrid,
+        "hybrid",
+    )
 
     return {
         "status": "ok",
