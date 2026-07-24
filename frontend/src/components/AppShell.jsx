@@ -14,6 +14,7 @@ import EnergyDashboard from "../features/energy/EnergyDashboard";
 import ProducerPage from "../features/producer/pages/ProducerPage";
 
 import DevicesPage from "../pages/DevicesPage";
+import ForecastPage from "../features/forecast/ForecastPage";
 import MetricsPage from "../pages/MetricsPage";
 import StructurePage from "../pages/StructurePage";
 
@@ -58,6 +59,7 @@ export default function AppShell() {
                         <Route path="producers" element={<ProducerPage />} />
                         <Route path="settings" element={<Settings />} />
 
+                        <Route path="solarforecast" element={<ForecastPage />} />
                         <Route path="metrics" element={<MetricsPage />} />
                         <Route path="structure" element={<StructurePage />} />
 

@@ -353,14 +353,38 @@ def global_forecast(request):
 @permission_classes([IsAuthenticated])
 def generator_string_forecast(request, string_id):
 
+    source = request.GET.get(
+        "source",
+        "physics",
+    )
+
+    hours = int(
+        request.GET.get(
+            "hours",
+            24,
+        )
+    )
+
+    now = timezone.now().replace(
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    if timezone.now().minute > 0:
+        now += timedelta(hours=1)
+
     rows = SolarForecast.objects.filter(
         generator_string_id=string_id,
-        source="physics",
-    ).order_by("timestamp")
+        source=source,
+        timestamp__gte=now,
+    ).order_by("timestamp")[:hours]
 
     return Response(
         {
             "generator_string": string_id,
+            "source": source,
+            "hours": hours,
             "points": [
                 {
                     "t": int(row.timestamp.timestamp()),

@@ -44,6 +44,7 @@ const sections = [
     {
         title: "📊 Analytics",
         items: [
+            { name: "Solar Forecast", path: "/app/solarforecast", icon: "☀️" },
             { name: "Metrics", path: "/app/metrics", icon: "📊" },
         ],
     },
