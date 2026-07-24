@@ -348,7 +348,6 @@ def global_forecast(request):
 # GLOBAL FORECAST PV- String
 # =========================================================
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def generator_string_forecast(request, string_id):
