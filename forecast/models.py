@@ -176,7 +176,6 @@ class WeatherObservation(models.Model):
         auto_now_add=True,
     )
 
-
     class Meta:
 
         constraints = [
@@ -210,3 +209,107 @@ class WeatherObservation(models.Model):
 
     def __str__(self):
         return f"{self.provider} " f"{self.timestamp}"
+
+
+class ForecastRun(models.Model):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    generator_string = models.ForeignKey(
+        "producer.GeneratorString",
+        on_delete=models.CASCADE,
+        related_name="forecast_runs",
+    )
+
+    source = models.CharField(
+        max_length=50,
+    )
+
+    horizon_hours = models.PositiveIntegerField(
+        default=24,
+    )
+
+    resolution_minutes = models.PositiveIntegerField(
+        default=60,
+    )
+
+    model_version = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+    )
+
+    generated_at = models.DateTimeField()
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=[
+                    "generator_string",
+                    "generated_at",
+                ],
+                name="forecast_run_string_gen_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.generator_string} " f"{self.source} " f"{self.generated_at}"
+
+
+class ForecastValue(models.Model):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    forecast_run = models.ForeignKey(
+        ForecastRun,
+        on_delete=models.CASCADE,
+        related_name="values",
+    )
+
+    timestamp = models.DateTimeField()
+
+    forecast_kwh = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "forecast_run",
+                    "timestamp",
+                ],
+                name="forecast_value_run_ts_unique",
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "forecast_run",
+                    "timestamp",
+                ],
+                name="forecast_value_run_ts_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.timestamp} " f"→ {self.forecast_kwh}"
