@@ -349,9 +349,9 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 3600.0,
     },
     # ✅ Forecast Weather Update
-    "update-forecasts-every-hour": {
+    "update-forecasts-every-30-minutes": {
         "task": "forecast.tasks.update_all_forecasts",
-        "schedule": crontab(hour=2, minute=0),
+        "schedule": crontab(minute="*/30"),
     },
     # ✅ Forecast Weather Data
     "fetch-weather-data": {
