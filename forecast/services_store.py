@@ -6,7 +6,7 @@ from forecast.models import SolarForecast
 from forecast.services_compare import build_hybrid_series
 from producer.models import GeneratorString
 from forecast.services_physics import predict_next_24h_physics_for_generator_string
-
+from django.utils import timezone
 
 def _store_series(generator_string, rows, source):
     rows = rows or []
@@ -51,6 +51,13 @@ def save_all_forecasts_for_generator_string(generator_string):
         hybrid = ml
     else:
         hybrid = build_hybrid_series(ml, phys, use_dynamic_weight=True)
+
+    for source in ["physics", "hybrid", "ml"]:
+        SolarForecast.objects.filter(
+            generator_string=generator_string,
+            source=source,
+            timestamp__gte=timezone.now(),
+        ).delete()
 
     saved_phys = _store_series(
         generator_string,

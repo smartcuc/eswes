@@ -5,14 +5,20 @@
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { formatHour, formatNumber, formatDateTime, } from "../../utils/format";
+import { useTimezone } from "../../hooks/useTimezone";
 
 export default function ForecastChart({ points = [] }) {
 
     const FORECAST_COLOR = "#f59e0b";
+    const timezone = useTimezone();
+
     const option = useMemo(() => {
 
         const xAxisData = points.map(
-            p => formatHour(p.t * 1000)
+            p => formatHour(
+                p.t * 1000,
+                timezone
+            )
         );
 
         const seriesData = points.map(
@@ -37,7 +43,8 @@ export default function ForecastChart({ points = [] }) {
                     return `
                         <b>
                             ${formatDateTime(
-                        point.t * 1000
+                        point.t * 1000,
+                        timezone
                     )}
                         </b>
                         <br/>

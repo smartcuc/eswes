@@ -4,6 +4,7 @@
 
 import ForecastChart from "./ForecastChart";
 import { useSolarForecast } from "./hooks/useSolarForecast";
+import { useTimezone } from "../../hooks/useTimezone";
 import { formatHour, formatNumber, } from "../../utils/format";
 
 
@@ -15,6 +16,8 @@ export default function ForecastPage() {
     // dynamisch aus Route oder Select laden.
     const stringId =
         "75830ffa-8dd0-445c-ace9-078cbec64ffc";
+
+    const timezone = useTimezone();
 
     const query = useSolarForecast(
         stringId
@@ -124,7 +127,10 @@ export default function ForecastPage() {
 
                                     <div className="text-3xl font-bold text-slate-700">
                                         {peak
-                                            ? formatHour(peak.t * 1000)
+                                            ? formatHour(
+                                                peak.t * 1000,
+                                                timezone
+                                            )
                                             : "--:--"}
                                     </div>
                                 </div>
