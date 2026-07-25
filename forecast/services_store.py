@@ -2,11 +2,16 @@
 # forecast/services_store.py
 ###########################
 
-from forecast.models import SolarForecast
 from forecast.services_compare import build_hybrid_series
 from producer.models import GeneratorString
 from forecast.services_physics import predict_next_24h_physics_for_generator_string
 from django.utils import timezone
+
+from forecast.models import (
+    SolarForecast,
+    ForecastRun,
+    ForecastValue,
+)
 
 def _store_series(generator_string, rows, source):
     rows = rows or []
@@ -24,6 +29,38 @@ def _store_series(generator_string, rows, source):
         saved += 1
 
     return saved
+
+
+def _store_forecast_run(
+    generator_string,
+    rows,
+    source,
+):
+    rows = rows or []
+
+    if not rows:
+        return None
+
+    run = ForecastRun.objects.create(
+        generator_string=generator_string,
+        source=source,
+        generated_at=timezone.now(),
+        horizon_hours=24,
+        resolution_minutes=60,
+    )
+
+    ForecastValue.objects.bulk_create(
+        [
+            ForecastValue(
+                forecast_run=run,
+                timestamp=row["timestamp"],
+                forecast_kwh=row["forecast_kw"],
+            )
+            for row in rows
+        ]
+    )
+
+    return run
 
 
 def save_all_forecasts_for_generator_string(generator_string):
@@ -51,6 +88,24 @@ def save_all_forecasts_for_generator_string(generator_string):
         hybrid = ml
     else:
         hybrid = build_hybrid_series(ml, phys, use_dynamic_weight=True)
+
+    _store_forecast_run(
+        generator_string,
+        phys,
+        "physics",
+    )
+
+    _store_forecast_run(
+        generator_string,
+        ml,
+        "ml",
+    )
+
+    _store_forecast_run(
+        generator_string,
+        hybrid,
+        "hybrid",
+    )
 
     for source in ["physics", "hybrid", "ml"]:
         SolarForecast.objects.filter(
