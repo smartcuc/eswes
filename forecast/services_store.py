@@ -56,7 +56,6 @@ def save_all_forecasts_for_generator_string(generator_string):
         SolarForecast.objects.filter(
             generator_string=generator_string,
             source=source,
-            timestamp__gte=timezone.now(),
         ).delete()
 
     saved_phys = _store_series(
