@@ -8,8 +8,13 @@ from django.utils import timezone
 from devices.models import Home
 from producer.models import GeneratorString
 
-#from forecast.services_ml import train_tenant_model
+# from forecast.services_ml import train_tenant_model
 from forecast.services_store import save_all_forecasts_for_generator_string
+
+from forecast.tasks_weather import fetch_weather_data
+from forecast.tasks_weather_observations import (
+    fetch_weather_observations,
+)
 
 # 🔥 NEU IMPORTIEREN
 from forecast.services_weather import (
