@@ -43,7 +43,13 @@ class ForecastRunAdmin(admin.ModelAdmin):
         "resolution_minutes",
     )
 
+    search_fields = (
+        "generator_string__name",
+        "generator_string__generator__name",
+    )
+
     ordering = ("-generated_at",)
+    date_hierarchy = "generated_at"
 
     raw_id_fields = ("generator_string",)
 
@@ -52,12 +58,17 @@ class ForecastRunAdmin(admin.ModelAdmin):
 class ForecastValueAdmin(admin.ModelAdmin):
 
     list_display = (
-        "forecast_run",
+        "generator_string",
         "timestamp",
         "forecast_kwh",
+        "forecast_run",
         "created_at",
     )
 
     ordering = ("-timestamp",)
 
     raw_id_fields = ("forecast_run",)
+
+    @admin.display(ordering="forecast_run__generator_string")
+    def generator_string(self, obj):
+        return obj.forecast_run.generator_string

@@ -7,6 +7,7 @@ from django.contrib import admin
 from .models import SpotPrice
 from market.models_tariff import HomeTariff
 from market.models_price_config import ElectricityPriceConfig
+from market.models_analysis import SpotPriceDaySummary
 
 @admin.register(SpotPrice)
 class SpotPriceAdmin(admin.ModelAdmin):
@@ -38,3 +39,20 @@ class ElectricityPriceConfigAdmin(admin.ModelAdmin):
     )
 
     ordering = ("-valid_from",)
+
+
+@admin.register(SpotPriceDaySummary)
+class SpotPriceDaySummaryAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "date",
+        "cheapest_hour",
+        "cheapest_hour_price",
+        "best_2h_start",
+        "best_3h_start",
+        "best_5h_start",
+    )
+
+    ordering = ("-date",)
+
+    search_fields = ("date",)
