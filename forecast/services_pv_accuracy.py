@@ -2,6 +2,7 @@
 # forecast/services_pv_accuracy.py
 ##################################
 
+from django.utils import timezone
 from devices.models import DeviceMetric1h
 
 
@@ -15,6 +16,10 @@ def compare_forecast_run(run):
     rows = []
 
     for forecast in run.values.order_by("timestamp"):
+
+        # Nur bereits vergangene Zeitpunkte bewerten
+        if forecast.timestamp > timezone.now():
+            continue
 
         actual = DeviceMetric1h.objects.filter(
             device=device,
@@ -46,9 +51,11 @@ def calculate_forecast_accuracy(run):
 
     valid_rows = [row for row in rows if row["actual_kwh"] is not None]
 
-    if not valid_rows:
+    # Mindestens halber Tag Vergleichsdaten
+    if len(valid_rows) < 12:
         return {
-            "points": 0,
+            "points": len(valid_rows),
+            "status": "insufficient_data",
         }
 
     absolute_errors = [abs(row["error_kwh"]) for row in valid_rows]
@@ -95,11 +102,18 @@ def summarize_forecast_runs(limit=50):
         :limit
     ]
 
+    # Nur vollständig abgelaufene ForecastRuns
+    runs = [
+        run
+        for run in runs
+        if run.values.last() and run.values.last().timestamp < timezone.now()
+    ]
+
     for run in runs:
 
         accuracy = calculate_forecast_accuracy(run)
 
-        if accuracy["points"] == 0:
+        if accuracy.get("status") == "insufficient_data":
             continue
 
         results.append(
