@@ -44,12 +44,72 @@ def calculate_forecast_accuracy(run):
 
     rows = compare_forecast_run(run)
 
-    errors = [abs(row["error_kwh"]) for row in rows if row["error_kwh"] is not None]
+    valid_rows = [row for row in rows if row["actual_kwh"] is not None]
 
-    if not errors:
-        return None
+    if not valid_rows:
+        return {
+            "points": 0,
+        }
+
+    absolute_errors = [abs(row["error_kwh"]) for row in valid_rows]
+
+    total_forecast_kwh = sum(row["forecast_kwh"] for row in valid_rows)
+
+    total_actual_kwh = sum(row["actual_kwh"] for row in valid_rows)
+
+    delta_kwh = total_forecast_kwh - total_actual_kwh
+
+    delta_percent = (
+        (delta_kwh / total_actual_kwh) * 100 if total_actual_kwh > 0 else None
+    )
 
     return {
-        "points": len(errors),
-        "mae_kwh": sum(errors) / len(errors),
+        "points": len(valid_rows),
+        "mae_kwh": (sum(absolute_errors) / len(absolute_errors)),
+        "max_error_kwh": max(absolute_errors),
+        "total_forecast_kwh": round(
+            total_forecast_kwh,
+            3,
+        ),
+        "total_actual_kwh": round(
+            total_actual_kwh,
+            3,
+        ),
+        "delta_kwh": round(
+            delta_kwh,
+            3,
+        ),
+        "delta_percent": (
+            round(delta_percent, 2) if delta_percent is not None else None
+        ),
     }
+
+
+def summarize_forecast_runs(limit=50):
+
+    from forecast.models import ForecastRun
+
+    results = []
+
+    runs = ForecastRun.objects.filter(source="physics").order_by("-generated_at")[
+        :limit
+    ]
+
+    for run in runs:
+
+        accuracy = calculate_forecast_accuracy(run)
+
+        if accuracy["points"] == 0:
+            continue
+
+        results.append(
+            {
+                "run_id": str(run.id),
+                "generated_at": run.generated_at,
+                "generator": str(run.generator_string),
+                **accuracy,
+            }
+        )
+
+    return results
+
