@@ -38,3 +38,18 @@ def compare_forecast_run(run):
         )
 
     return rows
+
+
+def calculate_forecast_accuracy(run):
+
+    rows = compare_forecast_run(run)
+
+    errors = [abs(row["error_kwh"]) for row in rows if row["error_kwh"] is not None]
+
+    if not errors:
+        return None
+
+    return {
+        "points": len(errors),
+        "mae_kwh": sum(errors) / len(errors),
+    }
