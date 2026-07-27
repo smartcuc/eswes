@@ -1,8 +1,11 @@
 ############################################
-# forecast / providers / sensor_community.py
+# forecast/providers/sensor_community.py
 ############################################
 
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_nearby_observations(
@@ -13,11 +16,22 @@ def fetch_nearby_observations(
 
     url = "https://data.sensor.community/static/v2/" "data.json"
 
-    response = requests.get(
-        url,
-        timeout=30,
-    )
+    try:
 
-    response.raise_for_status()
+        response = requests.get(
+            url,
+            timeout=30,
+        )
 
-    return response.json()
+        response.raise_for_status()
+
+        return response.json()
+
+    except requests.RequestException as exc:
+
+        logger.warning(
+            "Sensor Community request failed: %s",
+            exc,
+        )
+
+        return []
