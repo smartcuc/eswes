@@ -5,6 +5,7 @@
 import uuid
 from django.db import models
 
+from .models_accuracy import ForecastRunAccuracy
 from producer.models import GeneratorString
 
 class SolarForecast(models.Model):

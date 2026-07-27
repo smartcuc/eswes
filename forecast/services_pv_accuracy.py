@@ -5,6 +5,9 @@
 from django.utils import timezone
 from devices.models import DeviceMetric1h
 
+from forecast.models_accuracy import (
+    ForecastRunAccuracy,
+)
 
 def compare_forecast_run(run):
 
@@ -127,3 +130,19 @@ def summarize_forecast_runs(limit=50):
 
     return results
 
+
+def store_forecast_accuracy(run):
+
+    accuracy = calculate_forecast_accuracy(run)
+
+    if accuracy.get("status"):
+        return None
+
+    obj, _ = ForecastRunAccuracy.objects.update_or_create(
+        forecast_run=run,
+        defaults={
+            **accuracy,
+        },
+    )
+
+    return obj

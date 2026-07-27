@@ -12,6 +12,9 @@ from forecast.views import (
     generator_string_forecast,
 )
 
+from forecast.api_accuracy import forecast_accuracy
+
+
 urlpatterns = [
     path("", forecast_list, name="forecast-list"),
     path("sources/", forecast_sources, name="forecast-sources"),
@@ -19,4 +22,6 @@ urlpatterns = [
     path("recommendation/", forecast_recommendation, name="forecast-recommendation"),
     path("global/", global_forecast, name="forecast-global"),
     path("string/<uuid:string_id>/", generator_string_forecast, name="generator-string-forecast"),
+    path("forecast/accuracy/", forecast_accuracy, name="forecast_accuracy"),
 ]
+
