@@ -22,11 +22,18 @@ def compare_forecast_run(run):
             metric_key="power",
         ).first()
 
+        forecast_kwh = float(forecast.forecast_kwh)
+
+        actual_kwh = float(actual.energy_wh) / 1000 if actual else None
+
+        error_kwh = forecast_kwh - actual_kwh if actual_kwh is not None else None
+
         rows.append(
             {
                 "timestamp": forecast.timestamp,
-                "forecast_kwh": float(forecast.forecast_kwh),
-                "actual_wh": (float(actual.energy_wh) if actual else None),
+                "forecast_kwh": forecast_kwh,
+                "actual_kwh": actual_kwh,
+                "error_kwh": error_kwh,
             }
         )
 
