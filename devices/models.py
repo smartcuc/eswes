@@ -248,6 +248,13 @@ class DeviceConfig(models.Model):
         on_delete=models.SET_NULL,
     )
 
+    energy_signal_type = models.ForeignKey(
+        "energy.EMSSignalType",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
     # ✅ Location (frei!)
     home = models.ForeignKey(
         Home,

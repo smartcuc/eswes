@@ -25,6 +25,7 @@ from devices.models import (
 from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
 
 from producer.models import GeneratorSystem, GeneratorType
+from energy.models import EMSSignalType
 
 from devices.services.metrics import get_latest_values
 from .serializers import (
@@ -77,6 +78,14 @@ def device_setup_options(request):
                     "icon": g.icon,
                 }
                 for g in generator_types
+            ],
+            "energy_signal_types": [
+                {
+                    "id": s.id,
+                    "key": s.key,
+                    "name": s.label,
+                }
+                for s in EMSSignalType.objects.filter(active=True).order_by("label")
             ],
         }
     )
