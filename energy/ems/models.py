@@ -3,14 +3,9 @@
 #########################
 
 from django.db import models
-
+from .models_signal_type import EMSSignalType
 
 class EMSSignalSource(models.Model):
-
-    SIGNAL_TYPES = [
-        ("pv", "PV"),
-        ("grid", "Netz"),
-    ]
 
     home = models.ForeignKey(
         "devices.Home",
@@ -24,9 +19,10 @@ class EMSSignalSource(models.Model):
         related_name="ems_signal_sources",
     )
 
-    signal_type = models.CharField(
-        max_length=20,
-        choices=SIGNAL_TYPES,
+    signal_type = models.ForeignKey(
+        "energy.EMSSignalType",
+        on_delete=models.PROTECT,
+        related_name="sources",
     )
 
     created_at = models.DateTimeField(
@@ -50,4 +46,3 @@ class EMSSignalSource(models.Model):
             f"{self.signal_type} | "
             f"{self.device}"
         )
-    
