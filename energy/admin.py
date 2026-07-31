@@ -3,7 +3,7 @@
 #################
 
 from django.contrib import admin
-from .models import (
+from energy.models import (
     Location,
     EnergyAsset,
     EnergyAssetPV,
@@ -11,8 +11,10 @@ from .models import (
     EnergyAssetEV,
     AssetMeter,
     SmartEnergySettings,
+    EMSSignalSource,
+    EMSSignalType,
 )
-from energy.models import EMSSignalSource
+
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
@@ -114,6 +116,38 @@ class EMSSignalSourceAdmin(admin.ModelAdmin):
         "created_at",
     )
 
-    list_filter = (
-        "signal_type",
+    list_filter = ("signal_type",)
+
+    search_fields = (
+        "home__name",
+        "device__identifier",
+        "signal_type__key",
+        "signal_type__label",
     )
+
+    raw_id_fields = (
+        "home",
+        "device",
+    )
+
+    autocomplete_fields = ("signal_type",)
+
+
+@admin.register(EMSSignalType)
+class EMSSignalTypeAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "key",
+        "label",
+        "active",
+        "created_at",
+    )
+
+    list_filter = ("active",)
+
+    search_fields = (
+        "key",
+        "label",
+    )
+
+    ordering = ("label",)

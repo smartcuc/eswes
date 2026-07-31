@@ -5,6 +5,7 @@
 from django.db import models
 from .models_signal_type import EMSSignalType
 
+
 class EMSSignalSource(models.Model):
 
     home = models.ForeignKey(
@@ -40,9 +41,16 @@ class EMSSignalSource(models.Model):
             ),
         ]
 
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "home",
+                    "device",
+                    "signal_type",
+                ],
+                name="unique_home_device_signal",
+            ),
+        ]
+
     def __str__(self):
-        return (
-            f"{self.home} | "
-            f"{self.signal_type} | "
-            f"{self.device}"
-        )
+        return f"{self.home} | " f"{self.signal_type} | " f"{self.device}"
