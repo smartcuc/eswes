@@ -29,11 +29,30 @@ def build_device_signals(user):
     # 2. PV und Grid Signalquellen einsammeln
     sources = EMSSignalSource.objects.filter(
         home__user=user,
-        signal_type__in=["pv", "grid"]
-    )
+        signal_type__key__in=[
+            "pv",
+            "grid",
+            "load",
+            "battery",
+        ],
+    ).select_related("signal_type")
 
-    pv_sources = [src for src in sources if src.signal_type == "pv"]
-    grid_sources = [src for src in sources if src.signal_type == "grid"]
+    pv_sources = [
+        src for src in sources if src.signal_type.key == "pv"
+
+    ]
+
+    grid_sources = [
+        src for src in sources if src.signal_type.key == "grid"
+    ]
+
+    load_sources = [
+        src for src in sources if src.signal_type.key == "load"
+    ]
+
+    battery_sources = [
+        src for src in sources if src.signal_type.key == "battery"
+    ]
 
     # PV
     pv_power = sum(max(values.get(src.device_id, 0), 0) for src in pv_sources)
@@ -51,13 +70,8 @@ def build_device_signals(user):
     #
     # BATTERY (KORRIGIERT FÜR RELATIONALE MODELLE)
     #
-    battery_power = sum(
-        values.get(device.id, 0)
-        for device in all_devices
-        if (config := getattr(device, "config", None)) is not None
-        and (role := getattr(config, "role", None)) is not None
-        and role.key == "battery"
-    )
+    battery_power = sum(values.get(src.device_id, 0) for src in battery_sources)
+    load_power = sum(max(values.get(src.device_id, 0), 0) for src in load_sources)
 
     if battery_power >= 0:
         signals["battery"]["discharge"] = battery_power
@@ -67,13 +81,23 @@ def build_device_signals(user):
         signals["battery"]["charge"] = abs(battery_power)
 
     # LOAD
-    consumption = (
-        signals["pv"]["production"]
-        + signals["battery"]["discharge"]
-        + signals["grid"]["import"]
-        - signals["battery"]["charge"]
-        - signals["grid"]["export"]
-    )
-    signals["load"]["consumption"] = max(consumption, 0)
+    if load_sources:
+
+        signals["load"]["consumption"] = load_power
+
+    else:
+
+        consumption = (
+            signals["pv"]["production"]
+            + signals["battery"]["discharge"]
+            + signals["grid"]["import"]
+            - signals["battery"]["charge"]
+            - signals["grid"]["export"]
+        )
+
+        signals["load"]["consumption"] = max(
+            consumption,
+            0,
+        )
 
     return signals
