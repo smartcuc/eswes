@@ -82,8 +82,18 @@ def get_energy_data(user):
         )
     )
 
+    load_ids = list(
+        EMSSignalSource.objects.filter(
+            home__user=user,
+            signal_type__key="load",
+        ).values_list(
+            "device_id",
+            flat=True,
+        )
+    )
+
     charts = {
-        "load": get_dashboard_chart(grid_ids),
+        "load": get_dashboard_chart(load_ids),
         "pv": get_dashboard_chart(pv_ids),
         "grid": get_dashboard_chart(grid_ids),
         "today": today["history"] if today else [],
