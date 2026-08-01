@@ -56,7 +56,7 @@ def get_energy_data(user):
     grid_ids = list(
         EMSSignalSource.objects.filter(
             home__user=user,
-            signal_type="grid",
+            signal_type__key="grid",
         ).values_list(
             "device_id",
             flat=True,
@@ -66,7 +66,7 @@ def get_energy_data(user):
     pv_ids = list(
         EMSSignalSource.objects.filter(
             home__user=user,
-            signal_type="pv",
+            signal_type__key="pv",
         ).values_list(
             "device_id",
             flat=True,

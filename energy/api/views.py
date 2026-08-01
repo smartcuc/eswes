@@ -90,7 +90,7 @@ def chart_data(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="pv",
+                signal_type__key="pv",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -102,7 +102,7 @@ def chart_data(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="grid",
+                signal_type__key="grid",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -151,7 +151,7 @@ def export_chart_xlsx(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="pv",
+                signal_type__key="pv",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -163,7 +163,7 @@ def export_chart_xlsx(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="grid",
+                signal_type__key="grid",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -275,7 +275,7 @@ def export_chart_csv(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="pv",
+                signal_type__key="pv",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -287,7 +287,7 @@ def export_chart_csv(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="grid",
+                signal_type__key="grid",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -378,7 +378,7 @@ def export_chart_pdf(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="pv",
+                signal_type__key="pv",
             ).values_list(
                 "device_id",
                 flat=True,
@@ -390,7 +390,7 @@ def export_chart_pdf(request):
         device_ids = list(
             EMSSignalSource.objects.filter(
                 home__user=request.user,
-                signal_type="grid",
+                signal_type__key="grid",
             ).values_list(
                 "device_id",
                 flat=True,

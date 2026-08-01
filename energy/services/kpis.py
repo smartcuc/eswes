@@ -26,7 +26,7 @@ def get_today_consumption(user):
 
     grid_devices = EMSSignalSource.objects.filter(
         home__user=user,
-        signal_type="grid",
+        signal_type__key="grid",
     ).values_list(
         "device_id",
         flat=True,
@@ -71,7 +71,7 @@ def get_today_consumption(user):
         )
         for row in rows
     ]
-    
+
     return {
         "value": round(
             total_wh / 1000,

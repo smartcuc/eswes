@@ -222,12 +222,27 @@ export default function DeviceSetupModal({
         }
 
         // ✅ AUTO ADVANCE (unverändert korrekt)
+        const currentRoleId =
+            values.role_id
+            ?? server.config?.role?.id;
+
+        const currentRole =
+            roles.find(
+                r => Number(r.id) === Number(currentRoleId)
+            );
+
         if (
-            values.role_id &&
-            values.metric_definition_id &&
+            currentRoleId &&
             (
-                selectedRole?.key !== "producer" ||
-                values.generator_type_id
+                values.metric_definition_id
+                ?? server.config?.metric_definition?.id
+            ) &&
+            (
+                currentRole?.key !== "producer"
+                || (
+                    values.generator_type_id
+                    ?? server.config?.generator_type?.id
+                )
             ) &&
             index < devices.length - 1
         ) {
@@ -285,6 +300,17 @@ export default function DeviceSetupModal({
     const selectedRole = roles.find(
         r => Number(r.id) === Number(roleId)
     );
+
+    const selectedMetric = metricDefinitions.find(
+        m => Number(m.id) === Number(metricDefinitionId)
+    );
+
+    const showEnergySignal =
+        selectedMetric &&
+        (
+            selectedMetric.unit === "W" ||
+            selectedMetric.unit === "kWh"
+        );
 
     const progress = ((index + 1) / devices.length) * 100;
 
@@ -525,42 +551,44 @@ export default function DeviceSetupModal({
                         )}
 
 
-                        <div>
-                            <label className="text-xs text-gray-400">
-                                Energiesignal
-                            </label>
+                        {showEnergySignal && (
+                            <div>
+                                <label className="text-xs text-gray-400">
+                                    Energiesignal
+                                </label>
 
-                            <select
-                                value={energySignalTypeId}
-                                onChange={(e) =>
-                                    handleChange(
-                                        device.id,
-                                        "energy_signal_type_id",
-                                        e.target.value
-                                            ? Number(e.target.value)
-                                            : null
-                                    )
-                                }
-                                className="border px-3 py-2 w-full rounded"
-                            >
-                                <option value="">
-                                    ⚡ Kein Energiesignal
-                                </option>
-
-                                {energySignalTypes.map(type => (
-                                    <option
-                                        key={type.id}
-                                        value={type.id}
-                                    >
-                                        {type.name}
+                                <select
+                                    value={energySignalTypeId}
+                                    onChange={(e) =>
+                                        handleChange(
+                                            device.id,
+                                            "energy_signal_type_id",
+                                            e.target.value
+                                                ? Number(e.target.value)
+                                                : null
+                                        )
+                                    }
+                                    className="border px-3 py-2 w-full rounded"
+                                >
+                                    <option value="">
+                                        ⚡ Kein Energiesignal
                                     </option>
-                                ))}
-                            </select>
 
-                            <p className="text-xs text-gray-400 mt-1">
-                                PV, Netz, Verbrauch oder Batterie
-                            </p>
-                        </div>
+                                    {energySignalTypes.map(type => (
+                                        <option
+                                            key={type.id}
+                                            value={type.id}
+                                        >
+                                            {type.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <p className="text-xs text-gray-400 mt-1">
+                                    PV, Netz, Verbrauch oder Batterie
+                                </p>
+                            </div>
+                        )}
 
 
                         {/* LOCATION */}
