@@ -228,8 +228,14 @@ def build_live_sankey(
             "value": flow["grid_to_load"],
         })
 
+    incoming_energy = (
+        flow["pv_to_load"]
+        + flow["battery_to_load"]
+        + flow["grid_to_load"]
+    )
+
     untracked = max(
-        total_consumption - tracked_consumption,
+        incoming_energy - tracked_consumption,
         0,
     )  
 
