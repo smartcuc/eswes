@@ -291,7 +291,7 @@ export default function DeviceSetupModal({
     const roleId = local.role_id ?? server.config?.role?.id ?? "";
     const generatorTypeId = local.generator_type_id ?? server.config?.generator_type?.id ?? "";
     const metricDefinitionId = local.metric_definition_id ?? server.config?.metric_definition?.id ?? "";
-    const energySignalTypeId = local.energy_signal_type_id ?? server.config?.energy_signal_type?.id ?? "";
+    const energySignalTypeId = local.energy_signal_type_id ?? server.config?.energy_signal_type?.id;
 
     const homeId = local.home_id ?? server.config?.home?.id ?? "";
     const floorId = local.floor_id ?? server.config?.floor?.id ?? "";
@@ -563,15 +563,14 @@ export default function DeviceSetupModal({
                                         handleChange(
                                             device.id,
                                             "energy_signal_type_id",
-                                            e.target.value
-                                                ? Number(e.target.value)
-                                                : null
+                                            Number(e.target.value)
+
                                         )
                                     }
                                     className="border px-3 py-2 w-full rounded"
                                 >
                                     <option value="">
-                                        ⚡ Kein Energiesignal
+                                        ⚡ Energiesignal
                                     </option>
 
                                     {energySignalTypes.map(type => (

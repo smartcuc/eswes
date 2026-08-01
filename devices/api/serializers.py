@@ -97,7 +97,6 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
         queryset=EMSSignalType.objects.all(),
         source="energy_signal_type",
         required=False,
-        allow_null=True,
     )
 
     room_id = serializers.PrimaryKeyRelatedField(
@@ -174,7 +173,6 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
         return data
 
-
     def update(self, instance, validated_data):
 
         for attr, value in validated_data.items():
@@ -182,9 +180,11 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
         instance.save()
 
-        EMSSignalSource.objects.filter(device=instance.device).delete()
+        EMSSignalSource.objects.filter(
+            device=instance.device
+        ).delete()
 
-        if instance.energy_signal_type:
+        if instance.energy_signal_type.key != "none":
 
             EMSSignalSource.objects.create(
                 home=instance.home,
