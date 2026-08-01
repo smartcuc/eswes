@@ -150,6 +150,7 @@ export default function DeviceSetupModal({
                 role_id: values.role_id ?? server.config?.role?.id ?? null,
                 metric_definition_id: values.metric_definition_id ?? server.config?.metric_definition?.id ?? null,
                 generator_type_id: values.generator_type_id ?? server.config?.generator_type?.id ?? null,
+                energy_signal_type_id: values.energy_signal_type_id ?? server.config?.energy_signal_type?.id ?? null,
                 room_id: values.room_id ?? server.config?.room?.id ?? null,
                 floor_id: values.floor_id ?? server.config?.floor?.id ?? null,
                 home_id: values.home_id ?? server.config?.home?.id ?? null,

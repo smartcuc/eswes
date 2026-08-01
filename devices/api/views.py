@@ -162,7 +162,8 @@ def configure_device(request, device_id):
     serializer = DeviceConfigSerializer(
         config,
         data=request.data,
-        partial=True
+        partial=True,
+        context={"request": request},
     )
 
     serializer.is_valid(raise_exception=True)

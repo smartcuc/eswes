@@ -15,7 +15,11 @@ from devices.models import (
     MetricDefinition,
 )
 
-from energy.models import EMSSignalSource
+from energy.models import (
+    EMSSignalSource,
+    EMSSignalType,
+)
+
 from producer.models import GeneratorType
 
 # ============================================================
@@ -56,25 +60,13 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             allow_blank=True,
         )
 
-    is_pv_source = serializers.SerializerMethodField()
-    is_grid_source = serializers.SerializerMethodField()
-
-    is_pv_source_write = serializers.BooleanField(
-        write_only=True,
-        required=False,
-    )
-
-    is_grid_source_write = serializers.BooleanField(
-        write_only=True,
-        required=False,
-    )
-
     # READ
     role = DeviceRoleSerializer(read_only=True)
     room = RoomSerializer(read_only=True)
     floor = FloorSerializer(read_only=True)
     generator_type = serializers.SerializerMethodField()
     metric_definition = serializers.SerializerMethodField()
+    energy_signal_type = serializers.SerializerMethodField()
 
     # WRITE
     role_id = serializers.PrimaryKeyRelatedField(
@@ -99,6 +91,13 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
         write_only=True,
         allow_null=True,
         required=False,
+    )
+
+    energy_signal_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=EMSSignalType.objects.all(),
+        source="energy_signal_type",
+        required=False,
+        allow_null=True,
     )
 
     room_id = serializers.PrimaryKeyRelatedField(
@@ -136,30 +135,14 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             "generator_type_id",
             "metric_definition",
             "metric_definition_id",
+            "energy_signal_type",
+            "energy_signal_type_id",
             "room",
             "room_id",
             "floor",
             "floor_id",
             "home_id",
-            "is_pv_source",
-            "is_grid_source",
-            "is_pv_source_write",
-            "is_grid_source_write",
         )
-
-    def get_is_pv_source(self, obj):
-
-        return EMSSignalSource.objects.filter(
-            device=obj.device,
-            signal_type="pv",
-        ).exists()
-
-    def get_is_grid_source(self, obj):
-
-        return EMSSignalSource.objects.filter(
-            device=obj.device,
-            signal_type="grid",
-        ).exists()
 
     # ✅ ✅ ✅ HIER IST DER FIX
     def validate(self, data):
@@ -191,60 +174,23 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
 
         return data
 
+
     def update(self, instance, validated_data):
-
-        pv_selected = validated_data.pop(
-                "is_pv_source_write",
-                None,
-            )
-
-        grid_selected = validated_data.pop(
-                "is_grid_source_write",
-                None,
-            )
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         instance.save()
 
-        #
-        # PV
-        #
+        EMSSignalSource.objects.filter(device=instance.device).delete()
 
-        if pv_selected is not None:
+        if instance.energy_signal_type:
 
-            EMSSignalSource.objects.filter(
-                    device=instance.device,
-                    signal_type="pv",
-                ).delete()
-
-            if pv_selected:
-
-                EMSSignalSource.objects.create(
-                        home=instance.home,
-                        device=instance.device,
-                        signal_type="pv",
-                    )
-
-        #
-        # GRID
-        #
-
-        if grid_selected is not None:
-
-            EMSSignalSource.objects.filter(
-                    device=instance.device,
-                    signal_type="grid",
-                ).delete()
-
-            if grid_selected:
-
-                EMSSignalSource.objects.create(
-                        home=instance.home,
-                        device=instance.device,
-                        signal_type="grid",
-                    )
+            EMSSignalSource.objects.create(
+                home=instance.home,
+                device=instance.device,
+                signal_type=instance.energy_signal_type,
+            )
 
         return instance
 
@@ -270,6 +216,17 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             "key": obj.metric_definition.key,
             "name": obj.metric_definition.name,
             "unit": obj.metric_definition.unit,
+        }
+
+    def get_energy_signal_type(self, obj):
+
+        if not obj.energy_signal_type:
+            return None
+
+        return {
+            "id": obj.energy_signal_type.id,
+            "key": obj.energy_signal_type.key,
+            "label": obj.energy_signal_type.label,
         }
 
 
