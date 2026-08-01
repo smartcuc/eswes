@@ -41,12 +41,21 @@ def get_energy_data(user):
     load = signals.get("load", {})
     pv = signals.get("pv", {})
     grid = signals.get("grid", {})
+    battery = signals.get("battery", {})
 
+    house_demand = (
+        (pv.get("production") or 0)
+        + (battery.get("discharge") or 0)
+        + (grid.get("import") or 0)
+        - (battery.get("charge") or 0)
+        - (grid.get("export") or 0)
+    )
     # 4. Heutigen Verbrauch ermitteln
     today = get_today_consumption(user)
 
     kpis = {
-        "load": load.get("consumption", 0),
+        "load": round(house_demand, 2),
+        "tracked_load": load.get("consumption", 0),
         "pv": pv.get("production", 0),
         "grid": grid.get("import", 0) - grid.get("export", 0),
         "today": today["value"] if today else 0,
