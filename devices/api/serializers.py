@@ -184,7 +184,7 @@ class DeviceConfigSerializer(serializers.ModelSerializer):
             device=instance.device
         ).delete()
 
-        if instance.energy_signal_type.key != "none":
+        if instance.energy_signal_type and instance.energy_signal_type.key != "none":
 
             EMSSignalSource.objects.create(
                 home=instance.home,
