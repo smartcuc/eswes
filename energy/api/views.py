@@ -86,28 +86,26 @@ def chart_data(request):
         )
 
     if metric == "pv":
+        signal_type = "pv"
 
-        device_ids = list(
-            EMSSignalSource.objects.filter(
-                home__user=request.user,
-                signal_type__key="pv",
-            ).values_list(
-                "device_id",
-                flat=True,
-            )
+    elif metric == "grid":
+        signal_type = "grid"
+
+    elif metric == "load":
+        signal_type = "load"
+
+    elif metric == "today":
+        signal_type = "grid"
+
+    device_ids = list(
+        EMSSignalSource.objects.filter(
+            home__user=request.user,
+            signal_type__key=signal_type,
+        ).values_list(
+            "device_id",
+            flat=True,
         )
-
-    else:
-
-        device_ids = list(
-            EMSSignalSource.objects.filter(
-                home__user=request.user,
-                signal_type__key="grid",
-            ).values_list(
-                "device_id",
-                flat=True,
-            )
-        )
+    )
 
     home = request.user.homes.first()
     timezone_name = home.timezone if home else "UTC"
