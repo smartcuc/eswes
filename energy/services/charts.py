@@ -15,6 +15,24 @@ from devices.models import (
 )
 
 
+# def get_dashboard_chart(device_ids):
+#     """
+#     Sparkline für Dashboard-Kacheln.
+
+#     Immer letzte 24h.
+#     """
+
+#     since = timezone.now() - timedelta(hours=24)
+
+#     rows = DeviceMetric1h.objects.filter(
+#         device_id__in=device_ids,
+#         metric_key="power",
+#         bucket__gte=since,
+#     ).order_by("bucket")
+
+#     return [round(row.avg, 1) for row in rows]
+
+
 def get_dashboard_chart(device_ids):
     """
     Sparkline für Dashboard-Kacheln.
@@ -24,13 +42,18 @@ def get_dashboard_chart(device_ids):
 
     since = timezone.now() - timedelta(hours=24)
 
-    rows = DeviceMetric1h.objects.filter(
-        device_id__in=device_ids,
-        metric_key="power",
-        bucket__gte=since,
-    ).order_by("bucket")
+    rows = (
+        DeviceMetric1h.objects.filter(
+            device_id__in=device_ids,
+            metric_key="power",
+            bucket__gte=since,
+        )
+        .values("bucket")
+        .annotate(value=Sum("avg"))
+        .order_by("bucket")
+    )
 
-    return [round(row.avg, 1) for row in rows]
+    return [round(row["value"] or 0, 1) for row in rows]
 
 
 def get_chart_data(
