@@ -387,6 +387,30 @@ class DeviceMetric(models.Model):
         ]
 
 
+class DeviceResource(models.Model):
+    device = models.OneToOneField(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="resource",
+    )
+
+    attributes = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def __str__(self):
+        return self.device.identifier
+
+
 # ============================================================
 # ✅ METRIC AGGREGATIONS
 # ============================================================
