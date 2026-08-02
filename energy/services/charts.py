@@ -4,6 +4,7 @@
 
 from datetime import timedelta
 from zoneinfo import ZoneInfo
+from collections import defaultdict
 
 from django.utils import timezone
 from django.db.models import Sum, Avg
@@ -54,6 +55,51 @@ def get_dashboard_chart(device_ids):
     )
 
     return [round(row["value"] or 0, 1) for row in rows]
+
+
+def get_house_demand_chart(
+    pv_ids,
+    grid_ids,
+    battery_ids,
+):
+    since = timezone.now() - timedelta(hours=24)
+
+    data = defaultdict(float)
+
+    for row in (
+        DeviceMetric1h.objects.filter(
+            device_id__in=pv_ids,
+            metric_key="power",
+            bucket__gte=since,
+        )
+        .values("bucket")
+        .annotate(value=Sum("avg"))
+    ):
+        data[row["bucket"]] += row["value"] or 0
+
+    for row in (
+        DeviceMetric1h.objects.filter(
+            device_id__in=battery_ids,
+            metric_key="power",
+            bucket__gte=since,
+        )
+        .values("bucket")
+        .annotate(value=Sum("avg"))
+    ):
+        data[row["bucket"]] += row["value"] or 0
+
+    for row in (
+        DeviceMetric1h.objects.filter(
+            device_id__in=grid_ids,
+            metric_key="power",
+            bucket__gte=since,
+        )
+        .values("bucket")
+        .annotate(value=Sum("avg"))
+    ):
+        data[row["bucket"]] += row["value"] or 0
+
+    return [round(value, 1) for _, value in sorted(data.items())]
 
 
 def get_chart_data(
