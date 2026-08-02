@@ -250,6 +250,8 @@ class DeviceConfig(models.Model):
 
     energy_signal_type = models.ForeignKey(
         "energy.EMSSignalType",
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
     )
 
@@ -286,6 +288,9 @@ class DeviceConfig(models.Model):
             return False
 
         if self.metric_definition is None:
+            return False
+
+        if self.energy_signal_type is None:
             return False
 
         if self.role.key == "producer":
