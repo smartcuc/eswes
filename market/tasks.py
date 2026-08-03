@@ -18,12 +18,30 @@ def unix_to_dt(ts):
     return timezone.datetime.fromtimestamp(ts, tz=dt_timezone.utc)
 
 
-def fetch_spot_prices_xadi():
+def fetch_spot_prices_smard():
 
-    url = "https://dap.xadi.eu/api/de/today"
+    index_url = (
+        "https://www.smard.de/app/chart_data/" "4169/DE-LU/index_quarterhour.json"
+    )
+
+    index_response = requests.get(
+        index_url,
+        timeout=10,
+    )
+
+    index_response.raise_for_status()
+
+    latest_timestamp = index_response.json()["timestamps"][-1]
+
+    data_url = (
+        "https://www.smard.de/app/chart_data/"
+        f"4169/DE-LU/"
+        f"4169_DE-LU_quarterhour_"
+        f"{latest_timestamp}.json"
+    )
 
     response = requests.get(
-        url,
+        data_url,
         timeout=10,
     )
 
@@ -33,21 +51,26 @@ def fetch_spot_prices_xadi():
 
     count = 0
 
-    for row in data.get("data", []):
+    for ts_ms, price_mwh in data.get(
+        "series",
+        [],
+    ):
 
-        dt = timezone.datetime.fromisoformat(
-            row["time"].replace("Z", "+00:00")
+        if price_mwh is None:
+            continue
+
+        dt = timezone.datetime.fromtimestamp(
+            ts_ms / 1000,
+            tz=dt_timezone.utc,
         )
 
-        price_kwh = Decimal(
-            str(row["price"])
-        )
+        price_kwh = Decimal(str(price_mwh)) / Decimal("1000")
 
         SpotPrice.objects.update_or_create(
             timestamp=dt,
             defaults={
                 "price_eur_per_kwh": price_kwh,
-                "source": "xadi",
+                "source": "smard",
             },
         )
 
@@ -70,7 +93,6 @@ def fetch_spot_prices_xadi():
         True,
         timeout=None,
     )
-
 
     return {
         "status": "ok",
@@ -103,7 +125,7 @@ def fetch_spot_prices():
 
     except requests.RequestException:
 
-        return fetch_spot_prices_xadi()
+        return fetch_spot_prices_smard()
 
     data = response.json()
 
