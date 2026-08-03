@@ -33,11 +33,15 @@ def fetch_spot_prices_xadi():
 
     count = 0
 
-    for row in data:
+    for row in data.get("data", []):
 
-        dt = timezone.datetime.fromisoformat(row["datetime"])
+        dt = timezone.datetime.fromisoformat(
+            row["time"].replace("Z", "+00:00")
+        )
 
-        price_kwh = Decimal(str(row["price"]))
+        price_kwh = Decimal(
+            str(row["price"])
+        )
 
         SpotPrice.objects.update_or_create(
             timestamp=dt,
@@ -48,6 +52,25 @@ def fetch_spot_prices_xadi():
         )
 
         count += 1
+
+    cache.set(
+        "spot:last_update",
+        timezone.now().isoformat(),
+        timeout=None,
+    )
+
+    cache.set(
+        "spot:last_count",
+        count,
+        timeout=None,
+    )
+
+    cache.set(
+        "spot:last_success",
+        True,
+        timeout=None,
+    )
+
 
     return {
         "status": "ok",
