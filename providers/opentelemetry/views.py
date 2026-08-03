@@ -96,6 +96,14 @@ def otlp_metrics(request):
             identifier=device_id,
         )
 
+        device.last_seen = timezone.now()
+
+        device.save(
+            update_fields=[
+                "last_seen",
+            ]
+        )
+
         resource_obj, _ = DeviceResource.objects.get_or_create(
             device=device,
         )
@@ -117,6 +125,10 @@ def otlp_metrics(request):
             for metric in scope_metric.get("metrics", []):
 
                 metric_name = metric.get("name")
+                metric_unit = metric.get(
+                    "unit",
+                    "",
+                )
 
                 metric_definition = MetricDefinition.objects.filter(
                     key=metric_name,
@@ -180,7 +192,7 @@ def otlp_metrics(request):
                         device=device,
                         metric_key="value",
                         value=float(value),
-                        unit="",
+                        unit=metric_unit,
                         data={
                             "otel_metric": metric_name,
                         },

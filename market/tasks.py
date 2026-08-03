@@ -18,6 +18,43 @@ def unix_to_dt(ts):
     return timezone.datetime.fromtimestamp(ts, tz=dt_timezone.utc)
 
 
+def fetch_spot_prices_xadi():
+
+    url = "https://dap.xadi.eu/api/de/today"
+
+    response = requests.get(
+        url,
+        timeout=10,
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    count = 0
+
+    for row in data:
+
+        dt = timezone.datetime.fromisoformat(row["datetime"])
+
+        price_kwh = Decimal(str(row["price"]))
+
+        SpotPrice.objects.update_or_create(
+            timestamp=dt,
+            defaults={
+                "price_eur_per_kwh": price_kwh,
+                "source": "xadi",
+            },
+        )
+
+        count += 1
+
+    return {
+        "status": "ok",
+        "count": count,
+    }
+
+
 @shared_task
 def fetch_spot_prices():
 
@@ -31,8 +68,19 @@ def fetch_spot_prices():
         "end": int(end.timestamp()),
     }
 
-    response = requests.get(url, params=params, timeout=10)
-    response.raise_for_status()
+    try:
+
+        response = requests.get(
+            url,
+            params=params,
+            timeout=10,
+        )
+
+        response.raise_for_status()
+
+    except requests.RequestException:
+
+        return fetch_spot_prices_xadi()
 
     data = response.json()
 
