@@ -289,14 +289,14 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 1800.0,
     },
     # ✅ Strompreise (separat ok)
-    "fetch-spot-prices-daily": {
-        "task": "market.tasks.fetch_spot_prices_retry",
-        "schedule": crontab(hour=13, minute=1),
-    },
+    #"fetch-spot-prices-daily": {
+    #    "task": "market.tasks.fetch_spot_prices_retry",
+    #    "schedule": crontab(hour=13, minute=1),
+    # },
     # ✅ Strompreise UTC <-> CEST
     "fetch-spot-prices-daily": {
         "task": "market.tasks.fetch_spot_prices_retry",
-        "schedule": crontab(hour=15, minute=1),
+        "schedule": crontab(minute=5),
     },
     # ✅ MagicLogin CleanUp
     "cleanup_tokens": {
