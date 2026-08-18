@@ -11,7 +11,15 @@ from django.conf import settings
 from django.utils import timezone
 
 from market.models import SpotPrice
+from devices.models import (
+    DeviceMetric1m,
+    DeviceMetric5m,
+    DeviceMetric15m,
+    DeviceMetric1h,
+)
+
 from operations.models import HealthState
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +30,10 @@ def run_health_checks():
     checks = [
         check_spot_prices,
         check_celery_queues,
+        check_aggregation_1m,
+        check_aggregation_5m,
+        check_aggregation_15m,
+        check_aggregation_1h,
     ]
 
     for check in checks:
@@ -162,3 +174,88 @@ def check_celery_queues():
                 },
             },
         )
+
+
+def update_aggregation_health(
+    key,
+    model,
+    max_age_seconds,
+):
+
+    latest = model.objects.order_by("-bucket").first()
+
+    if not latest:
+
+        HealthState.objects.update_or_create(
+            key=key,
+            defaults={
+                "status": "error",
+                "value": "no data",
+                "details": {},
+            },
+        )
+
+        return
+
+    age = timezone.now() - latest.bucket
+
+    if age.total_seconds() > max_age_seconds:
+
+        status = "error"
+
+    elif age.total_seconds() > (max_age_seconds / 2):
+
+        status = "warn"
+
+    else:
+
+        status = "ok"
+
+    HealthState.objects.update_or_create(
+        key=key,
+        defaults={
+            "status": status,
+            "value": latest.bucket.isoformat(),
+            "details": {
+                "age_seconds": int(age.total_seconds()),
+            },
+        },
+    )
+
+
+def check_aggregation_1m():
+
+    update_aggregation_health(
+        key="aggregation_1m",
+        model=DeviceMetric1m,
+        max_age_seconds=600,
+    )
+
+
+def check_aggregation_5m():
+
+    update_aggregation_health(
+        key="aggregation_5m",
+        model=DeviceMetric5m,
+        max_age_seconds=1800,
+    )
+
+
+def check_aggregation_15m():
+
+    update_aggregation_health(
+        key="aggregation_15m",
+        model=DeviceMetric15m,
+        max_age_seconds=3600,
+    )
+
+
+def check_aggregation_1h():
+
+    update_aggregation_health(
+        key="aggregation_1h",
+        model=DeviceMetric1h,
+        max_age_seconds=7200,
+    )
+
+
