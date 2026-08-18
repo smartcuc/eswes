@@ -101,39 +101,6 @@ def check_spot_prices():
     )
 
 
-def check_celery_queue():
-
-    redis_url = settings.CELERY_BROKER_URL
-
-    client = redis.from_url(redis_url)
-
-    queue_length = client.llen("celery")
-
-    if queue_length >= 10000:
-
-        status = "error"
-
-    elif queue_length >= 1000:
-
-        status = "warn"
-
-    else:
-
-        status = "ok"
-
-    HealthState.objects.update_or_create(
-        key="celery_queue",
-        defaults={
-            "status": status,
-            "value": str(queue_length),
-            "details": {
-                "queue": "celery",
-                "length": queue_length,
-            },
-        },
-    )
-
-
 def check_celery_queues():
 
     redis_url = settings.CELERY_BROKER_URL
@@ -281,6 +248,8 @@ def check_mqtt():
 
         return
 
+    last_seen = latest.last_seen
+
     age = timezone.now() - latest.last_seen
 
     if age.total_seconds() > 900:
@@ -302,8 +271,8 @@ def check_mqtt():
             "value": latest.last_seen.isoformat(),
             "details": {
                 "device_id": latest.id,
+                "last_seen": last_seen.isoformat(),
                 "age_seconds": int(age.total_seconds()),
             },
         },
     )
-
