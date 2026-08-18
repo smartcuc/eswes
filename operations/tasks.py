@@ -11,6 +11,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from market.models import SpotPrice
+from devices.models import Device
+
 from devices.models import (
     DeviceMetric1m,
     DeviceMetric5m,
@@ -34,6 +36,7 @@ def run_health_checks():
         check_aggregation_5m,
         check_aggregation_15m,
         check_aggregation_1h,
+        check_mqtt,
     ]
 
     for check in checks:
@@ -258,4 +261,49 @@ def check_aggregation_1h():
         max_age_seconds=7200,
     )
 
+
+def check_mqtt():
+
+    latest = (
+        Device.objects.exclude(last_seen__isnull=True).order_by("-last_seen").first()
+    )
+
+    if not latest:
+
+        HealthState.objects.update_or_create(
+            key="mqtt",
+            defaults={
+                "status": "error",
+                "value": "no device seen",
+                "details": {},
+            },
+        )
+
+        return
+
+    age = timezone.now() - latest.last_seen
+
+    if age.total_seconds() > 900:
+
+        status = "error"
+
+    elif age.total_seconds() > 300:
+
+        status = "warn"
+
+    else:
+
+        status = "ok"
+
+    HealthState.objects.update_or_create(
+        key="mqtt",
+        defaults={
+            "status": status,
+            "value": latest.last_seen.isoformat(),
+            "details": {
+                "device_id": latest.id,
+                "age_seconds": int(age.total_seconds()),
+            },
+        },
+    )
 
