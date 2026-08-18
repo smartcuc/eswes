@@ -384,6 +384,14 @@ class DeviceMetric(models.Model):
                 ],
                 name="metric_latest_idx",
             ),
+
+            models.Index(
+                fields=[
+                    "device",
+                    "-timestamp",
+                ],
+                name="dm_device_timestamp_idx",
+            ),
         ]
 
 

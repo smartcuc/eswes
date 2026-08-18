@@ -126,7 +126,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_celery_beat",
-    'django_celery_results',
+    "django_celery_results",
     "rest_framework",  # ✅ hinzufügen
     "rest_framework_simplejwt",
     "corsheaders",
@@ -145,6 +145,7 @@ INSTALLED_APPS = [
     "producer",
     "user_settings",
     "energy",
+    "operations",
     "tracking",
 ]
 
@@ -263,7 +264,39 @@ CELERY_RESULT_EXTENDED = True
 CELERY_TIMEZONE = "Europe/Berlin"
 CELERY_ENABLE_UTC = True
 
+CELERY_TASK_ROUTES = {
+    "market.tasks.*": {
+        "queue": "market",
+    },
+    "devices.tasks.*": {
+        "queue": "aggregation",
+    },
+    "core.tasks.*": {
+        "queue": "aggregation",
+    },
+    "integrations.tasks.*": {
+        "queue": "telemetry",
+    },
+    "demo.tasks.*": {
+        "queue": "demo",
+    },
+    "forecast.tasks.*": {
+        "queue": "forecast",
+    },
+    "billing.tasks.*": {
+        "queue": "critical",
+    },
+    "accounts.tasks.*": {
+        "queue": "critical",
+    },
+}
+
 CELERY_BEAT_SCHEDULE = {
+    # ✅ Multi-Queue-Monitoring
+    "health-checks": {
+        "task": "operations.tasks.run_health_checks",
+        "schedule": 300.0,
+    },
     # Balance regelmäßig nachziehen
     "compute-balance": {
         "task": "billing.tasks.compute_balance_last_24h",
@@ -289,7 +322,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 1800.0,
     },
     # ✅ Strompreise (separat ok)
-    #"fetch-spot-prices-daily": {
+    # "fetch-spot-prices-daily": {
     #    "task": "market.tasks.fetch_spot_prices_retry",
     #    "schedule": crontab(hour=13, minute=1),
     # },
@@ -336,7 +369,7 @@ CELERY_BEAT_SCHEDULE = {
     # ✅ Sync Demo Live Metrics
     "sync-demo-metrics": {
         "task": "demo.tasks.sync_demo_metrics",
-        "schedule": 5.0,
+        "schedule": 15.0,
     },
     # ✅ Sync Demo Device Metric cleanup
     "demo-cleanup": {
