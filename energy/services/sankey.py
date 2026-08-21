@@ -213,16 +213,18 @@ def build_live_sankey(
         })
 
     if flow.get("pv_to_battery", 0) > 0:
+        add_node("battery_charge", "Batterieladung", "consumer")
         links.append({
             "source": "pv",
-            "target": "battery",
+            "target": "battery_charge",
             "value": flow["pv_to_battery"],
         })
 
     if flow.get("pv_to_grid", 0) > 0:
+        add_node("grid_export", "Netzeinspeisung", "consumer")
         links.append({
             "source": "pv",
-            "target": "grid",
+            "target": "grid_export",
             "value": flow["pv_to_grid"],
         })
 
@@ -234,9 +236,10 @@ def build_live_sankey(
         })
 
     if flow.get("grid_to_battery", 0) > 0:
+        add_node("battery_charge", "Batterieladung", "consumer")
         links.append({
             "source": "grid",
-            "target": "battery",
+            "target": "battery_charge",
             "value": flow["grid_to_battery"],
         })
 
@@ -259,12 +262,16 @@ def build_live_sankey(
     )  
 
     if untracked > 0:
-
         add_node(
             "untracked",
             "Nicht erfasst",
             "untracked",
         )
+        links.append({
+            "source": "sum",
+            "target": "untracked",
+            "value": round(untracked, 2),
+        })
 
     # Kanten mit identischem (source, target) zusammenfassen
     aggregated_links = defaultdict(float)

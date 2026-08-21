@@ -10,8 +10,10 @@ function getNodeColor(node) {
         case "pv":
             return "#fbbf24";
         case "battery":
+        case "battery_charge":
             return "#34d399";
         case "grid":
+        case "grid_export":
             return "#60a5fa";
         case "sum":
             return "#8b5cf6";
