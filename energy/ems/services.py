@@ -54,42 +54,38 @@ def build_device_signals(user):
         if src.signal_type and src.signal_type.key in ["load", "consumer", "consumption"]
     }
 
-    # 3. Fallback-Erkennung über DeviceConfig (Rolle, Signal-Typ, Generator-Typ)
+    # 3. Fallback: Nur wenn fuer einen Signal-Typ KEINE explizite EMS-Signalquelle existiert
     for dev in all_devices:
         cfg = getattr(dev, "config", None)
         if not cfg:
             continue
 
         sig_key = cfg.energy_signal_type.key if cfg.energy_signal_type else None
-        gen_key = cfg.generator_type.key if cfg.generator_type else None
         role_key = cfg.role.key if cfg.role else None
 
-        # Batterie / Speicher
-        if (
+        # Batterie (nur falls noch keine Batterie-Source definiert)
+        if not battery_device_ids and (
             sig_key in ["battery", "storage", "speicher"]
-            or gen_key in ["battery", "storage", "speicher"]
             or role_key in ["battery", "storage", "speicher"]
         ):
             battery_device_ids.add(dev.id)
 
-        # PV / Erzeuger
-        elif (
+        # PV (nur falls noch keine PV-Source definiert)
+        if not pv_device_ids and (
             sig_key in ["pv", "solar", "producer"]
-            or gen_key in ["pv", "solar"]
-            or (role_key in ["producer", "pv"] and gen_key not in ["battery", "storage", "speicher", "grid"])
+            or (role_key in ["producer", "pv"])
         ):
             pv_device_ids.add(dev.id)
 
-        # Netzanschluss
-        elif (
+        # Netz (nur falls noch keine Grid-Source definiert)
+        if not grid_device_ids and (
             sig_key in ["grid", "grid_feed_in", "grid_import"]
-            or gen_key == "grid"
             or role_key == "grid"
         ):
             grid_device_ids.add(dev.id)
 
-        # Verbraucher
-        elif (
+        # Last (nur falls noch keine Load-Source definiert)
+        if not load_device_ids and (
             sig_key in ["load", "consumer", "consumption"]
             or role_key == "consumer"
         ):

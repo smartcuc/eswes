@@ -79,16 +79,27 @@ def get_energy_data(user):
         if not cfg:
             continue
         sig_key = cfg.energy_signal_type.key if cfg.energy_signal_type else None
-        gen_key = cfg.generator_type.key if cfg.generator_type else None
         role_key = cfg.role.key if cfg.role else None
 
-        if sig_key in ["battery", "storage", "speicher"] or gen_key in ["battery", "storage", "speicher"] or role_key in ["battery", "storage", "speicher"]:
+        if not battery_ids and (
+            sig_key in ["battery", "storage", "speicher"]
+            or role_key in ["battery", "storage", "speicher"]
+        ):
             battery_ids.add(dev.id)
-        elif sig_key in ["pv", "solar", "producer"] or gen_key in ["pv", "solar"] or (role_key in ["producer", "pv"] and gen_key not in ["battery", "storage", "speicher", "grid"]):
+        elif not pv_ids and (
+            sig_key in ["pv", "solar", "producer"]
+            or role_key in ["producer", "pv"]
+        ):
             pv_ids.add(dev.id)
-        elif sig_key in ["grid", "grid_feed_in"] or gen_key == "grid" or role_key == "grid":
+        elif not grid_ids and (
+            sig_key in ["grid", "grid_feed_in", "grid_import"]
+            or role_key == "grid"
+        ):
             grid_ids.add(dev.id)
-        elif sig_key in ["load", "consumer", "consumption"] or role_key == "consumer":
+        elif not load_ids and (
+            sig_key in ["load", "consumer", "consumption"]
+            or role_key == "consumer"
+        ):
             load_ids.add(dev.id)
 
     battery_net = (battery.get("discharge") or 0) - (battery.get("charge") or 0)
