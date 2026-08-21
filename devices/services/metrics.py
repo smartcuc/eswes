@@ -3,15 +3,11 @@
 #############################
 
 from django.utils import timezone
-
-from devices.models import DeviceMetric
-from devices.services.device_health import ONLINE_TIMEOUT
-
-# devices/services/metrics.py
 import logging
 from django.core.cache import cache
-from django.utils import timezone
-from devices.models import DeviceMetric
+
+from devices.models import DeviceMetric, DeviceLatestMetric
+from devices.services.device_health import ONLINE_TIMEOUT
 
 logger = logging.getLogger("django")
 
@@ -38,26 +34,24 @@ def get_latest_values(device_ids):
         logger.error(f"[REDIS_ERROR] Fehler beim Lesen aus dem Cache: {e}")
         missing_ids = list(device_ids)
 
-    # 3. Fallback: Nur wenn Redis leer ist, direkt das Neueste aus der DB holen
+    # 3. Fallback: Blitzschnelle 1-Query-Abfrage auf DeviceLatestMetric (O(1) Snapshot)
     if missing_ids:
-        logger.warning(f"[CACHE_MISS] Hole {len(missing_ids)} Geräte aus der SQL-DB")
-        for d_id in missing_ids:
-            # Schnelle Einzelabfrage pro fehlendem Gerät verhindert die PostgreSQL Distinct-Falle
-            last_metric = (
-                DeviceMetric.objects
-                .filter(device_id=d_id, metric_key="value")
-                .order_by("-timestamp")
-                .first()
-            )
-            if last_metric:
-                val = float(last_metric.value)
-                result[d_id] = val
-                # Direkt für das nächste Mal im Cache sichern
+        latest_rows = DeviceLatestMetric.objects.filter(
+            device_id__in=missing_ids,
+            metric_key__in=["power", "value"],
+        ).values_list("device_id", "value")
+
+        for d_id, val in latest_rows:
+            if val is not None:
+                float_val = float(val)
+                result[d_id] = float_val
                 try:
-                    cache.set(f"device:{d_id}:latest_power", val, timeout=3600)
+                    cache.set(f"device:{d_id}:latest_power", float_val, timeout=3600)
                 except Exception:
                     pass
-            else:
+
+        for d_id in missing_ids:
+            if d_id not in result:
                 result[d_id] = 0.0
 
     return result

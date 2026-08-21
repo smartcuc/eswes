@@ -6,18 +6,22 @@ from django.utils import timezone
 from forecast.models import WeatherForecast
 
 
-def validate_weather_data(home):
+def validate_weather_data(target):
+    from devices.models import Home
 
-    print("WEATHER DEBUG → home:", home)
-    print("WEATHER DEBUG → type:", type(home))
+    home = None
+    if isinstance(target, Home):
+        home = target
+    elif target is not None:
+        home = Home.objects.filter(user__memberships__tenant=target).first()
+
+    if not home:
+        home = Home.objects.first()
 
     now = timezone.now()
 
     start = now.replace(minute=0, second=0, microsecond=0)
     end = start + timezone.timedelta(hours=48)
-
-    print("BEFORE FILTER: → home:", home)
-    print("BEFORE FILTER: → type:", type(home))
 
     rows = list(
         WeatherForecast.objects.filter(
@@ -25,7 +29,7 @@ def validate_weather_data(home):
             ts__gte=start,
             ts__lt=end,
         ).order_by("ts")
-    )
+    ) if home else []
 
     result = {
         "count": len(rows),

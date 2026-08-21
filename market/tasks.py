@@ -49,7 +49,7 @@ def fetch_spot_prices_smard():
 
     data = response.json()
 
-    count = 0
+    objs = []
 
     for ts_ms, price_mwh in data.get(
         "series",
@@ -66,15 +66,23 @@ def fetch_spot_prices_smard():
 
         price_kwh = Decimal(str(price_mwh)) / Decimal("1000")
 
-        SpotPrice.objects.update_or_create(
-            timestamp=dt,
-            defaults={
-                "price_eur_per_kwh": price_kwh,
-                "source": "smard",
-            },
+        objs.append(
+            SpotPrice(
+                timestamp=dt,
+                price_eur_per_kwh=price_kwh,
+                source="smard",
+            )
         )
 
-        count += 1
+    if objs:
+        SpotPrice.objects.bulk_create(
+            objs,
+            update_conflicts=True,
+            unique_fields=["timestamp", "source"],
+            update_fields=["price_eur_per_kwh"],
+        )
+
+    count = len(objs)
 
     cache.set(
         "spot:last_update",
@@ -132,22 +140,33 @@ def fetch_spot_prices():
     timestamps = data.get("unix_seconds", [])
     prices = data.get("price", [])
 
-    count = 0
+    objs = []
 
     for ts, price_mwh in zip(timestamps, prices):
+
+        if price_mwh is None:
+            continue
 
         dt = unix_to_dt(ts)
         price_kwh = Decimal(str(price_mwh)) / Decimal("1000")
 
-        SpotPrice.objects.update_or_create(
-            timestamp=dt,
-            defaults={
-                "price_eur_per_kwh": price_kwh,
-                "source": "energy-charts",
-            },
+        objs.append(
+            SpotPrice(
+                timestamp=dt,
+                price_eur_per_kwh=price_kwh,
+                source="energy-charts",
+            )
         )
 
-        count += 1
+    if objs:
+        SpotPrice.objects.bulk_create(
+            objs,
+            update_conflicts=True,
+            unique_fields=["timestamp", "source"],
+            update_fields=["price_eur_per_kwh"],
+        )
+
+    count = len(objs)
 
     # ✅ Redis Status
     cache.set("spot:last_update", timezone.now().isoformat(), timeout=None)

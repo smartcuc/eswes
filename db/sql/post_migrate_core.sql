@@ -181,11 +181,15 @@ EXECUTE FUNCTION public.mark_dirty_after_agg();
 
 
 -- -----------------------------------------------------
--- TIMESCALE (optional but recommended)
+-- TIMESCALE (Core & EMS Hypertables)
 -- -----------------------------------------------------
 SELECT create_hypertable('core_intervalreading', 'ts_start', if_not_exists => TRUE);
 SELECT create_hypertable('core_aggregatedreading', 'period_start', if_not_exists => TRUE);
 SELECT create_hypertable('core_balanceslot', 'period_start', if_not_exists => TRUE);
+SELECT create_hypertable('market_spotprice', 'timestamp', if_not_exists => TRUE);
+SELECT create_hypertable('devices_devicemetric', 'timestamp', if_not_exists => TRUE);
+SELECT create_hypertable('devices_devicemetric1m', 'bucket', if_not_exists => TRUE);
+SELECT create_hypertable('devices_devicemetric5m', 'bucket', if_not_exists => TRUE);
 
 
 -- =====================================================

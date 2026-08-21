@@ -378,13 +378,20 @@ class DeviceMetric(models.Model):
         indexes = [
             models.Index(
                 fields=[
+                    "timestamp",
+                    "device",
+                    "metric_key",
+                ],
+                name="dm_ts_dev_key_idx",
+            ),
+            models.Index(
+                fields=[
                     "device",
                     "metric_key",
                     "-timestamp",
                 ],
                 name="metric_latest_idx",
             ),
-
             models.Index(
                 fields=[
                     "device",
@@ -393,6 +400,38 @@ class DeviceMetric(models.Model):
                 name="dm_device_timestamp_idx",
             ),
         ]
+
+
+class DeviceLatestMetric(models.Model):
+    """
+    High-Performance Snapshot Table für den jeweils aktuellsten Messwert pro Gerät & Metrik.
+    Eliminiert teure subqueries/order_by("-timestamp") Scans auf Millionen Zeilen.
+    """
+    device = models.ForeignKey(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="latest_metrics",
+    )
+    metric_key = models.CharField(max_length=64, db_index=True)
+    value = models.FloatField(null=True, blank=True)
+    unit = models.CharField(max_length=16, blank=True, default="")
+    data = models.JSONField(null=True, blank=True)
+    timestamp = models.DateTimeField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["device", "metric_key"],
+                name="unique_device_latest_metric",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["device", "metric_key"], name="dev_latest_metric_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.device_id} - {self.metric_key}: {self.value}"
 
 
 class DeviceResource(models.Model):

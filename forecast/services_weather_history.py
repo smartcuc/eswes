@@ -31,15 +31,35 @@ def fetch_historical_weather(lat, lon, start_date, end_date):
 
 
 def store_historical_weather_for_tenant(tenant, start_date, end_date):
-    if tenant.latitude is None or tenant.longitude is None:
+    from devices.models import Home
+
+    home = None
+    if isinstance(tenant, Home):
+        home = tenant
+    elif tenant is not None:
+        home = Home.objects.filter(user__memberships__tenant=tenant).first()
+
+    if not home:
+        home = Home.objects.first()
+
+    lat = getattr(tenant, "latitude", None) or getattr(home, "latitude", None)
+    lon = getattr(tenant, "longitude", None) or getattr(home, "longitude", None)
+
+    if lat is None or lon is None:
         return {
-            "tenant_id": str(tenant.id),
+            "tenant_id": str(getattr(tenant, "id", "none")),
             "status": "missing_coordinates",
         }
 
+    if not home:
+        return {
+            "tenant_id": str(getattr(tenant, "id", "none")),
+            "status": "missing_home",
+        }
+
     payload = fetch_historical_weather(
-        tenant.latitude,
-        tenant.longitude,
+        lat,
+        lon,
         start_date,
         end_date,
     )
@@ -74,7 +94,7 @@ def store_historical_weather_for_tenant(tenant, start_date, end_date):
             missing_values += 1
 
         _, created = WeatherForecast.objects.update_or_create(
-            tenant=tenant,
+            home=home,
             ts=ts,
             defaults={
                 "temperature_c": Decimal(str(temp)) if temp is not None else None,
@@ -87,7 +107,7 @@ def store_historical_weather_for_tenant(tenant, start_date, end_date):
             saved += 1
 
     return {
-        "tenant_id": str(tenant.id),
+        "tenant_id": str(getattr(tenant, "id", "none")),
         "status": "ok",
         "saved": saved,
         "total": total,

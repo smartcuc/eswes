@@ -280,53 +280,67 @@ BUFFER_KEY = "mqtt:buffer"
 
 @shared_task
 def flush_mqtt_buffer():
-    items = r.lrange(BUFFER_KEY, 0, 99)
-    r.ltrim(BUFFER_KEY, 100, -1)
+    pipe = r.pipeline()
+    pipe.lrange(BUFFER_KEY, 0, 99)
+    pipe.ltrim(BUFFER_KEY, 100, -1)
+    results = pipe.execute()
+    items = results[0] if results else []
+
+    if not items:
+        return {"status": "empty"}
 
     batch = []
-
     for item in items:
         try:
             batch.append(json.loads(item.decode("utf-8")))
         except Exception:
             continue
 
+    if not batch:
+        return {"status": "empty"}
+
+    device_identifiers = {
+        entry.get("device_id") for entry in batch if entry.get("device_id")
+    }
+
+    devices = {
+        d.identifier: d
+        for d in Device.objects.filter(identifier__in=device_identifiers)
+    }
+
     metrics = []
 
     for entry in batch:
-        device_id = entry.get("device_id")
-        user_id = entry.get("user_id")
-
-        if not device_id or not user_id:
-            continue
-
-        device = Device.objects.filter(
-            identifier=device_id,
-            user_id=user_id
-        ).first()
+        dev_id = entry.get("device_id")
+        device = devices.get(dev_id)
 
         if not device:
             continue
 
-        ts = parse_datetime(entry.get("timestamp"))
+        ts = parse_datetime(entry.get("timestamp")) if entry.get("timestamp") else None
         if not ts:
-            continue
+            ts = timezone.now()
+        elif timezone.is_naive(ts):
+            ts = timezone.make_aware(ts, timezone.utc)
 
-        if DeviceMetric.objects.filter(
-            device=device,
-            timestamp=ts
-        ).exists():
-            continue
+        power = entry.get("power") if entry.get("power") is not None else entry.get("value")
+        if power is not None:
+            try:
+                val = float(power)
+            except (ValueError, TypeError):
+                val = None
 
-        metrics.append(
-            DeviceMetric(
-                device=device,
-                timestamp=ts,
-                power_w=entry.get("power"),
-                energy_kwh=entry.get("energy"),
-                data=entry,
-            )
-        )
+            if val is not None:
+                metrics.append(
+                    DeviceMetric(
+                        device=device,
+                        timestamp=ts,
+                        metric_key="power",
+                        value=val,
+                        unit="W",
+                        data=entry,
+                    )
+                )
 
     if metrics:
         DeviceMetric.objects.bulk_create(metrics)
@@ -336,6 +350,12 @@ def flush_mqtt_buffer():
         extra={
             "batch_size": len(batch),
             "written": len(metrics),
-        }
+        },
     )
+
+    return {
+        "status": "ok",
+        "batch_size": len(batch),
+        "written": len(metrics),
+    }
     

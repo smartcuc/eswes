@@ -14,26 +14,27 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
 
-# =============================
-# Core Settings
-# =============================
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
-
-FRONTEND_URL = os.getenv("FRONTEND_URL")
-BACKEND_URL = os.getenv("BACKEND_URL")
-
 BASE_DIR = Path(__file__).resolve().parents[2]
-
 
 if os.path.exists("/var/www/sharegy/shared/.env"):
     load_dotenv("/var/www/sharegy/shared/.env")  # ✅ Server
 else:
     load_dotenv(BASE_DIR / ".env")  # ✅ Lokal
+
+
+# =============================
+# Core Settings
+# =============================
+
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-in-production")
+
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+allowed_hosts_raw = os.getenv("ALLOWED_HOSTS", "*")
+ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(",") if h.strip()]
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 # =============================
@@ -58,9 +59,13 @@ CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False") == "True"
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
 
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
 
 
 # =============================
@@ -147,6 +152,7 @@ INSTALLED_APPS = [
     "energy",
     "operations",
     "tracking",
+    "providers.opentelemetry",
 ]
 
 

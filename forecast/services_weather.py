@@ -137,25 +137,17 @@ def store_weather_payload_for_home(
     home,
     payload,
 ):
-
-    timestamps = payload["timestamps"]
-    radiation = payload["radiation"]
-    temperature = payload["temperature"]
-    cloud_cover = payload["cloud_cover"]
-
-    written = 0
-    skipped = 0
-    missing_values = 0
+    timestamps = payload.get("timestamps", [])
+    radiation = payload.get("radiation", [])
+    temperature = payload.get("temperature", [])
+    cloud_cover = payload.get("cloud_cover", [])
 
     total = len(timestamps)
-
-    today = date.today()
-    start = today - timedelta(days=2)
-
-    bias = None
+    skipped = 0
+    missing_values = 0
+    objs_to_create = []
 
     for i in range(total):
-
         dt = parse_datetime(timestamps[i])
 
         if dt is None:
@@ -163,39 +155,51 @@ def store_weather_payload_for_home(
             continue
 
         if timezone.is_naive(dt):
-            dt = timezone.make_aware(
-                dt,
-                timezone.UTC,
-            )
+            dt = timezone.make_aware(dt, timezone.utc)
 
-        rad = radiation[i] if i < len(radiation) else None
-        temp = temperature[i] if i < len(temperature) else None
-        clouds = cloud_cover[i] if i < len(cloud_cover) else None
+        rad = (
+            float(radiation[i])
+            if i < len(radiation) and radiation[i] is not None
+            else None
+        )
+        temp = (
+            float(temperature[i])
+            if i < len(temperature) and temperature[i] is not None
+            else None
+        )
+        clouds = (
+            float(cloud_cover[i])
+            if i < len(cloud_cover) and cloud_cover[i] is not None
+            else None
+        )
 
         if rad is None or temp is None or clouds is None:
             missing_values += 1
 
-        row_obj, created = WeatherForecast.objects.update_or_create(
-            home=home,
-            ts=dt,
-            defaults={
-                "temperature_c": Decimal(str(temp)) if temp is not None else None,
-                "cloud_cover_pct": Decimal(str(clouds)) if clouds is not None else None,
-                "shortwave_radiation_wm2": (
-                    Decimal(str(rad)) if rad is not None else None
-                ),
-            },
+        objs_to_create.append(
+            WeatherForecast(
+                home=home,
+                ts=dt,
+                temperature_c=temp,
+                cloud_cover_pct=clouds,
+                shortwave_radiation_wm2=rad,
+            )
         )
 
-        # 🔥 Bias anwenden (JETZT passiert was!)
-        #row_obj = apply_bias(row_obj, bias)
-
-        row_obj.save()
-
-        written += 1
+    if objs_to_create:
+        WeatherForecast.objects.bulk_create(
+            objs_to_create,
+            update_conflicts=True,
+            unique_fields=["home", "ts"],
+            update_fields=[
+                "temperature_c",
+                "cloud_cover_pct",
+                "shortwave_radiation_wm2",
+            ],
+        )
 
     return {
-        "written": written,
+        "written": len(objs_to_create),
         "total": total,
         "skipped": skipped,
         "missing_values": missing_values,

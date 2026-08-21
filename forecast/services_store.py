@@ -15,20 +15,27 @@ from forecast.models import (
 
 def _store_series(generator_string, rows, source):
     rows = rows or []
-    saved = 0
+    if not rows:
+        return 0
 
-    for row in rows:
-        SolarForecast.objects.update_or_create(
+    objs = [
+        SolarForecast(
             generator_string=generator_string,
             timestamp=row["timestamp"],
             source=source,
-            defaults={
-                "forecast_kwh": row["forecast_kw"],
-            },
+            forecast_kwh=row["forecast_kw"],
         )
-        saved += 1
+        for row in rows
+    ]
 
-    return saved
+    SolarForecast.objects.bulk_create(
+        objs,
+        update_conflicts=True,
+        unique_fields=["generator_string", "timestamp", "source"],
+        update_fields=["forecast_kwh"],
+    )
+
+    return len(objs)
 
 
 def _store_forecast_run(
@@ -107,11 +114,10 @@ def save_all_forecasts_for_generator_string(generator_string):
         "hybrid",
     )
 
-    for source in ["physics", "hybrid", "ml"]:
-        SolarForecast.objects.filter(
-            generator_string=generator_string,
-            source=source,
-        ).delete()
+    SolarForecast.objects.filter(
+        generator_string=generator_string,
+        source__in=["physics", "hybrid", "ml"],
+    ).delete()
 
     saved_phys = _store_series(
         generator_string,

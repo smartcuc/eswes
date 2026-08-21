@@ -82,37 +82,45 @@ def aggregate_1m():
         )
     )
 
-    with transaction.atomic():
+    objs_to_upsert = []
 
-        for row in rows:
+    for row in rows:
 
-            metric_key = configs.get(
-                row["device_id"]
-            )
+        metric_key = configs.get(
+            row["device_id"]
+        )
 
-            if not metric_key:
-                continue
+        if not metric_key:
+            continue
 
-            energy_wh = None
+        energy_wh = None
 
-            if (
-                metric_key == "power"
-                and row["avg"] is not None
-            ):
-                energy_wh = row["avg"] / 60
+        if (
+            metric_key == "power"
+            and row["avg"] is not None
+        ):
+            energy_wh = row["avg"] / 60
 
-            DeviceMetric1m.objects.update_or_create(
+        objs_to_upsert.append(
+            DeviceMetric1m(
                 device_id=row["device_id"],
                 metric_key=metric_key,
                 bucket=target,
-                defaults={
-                    "avg": row["avg"],
-                    "min": row["min"],
-                    "max": row["max"],
-                    "count": row["count"],
-                    "energy_wh": energy_wh,
-                },
+                avg=row["avg"],
+                min=row["min"],
+                max=row["max"],
+                count=row["count"],
+                energy_wh=energy_wh,
             )
+        )
+
+    if objs_to_upsert:
+        DeviceMetric1m.objects.bulk_create(
+            objs_to_upsert,
+            update_conflicts=True,
+            unique_fields=["device", "metric_key", "bucket"],
+            update_fields=["avg", "min", "max", "count", "energy_wh"],
+        )
 
 
 def rollup(
@@ -168,59 +176,67 @@ def rollup(
             []
         ).append(row)
 
-    with transaction.atomic():
+    objs_to_upsert = []
 
-        for (
-            device_id,
-            metric_key,
-        ), items in groups.items():
+    for (
+        device_id,
+        metric_key,
+    ), items in groups.items():
 
-            total_count = sum(
-                item.count or 0
-                for item in items
-            )
+        total_count = sum(
+            item.count or 0
+            for item in items
+        )
 
-            if total_count == 0:
-                continue
+        if total_count == 0:
+            continue
 
-            weighted_sum = sum(
-                (item.avg or 0)
-                * (item.count or 0)
-                for item in items
-            )
+        weighted_sum = sum(
+            (item.avg or 0)
+            * (item.count or 0)
+            for item in items
+        )
 
-            avg = (
-                weighted_sum
-                / total_count
-            )
+        avg = (
+            weighted_sum
+            / total_count
+        )
 
-            min_value = min(
-                item.min
-                for item in items
-            )
+        min_value = min(
+            item.min
+            for item in items
+        )
 
-            max_value = max(
-                item.max
-                for item in items
-            )
+        max_value = max(
+            item.max
+            for item in items
+        )
 
-            energy_wh = sum(
-                item.energy_wh or 0
-                for item in items
-            )
+        energy_wh = sum(
+            item.energy_wh or 0
+            for item in items
+        )
 
-            target_model.objects.update_or_create(
+        objs_to_upsert.append(
+            target_model(
                 device_id=device_id,
                 metric_key=metric_key,
                 bucket=target,
-                defaults={
-                    "avg": avg,
-                    "min": min_value,
-                    "max": max_value,
-                    "count": total_count,
-                    "energy_wh": energy_wh,
-                },
+                avg=avg,
+                min=min_value,
+                max=max_value,
+                count=total_count,
+                energy_wh=energy_wh,
             )
+        )
+
+    if objs_to_upsert:
+        target_model.objects.bulk_create(
+            objs_to_upsert,
+            update_conflicts=True,
+            unique_fields=["device", "metric_key", "bucket"],
+            update_fields=["avg", "min", "max", "count", "energy_wh"],
+        )
 
 def aggregate_5m():
 

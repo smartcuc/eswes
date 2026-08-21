@@ -22,7 +22,7 @@ from devices.models import (
     MetricDefinition,
 )
 
-from devices.models import DeviceMetric, DeviceMetric1m, DeviceMetric5m
+from devices.models import DeviceMetric, DeviceLatestMetric, DeviceMetric1m, DeviceMetric5m
 
 from producer.models import GeneratorSystem, GeneratorType
 from energy.models import EMSSignalType
@@ -206,10 +206,10 @@ def sankey_data(request):
 
     user = request.user
 
-    latest_metrics = DeviceMetric.objects.filter(
+    latest_metrics = DeviceLatestMetric.objects.filter(
         device=OuterRef("pk"),
         metric_key="power"
-    ).order_by("-timestamp")
+    )
 
     devices = (
         Device.objects

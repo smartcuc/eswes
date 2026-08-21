@@ -38,7 +38,7 @@ from core.api.viewsets import (
 
 from .views import api_test, trigger_task
 from billing.api.views import consumption_view
-from accounts.api.views import track_magic_click, track_open, track_email_open
+from accounts.api.views import track_magic_click, track_email_open
 
 router = DefaultRouter()
 router.register(r"meters", MeterViewSet, basename="meter")
@@ -58,7 +58,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # ✅ GLOBAL TRACKING ROUTES
     path("t/<uuid:token>/", track_magic_click),
-    path("email/open/<uuid:token>/", track_open),
     path("email/open/<uuid:token>/", track_email_open),
     # ✅ API zentrales include
     path(
@@ -71,12 +70,12 @@ urlpatterns = [
                 path("", include("providers.opentelemetry.urls")),
                 path("energy/", include("energy.api.urls")),
                 path("forecast/", include("forecast.urls")),
-                path("devices/", include("devices.urls")),
                 path("devices/", include("devices.api.urls")),
+                path("devices/", include("devices.urls")),
                 path("market/", include("market.api.urls")),
                 path("producer/", include("producer.api.urls")),
                 path("user-settings/", include("user_settings.api.urls")),
-                path("api/public/", include("forecast.urls_public")),
+                path("public/", include("forecast.urls_public")),
             ]
         ),
     ),

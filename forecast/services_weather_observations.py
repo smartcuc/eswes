@@ -62,7 +62,7 @@ def store_sensor_community_observations(
         len(rows),
     )
 
-    count = 0
+    objs_to_save = []
 
     for row in rows:
 
@@ -128,25 +128,35 @@ def store_sensor_community_observations(
             temperature_c is None
             and humidity_pct is None
         ):
-
             continue
 
-        obj, created = WeatherObservation.objects.update_or_create(
-            provider="sensor_community",
-            station_id=station_id,
-            timestamp=timestamp,
-            defaults={
-                "home": home,
-                "latitude": obs_lat,
-                "longitude": obs_lon,
-                "temperature_c": temperature_c,
-                "humidity_pct": humidity_pct,
-            },
+        objs_to_save.append(
+            WeatherObservation(
+                provider="sensor_community",
+                station_id=station_id,
+                timestamp=timestamp,
+                home=home,
+                latitude=obs_lat,
+                longitude=obs_lon,
+                temperature_c=temperature_c,
+                humidity_pct=humidity_pct,
+            )
         )
 
-        if created:
-            count += 1
+    if objs_to_save:
+        WeatherObservation.objects.bulk_create(
+            objs_to_save,
+            update_conflicts=True,
+            unique_fields=["provider", "station_id", "timestamp"],
+            update_fields=[
+                "home",
+                "latitude",
+                "longitude",
+                "temperature_c",
+                "humidity_pct",
+            ],
+        )
 
     return {
-        "saved": count,
+        "saved": len(objs_to_save),
     }

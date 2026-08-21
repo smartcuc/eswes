@@ -8,17 +8,18 @@ import redis
 from celery import shared_task
 
 from django.conf import settings
-from django.utils import timezone
-
+from datetime import timedelta
 from market.models import SpotPrice
-from devices.models import Device
-
 from devices.models import (
+    Device,
+    DeviceMetric,
     DeviceMetric1m,
     DeviceMetric5m,
     DeviceMetric15m,
     DeviceMetric1h,
 )
+from core.models import Meter
+from forecast.models import WeatherForecast
 
 from operations.models import HealthState
 
@@ -37,6 +38,9 @@ def run_health_checks():
         check_aggregation_15m,
         check_aggregation_1h,
         check_mqtt,
+        check_tibber_sync,
+        check_weather_sync,
+        check_active_devices,
     ]
 
     for check in checks:
@@ -276,3 +280,117 @@ def check_mqtt():
             },
         },
     )
+
+
+def check_tibber_sync():
+    """Prüft den Zeitpunkt der letzten erfolgreichen Tibber-Synchronisation."""
+    tibber_meter = (
+        Meter.objects.filter(integration_type="tibber")
+        .exclude(last_tibber_sync__isnull=True)
+        .order_by("-last_tibber_sync")
+        .first()
+    )
+
+    if not tibber_meter or not tibber_meter.last_tibber_sync:
+        HealthState.objects.update_or_create(
+            key="tibber_sync",
+            defaults={
+                "status": "warn",
+                "value": "Keine aktiven Tibber-Zähler synchronisiert",
+                "details": {"meters_count": Meter.objects.filter(integration_type="tibber").count()},
+            },
+        )
+        return
+
+    age = timezone.now() - tibber_meter.last_tibber_sync
+    # Tibber sync sollte mindestens einmal alle 2-4 Stunden erfolgen
+    if age.total_seconds() > 14400:  # > 4h
+        status = "error"
+    elif age.total_seconds() > 7200:  # > 2h
+        status = "warn"
+    else:
+        status = "ok"
+
+    HealthState.objects.update_or_create(
+        key="tibber_sync",
+        defaults={
+            "status": status,
+            "value": f"Zuletzt vor {int(age.total_seconds() // 60)} Min. ({tibber_meter.last_tibber_sync.strftime('%H:%M %d.%m.')})",
+            "details": {
+                "meter_id": str(tibber_meter.id),
+                "last_sync": tibber_meter.last_tibber_sync.isoformat(),
+                "age_minutes": int(age.total_seconds() // 60),
+            },
+        },
+    )
+
+
+def check_weather_sync():
+    """Prüft die Aktualität der Wetter- und PV-Prognosedaten."""
+    latest_forecast = WeatherForecast.objects.order_by("-ts").first()
+
+    if not latest_forecast:
+        HealthState.objects.update_or_create(
+            key="weather_sync",
+            defaults={
+                "status": "error",
+                "value": "Keine Wetterdaten vorhanden",
+                "details": {},
+            },
+        )
+        return
+
+    # Prüfen, ob wir Daten für die Zukunft (mindestens die nächsten 12h) haben
+    horizon = latest_forecast.ts - timezone.now()
+    if horizon.total_seconds() < 21600:  # weniger als 6h Zukunft
+        status = "error"
+    elif horizon.total_seconds() < 43200:  # weniger als 12h Zukunft
+        status = "warn"
+    else:
+        status = "ok"
+
+    HealthState.objects.update_or_create(
+        key="weather_sync",
+        defaults={
+            "status": status,
+            "value": f"Prognose bis {latest_forecast.ts.strftime('%d.%m. %H:%M')} (Horizont: {int(horizon.total_seconds() // 3600)}h)",
+            "details": {
+                "latest_horizon": latest_forecast.ts.isoformat(),
+                "horizon_hours": int(horizon.total_seconds() // 3600),
+            },
+        },
+    )
+
+
+def check_active_devices():
+    """Ermittelt die Anzahl aktiver vs. inaktiver EMS-Geräte."""
+    total_configured = Device.objects.filter(configured=True).count()
+    active_cutoff = timezone.now() - timedelta(minutes=15)
+    active_count = Device.objects.filter(configured=True, last_seen__gte=active_cutoff).count()
+
+    if total_configured == 0:
+        status = "warn"
+        val = "Keine konfigurierten Geräte vorhanden"
+    elif active_count == 0:
+        status = "error"
+        val = f"0 von {total_configured} Geräten online"
+    elif active_count < total_configured:
+        status = "warn"
+        val = f"{active_count} von {total_configured} Geräten online ({int(active_count / total_configured * 100)}%)"
+    else:
+        status = "ok"
+        val = f"Alle {active_count} Geräte online"
+
+    HealthState.objects.update_or_create(
+        key="active_devices",
+        defaults={
+            "status": status,
+            "value": val,
+            "details": {
+                "active_devices": active_count,
+                "total_configured": total_configured,
+                "offline_devices": max(0, total_configured - active_count),
+            },
+        },
+    )
+
