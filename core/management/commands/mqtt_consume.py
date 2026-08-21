@@ -53,7 +53,9 @@ def ingest(topic: str, payload: bytes, auto_prov: bool):
     parts = topic.split("/")
 
     if len(parts) != 3:
-        raise ValueError("Invalid topic for    home_token = parts[1].strip()
+        raise ValueError(f"Invalid topic format: {topic}")
+
+    home_token = parts[1].strip()
     device_identifier = parts[2].strip()
 
     # ========================================================
