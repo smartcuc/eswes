@@ -116,7 +116,7 @@ export default function DashboardUser() {
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div
                     onClick={() =>
                         setActiveSystemChart({
@@ -227,6 +227,47 @@ export default function DashboardUser() {
                         }
                     />
                 </div>
+
+                {/* ✅ KACHEL 3: Speicher (Batterie) */}
+                {kpis.battery != null && (
+                    <div
+                        onClick={() =>
+                            setActiveSystemChart({
+                                metricKey: "battery",
+                                displayName: "Batteriespeicher",
+                                unit: "W",
+                                color: "#34d399",
+                                currentValue: kpis.battery,
+                            })
+                        }
+                        className="cursor-pointer hover:opacity-90 transition-opacity"
+                    >
+                        <KPI
+                            label={
+                                (kpis.battery ?? 0) >= 0
+                                    ? "Entladung"
+                                    : "Ladung"
+                            }
+                            value={
+                                kpis.battery != null
+                                    ? Math.abs(kpis.battery).toLocaleString("de-DE", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })
+                                    : "--"
+                            }
+                            unit="W"
+                            icon="🔋"
+                            chart={
+                                <KPISparklineECharts
+                                    color="#34d399"
+                                    values={charts.battery || []}
+                                    unit="W"
+                                />
+                            }
+                        />
+                    </div>
+                )}
 
                 <div
                     onClick={() =>

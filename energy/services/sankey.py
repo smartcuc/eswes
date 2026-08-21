@@ -205,24 +205,42 @@ def build_live_sankey(
 
         tracked_consumption += consumer["power"]
 
-    if flow["pv_to_load"] > 0:
-
+    if flow.get("pv_to_load", 0) > 0:
         links.append({
             "source": "pv",
             "target": "sum",
             "value": flow["pv_to_load"],
         })
 
-    if flow["battery_to_load"] > 0:
+    if flow.get("pv_to_battery", 0) > 0:
+        links.append({
+            "source": "pv",
+            "target": "battery",
+            "value": flow["pv_to_battery"],
+        })
 
+    if flow.get("pv_to_grid", 0) > 0:
+        links.append({
+            "source": "pv",
+            "target": "grid",
+            "value": flow["pv_to_grid"],
+        })
+
+    if flow.get("battery_to_load", 0) > 0:
         links.append({
             "source": "battery",
             "target": "sum",
             "value": flow["battery_to_load"],
         })
 
-    if flow["grid_to_load"] > 0:
+    if flow.get("grid_to_battery", 0) > 0:
+        links.append({
+            "source": "grid",
+            "target": "battery",
+            "value": flow["grid_to_battery"],
+        })
 
+    if flow.get("grid_to_load", 0) > 0:
         links.append({
             "source": "grid",
             "target": "sum",
@@ -230,9 +248,9 @@ def build_live_sankey(
         })
 
     incoming_energy = (
-        flow["pv_to_load"]
-        + flow["battery_to_load"]
-        + flow["grid_to_load"]
+        flow.get("pv_to_load", 0)
+        + flow.get("battery_to_load", 0)
+        + flow.get("grid_to_load", 0)
     )
 
     untracked = max(
