@@ -182,14 +182,63 @@ EXECUTE FUNCTION public.mark_dirty_after_agg();
 
 -- -----------------------------------------------------
 -- TIMESCALE (Core & EMS Hypertables)
+-- TimescaleDB verlangt, dass der Partitionierungs-Key Teil des Primary Keys ist.
 -- -----------------------------------------------------
-SELECT create_hypertable('core_intervalreading', 'ts_start', if_not_exists => TRUE);
-SELECT create_hypertable('core_aggregatedreading', 'period_start', if_not_exists => TRUE);
-SELECT create_hypertable('core_balanceslot', 'period_start', if_not_exists => TRUE);
-SELECT create_hypertable('market_spotprice', 'timestamp', if_not_exists => TRUE);
-SELECT create_hypertable('devices_devicemetric', 'timestamp', if_not_exists => TRUE);
-SELECT create_hypertable('devices_devicemetric1m', 'bucket', if_not_exists => TRUE);
-SELECT create_hypertable('devices_devicemetric5m', 'bucket', if_not_exists => TRUE);
+DO $$
+BEGIN
+    -- 1. core_intervalreading
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'core_intervalreading') THEN
+        ALTER TABLE core_intervalreading DROP CONSTRAINT IF EXISTS core_intervalreading_pkey CASCADE;
+        ALTER TABLE core_intervalreading ADD PRIMARY KEY (id, ts_start);
+        PERFORM create_hypertable('core_intervalreading', 'ts_start', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+
+    -- 2. core_aggregatedreading
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'core_aggregatedreading') THEN
+        ALTER TABLE core_aggregatedreading DROP CONSTRAINT IF EXISTS core_aggregatedreading_pkey CASCADE;
+        ALTER TABLE core_aggregatedreading DROP CONSTRAINT IF EXISTS core_aggregatedreading_meter_id_period_start_key CASCADE;
+        ALTER TABLE core_aggregatedreading ADD PRIMARY KEY (id, period_start);
+        PERFORM create_hypertable('core_aggregatedreading', 'period_start', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+
+    -- 3. core_balanceslot
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'core_balanceslot') THEN
+        ALTER TABLE core_balanceslot DROP CONSTRAINT IF EXISTS core_balanceslot_pkey CASCADE;
+        ALTER TABLE core_balanceslot ADD PRIMARY KEY (id, period_start);
+        PERFORM create_hypertable('core_balanceslot', 'period_start', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+
+    -- 4. market_spotprice
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'market_spotprice') THEN
+        ALTER TABLE market_spotprice DROP CONSTRAINT IF EXISTS market_spotprice_pkey CASCADE;
+        ALTER TABLE market_spotprice DROP CONSTRAINT IF EXISTS market_spotprice_timestamp_source_a3536ea1_uniq CASCADE;
+        ALTER TABLE market_spotprice ADD PRIMARY KEY (id, timestamp);
+        PERFORM create_hypertable('market_spotprice', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+
+    -- 5. devices_devicemetric
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'devices_devicemetric') THEN
+        ALTER TABLE devices_devicemetric DROP CONSTRAINT IF EXISTS devices_devicemetric_pkey CASCADE;
+        ALTER TABLE devices_devicemetric ADD PRIMARY KEY (id, timestamp);
+        PERFORM create_hypertable('devices_devicemetric', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+
+    -- 6. devices_devicemetric1m
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'devices_devicemetric1m') THEN
+        ALTER TABLE devices_devicemetric1m DROP CONSTRAINT IF EXISTS devices_devicemetric1m_pkey CASCADE;
+        ALTER TABLE devices_devicemetric1m DROP CONSTRAINT IF EXISTS devices_devicemetric1m_device_id_bucket_metric_key_77e77b63_uniq CASCADE;
+        ALTER TABLE devices_devicemetric1m ADD PRIMARY KEY (id, bucket);
+        PERFORM create_hypertable('devices_devicemetric1m', 'bucket', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+
+    -- 7. devices_devicemetric5m
+    IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'devices_devicemetric5m') THEN
+        ALTER TABLE devices_devicemetric5m DROP CONSTRAINT IF EXISTS devices_devicemetric5m_pkey CASCADE;
+        ALTER TABLE devices_devicemetric5m DROP CONSTRAINT IF EXISTS devices_devicemetric5m_device_id_bucket_metric_key_3811f5d6_uniq CASCADE;
+        ALTER TABLE devices_devicemetric5m ADD PRIMARY KEY (id, bucket);
+        PERFORM create_hypertable('devices_devicemetric5m', 'bucket', if_not_exists => TRUE, migrate_data => TRUE);
+    END IF;
+END $$;
 
 
 -- =====================================================

@@ -206,21 +206,15 @@ def sankey_data(request):
 
     user = request.user
 
-    latest_metrics = DeviceLatestMetric.objects.filter(
-        device=OuterRef("pk"),
-        metric_key="power"
-    )
-
-    devices = (
+    devices = list(
         Device.objects
         .filter(home__user=user)
         .select_related("config__role")
-        .annotate(
-            latest_power=Subquery(
-                latest_metrics.values("value")[:1]
-            )
-        )
     )
+
+    latest_power_map = get_latest_values([d.id for d in devices])
+    for d in devices:
+        d.latest_power = latest_power_map.get(d.id, 0.0)
 
     nodes = []
     links = []

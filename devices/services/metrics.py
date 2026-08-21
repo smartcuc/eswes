@@ -41,18 +41,46 @@ def get_latest_values(device_ids):
             metric_key__in=["power", "value"],
         ).values_list("device_id", "value")
 
+        found_ids = set()
         for d_id, val in latest_rows:
             if val is not None:
                 float_val = float(val)
                 result[d_id] = float_val
+                found_ids.add(d_id)
                 try:
                     cache.set(f"device:{d_id}:latest_power", float_val, timeout=3600)
                 except Exception:
                     pass
 
-        for d_id in missing_ids:
-            if d_id not in result:
-                result[d_id] = 0.0
+        # 4. Selbstheilender Übergangs-Fallback: Falls DeviceLatestMetric für ein Gerät noch leer ist
+        still_missing = [d_id for d_id in missing_ids if d_id not in found_ids]
+        if still_missing:
+            for d_id in still_missing:
+                fallback_m = (
+                    DeviceMetric.objects.filter(
+                        device_id=d_id,
+                        metric_key__in=["power", "value"],
+                    )
+                    .order_by("-timestamp")
+                    .first()
+                )
+                if fallback_m and fallback_m.value is not None:
+                    float_val = float(fallback_m.value)
+                    result[d_id] = float_val
+                    try:
+                        cache.set(f"device:{d_id}:latest_power", float_val, timeout=3600)
+                        DeviceLatestMetric.objects.update_or_create(
+                            device_id=d_id,
+                            metric_key=fallback_m.metric_key,
+                            defaults={
+                                "value": float_val,
+                                "timestamp": fallback_m.timestamp,
+                            },
+                        )
+                    except Exception:
+                        pass
+                else:
+                    result[d_id] = 0.0
 
     return result
 
