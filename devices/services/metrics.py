@@ -2,6 +2,7 @@
 # devices/services/metrics.py
 #############################
 
+from datetime import timedelta
 from django.utils import timezone
 import logging
 from django.core.cache import cache
@@ -36,19 +37,27 @@ def get_latest_values(device_ids):
 
     # 3. Fallback: Blitzschnelle 1-Query-Abfrage auf DeviceLatestMetric (O(1) Snapshot)
     if missing_ids:
+        now = timezone.now()
+        cutoff = now - timedelta(minutes=10)
+
         latest_rows = DeviceLatestMetric.objects.filter(
             device_id__in=missing_ids,
             metric_key__in=["power", "value"],
-        ).values_list("device_id", "value")
+        ).values_list("device_id", "value", "timestamp")
 
         found_ids = set()
-        for d_id, val in latest_rows:
+        for d_id, val, ts in latest_rows:
+            found_ids.add(d_id)
             if val is not None:
-                float_val = float(val)
+                # Staleness-Check: Wenn Wechselrichter nachts abschaltet (>10min kein Signal), ist Erzeugung 0.0 W!
+                if ts and ts < cutoff:
+                    float_val = 0.0
+                else:
+                    float_val = float(val)
+
                 result[d_id] = float_val
-                found_ids.add(d_id)
                 try:
-                    cache.set(f"device:{d_id}:latest_power", float_val, timeout=3600)
+                    cache.set(f"device:{d_id}:latest_power", float_val, timeout=300)
                 except Exception:
                     pass
 
@@ -65,10 +74,14 @@ def get_latest_values(device_ids):
                     .first()
                 )
                 if fallback_m and fallback_m.value is not None:
-                    float_val = float(fallback_m.value)
+                    if fallback_m.timestamp and fallback_m.timestamp < cutoff:
+                        float_val = 0.0
+                    else:
+                        float_val = float(fallback_m.value)
+
                     result[d_id] = float_val
                     try:
-                        cache.set(f"device:{d_id}:latest_power", float_val, timeout=3600)
+                        cache.set(f"device:{d_id}:latest_power", float_val, timeout=300)
                         DeviceLatestMetric.objects.update_or_create(
                             device_id=d_id,
                             metric_key=fallback_m.metric_key,

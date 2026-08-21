@@ -2,6 +2,7 @@
 # energy/services/sankey.py
 ###########################
 
+from collections import defaultdict
 from devices.models import Device
 from devices.services.metrics import get_latest_values
 
@@ -247,13 +248,19 @@ def build_live_sankey(
             "untracked",
         )
 
-        links.append({
-            "source": "sum",
-            "target": "untracked",
-            "value": round(untracked, 2),
-        })
+    # Kanten mit identischem (source, target) zusammenfassen
+    aggregated_links = defaultdict(float)
+    for link in links:
+        key = (link["source"], link["target"])
+        aggregated_links[key] += float(link["value"] or 0)
+
+    clean_links = [
+        {"source": src, "target": tgt, "value": round(val, 2)}
+        for (src, tgt), val in aggregated_links.items()
+        if val > 0
+    ]
 
     return {
-            "nodes": nodes,
-            "links": links,
-        }
+        "nodes": nodes,
+        "links": clean_links,
+    }

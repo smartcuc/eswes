@@ -390,10 +390,8 @@ def device_dashboard_values(request):
     sparkline_map = defaultdict(list)
 
     for row in sparkline_rows:
-
         expected_key = metric_map.get(row["device_id"])
-
-        if row["metric_key"] != expected_key:
+        if expected_key and row["metric_key"] != expected_key:
             continue
 
         sparkline_map[row["device_id"]].append(
@@ -402,6 +400,22 @@ def device_dashboard_values(request):
                 2,
             )
         )
+
+    # Fallback auf DeviceMetric, falls DeviceMetric1m für ein Gerät noch leer ist
+    missing_sparkline_devs = [d.id for d in devices if not sparkline_map.get(d.id)]
+    if missing_sparkline_devs:
+        raw_rows = (
+            DeviceMetric.objects.filter(
+                device_id__in=missing_sparkline_devs,
+                timestamp__gte=since,
+                metric_key__in=["power", "value"],
+            )
+            .values("device_id", "value")
+            .order_by("device_id", "timestamp")[:300]
+        )
+        for r in raw_rows:
+            if r["value"] is not None:
+                sparkline_map[r["device_id"]].append(round(float(r["value"]), 2))
 
     result = []
 
