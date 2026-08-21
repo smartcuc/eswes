@@ -53,23 +53,35 @@ export default function LiveEnergySankeyECharts({ data }) {
         return <div className="text-gray-400">Warten auf Live-Daten…</div>;
     }
 
-    // Nodes vorbereiten
-    const nodes = data.nodes.map((node) => ({
-        name: node.id,
-        itemStyle: {
-            color: getNodeColor(node),
-        },
-        rawLabel: node.label,
-        nodeType: node.type,
-    }));
-
     // Links filtern (Verhindert Geister-Linien mit dem Wert 0)
     const links = data.links
-        .filter((link) => link.value > 0)
+        .filter((link) => (link.value || 0) > 0)
         .map((link) => ({
             source: link.source,
             target: link.target,
             value: link.value,
+        }));
+
+    if (links.length === 0) {
+        return <div className="text-gray-400 p-8 text-center">Keine aktiven Energieflüsse im Moment</div>;
+    }
+
+    const connectedNodeIds = new Set();
+    links.forEach((l) => {
+        connectedNodeIds.add(l.source);
+        connectedNodeIds.add(l.target);
+    });
+
+    // Nur Knoten übergeben, die an einem aktiven Fluss teilnehmen
+    const nodes = data.nodes
+        .filter((node) => connectedNodeIds.has(node.id))
+        .map((node) => ({
+            name: node.id,
+            itemStyle: {
+                color: getNodeColor(node),
+            },
+            rawLabel: node.label,
+            nodeType: node.type,
         }));
 
     const option = {
