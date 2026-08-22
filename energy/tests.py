@@ -39,6 +39,9 @@ class EnergyFlowEngineTest(TestCase):
 
 class EMSSignalServiceTest(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
         self.user = User.objects.create_user(
             username="testenergyuser",
             email="energy@example.com",

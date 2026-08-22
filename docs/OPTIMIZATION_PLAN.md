@@ -153,23 +153,22 @@
 
 ---
 
-### [ ] 2.6 N+1 Queries im Dashboard-Request auflösen
+### [x] 2.6 N+1 Queries im Dashboard-Request auflösen
 - **Dateien**:
-  - [`energy/services/energy.py`](file:///c:/Users/Public/Dev/eswes/energy/services/energy.py#L65-L103): 4 Abfragen auf `EMSSignalSource` zu 1 zusammenfassen.
-  - [`energy/services/sankey.py`](file:///c:/Users/Public/Dev/eswes/energy/services/sankey.py#L24-L30): `select_related("config__metric_definition", "config__generator_type")` ergänzen.
-  - [`forecast/tasks.py`](file:///c:/Users/Public/Dev/eswes/forecast/tasks.py#L35-L70): `Home.objects.prefetch_related("generator_systems__strings")` nutzen.
+  - [`energy/services/energy.py`](file:///c:/Users/Public/Dev/eswes/energy/services/energy.py#L65-L103): 4 separate Abfragen auf `EMSSignalSource` zu 1 Batch-Abfrage zusammengefasst und mit DeviceConfig konsolidiert.
+  - [`energy/services/sankey.py`](file:///c:/Users/Public/Dev/eswes/energy/services/sankey.py#L24-L30): Optimierte Preloads.
+- **Status**: ✅ **Erledigt**.
 
 ---
 
-### [ ] 2.6 EMS Telemetrie-Deduplizierung & Deadband-Filter
+### [x] 2.7 EMS Telemetrie-Deduplizierung & Deadband-Filter
 - **Dateien**:
   - [`core/management/commands/mqtt_consume.py`](file:///c:/Users/Public/Dev/eswes/core/management/commands/mqtt_consume.py)
   - [`devices/models.py`](file:///c:/Users/Public/Dev/eswes/devices/models.py)
-- **Problem**: Bei Sekunden-Updates von Smart Plugs, Wechselrichtern etc. werden unveränderte Werte redundant in die DB geschrieben (Millionen Zeilen/Tag ohne Informationsgewinn).
-- **Lösung**:
-  1. Live-Cache in Redis wird bei jedem Paket aktualisiert (UI bleibt live).
-  2. DB-Insert in `DeviceMetric` erfolgt nur bei Wertänderung ($\Delta > \text{Schwellenwert}$, z. B. $\ge 1\,\text{W}$) ODER nach Heartbeat-Ablauf (z. B. 60s).
-  3. `UniqueConstraint(fields=["device", "metric_key", "timestamp"])` verhindert Duplikate bei Netzwerk-Retries.
+- **Status**: ✅ **Erledigt**.
+  1. Live-Cache in Redis wird bei jedem Paket aktualisiert (UI bleibt echtzeitfähig).
+  2. DB-Insert in `DeviceMetric` erfolgt nur bei Wertänderung ($\Delta \ge 1.0\,\text{W}$) oder nach 60s Heartbeat.
+  3. `DeviceLatestMetric` Snapshot wird bei jedem Update aktualisiert.
 
 ---
 
@@ -215,22 +214,18 @@
 
 ---
 
-### [ ] 4.2 Sankey-Kanten im Diagramm aggregieren
-- **Datei**: [`energy/services/sankey.py`](file:///c:/Users/Public/Dev/eswes/energy/services/sankey.py#L155-L205)
-- **Problem**: Bei mehreren Verbrauchern im selben Raum/Etage werden duplizierte Links erzeugt (`sum -> floor_1`), was bei Visualisierungs-Libraries zu Render-Fehlern führt.
-- **Lösung**: Link-Werte vor dem Erzeugen mit `(source, target) -> sum(value)` summieren.
+### [x] 4.2 Sankey-Kanten im Diagramm aggregieren & Balancierung
+- **Datei**: [`energy/services/sankey.py`](file:///c:/Users/Public/Dev/eswes/energy/services/sankey.py#L155-L280)
+- **Status**: ✅ **Erledigt**. 
+  - Kanten mit identischem `(source, target)` werden vor der JSON-Ausgabe summiert.
+  - Vollständige physische Balancierung: PV / Batterie / Netz $\rightarrow$ Haus $\rightarrow$ Einzelverbraucher + Nicht erfasst.
+  - Eigene Senken für `Netzeinspeisung` und `Batterieladung`.
 
 ---
 
-### [ ] 4.3 Resiliente Stundenpreis-Berechnung
+### [x] 4.3 Resiliente Stundenpreis-Berechnung
 - **Datei**: [`market/services_price_analysis.py`](file:///c:/Users/Public/Dev/eswes/market/services_price_analysis.py#L29)
-- **Problem**: `if len(values) == 4:` verwirft Daten, wenn Spotpreise im 1-Stunden-Format (Energy-Charts) geliefert werden oder ein Viertelstundenwert fehlt.
-- **Lösung**: Dynamischen Durchschnitt berechnen:
-  ```python
-  if values:
-      avg_price = sum(values) / len(values)
-      hourly_avg.append({"hour": hour, "price": avg_price})
-  ```
+- **Status**: ✅ **Erledigt**. Dynamischer Durchschnitt berechnet auch bei unvollständigen Viertelstundenwerten präzise Mittelwerte.
 
 ---
 

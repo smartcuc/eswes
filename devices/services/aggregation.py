@@ -63,6 +63,7 @@ def aggregate_1m():
         )
         .values(
             "device_id",
+            "metric_key",
         )
         .annotate(
             avg=Avg("value"),
@@ -85,20 +86,10 @@ def aggregate_1m():
     objs_to_upsert = []
 
     for row in rows:
-
-        metric_key = configs.get(
-            row["device_id"]
-        )
-
-        if not metric_key:
-            continue
+        metric_key = row.get("metric_key") or configs.get(row["device_id"]) or "power"
 
         energy_wh = None
-
-        if (
-            metric_key == "power"
-            and row["avg"] is not None
-        ):
+        if metric_key in ["power", "value"] and row["avg"] is not None:
             energy_wh = row["avg"] / 60
 
         objs_to_upsert.append(
@@ -263,3 +254,72 @@ def aggregate_1h():
         target_model=DeviceMetric1h,
         bucket_seconds=3600,
     )
+
+
+def backfill_aggregations(hours=2):
+    """
+    Holt fehlende 1m, 5m, 15m und 1h Aggregationen für die letzten `hours` Stunden nach.
+    """
+    now = timezone.now()
+    start = now - timedelta(hours=hours)
+
+    current = floor_bucket(start, 60)
+    end = floor_bucket(now, 60)
+
+    configs = dict(
+        DeviceConfig.objects.filter(
+            device__configured=True,
+            metric_definition__isnull=False,
+        ).values_list(
+            "device_id",
+            "metric_definition__key",
+        )
+    )
+
+    while current < end:
+        bucket_start = current
+        bucket_end = current + timedelta(minutes=1)
+
+        rows = (
+            DeviceMetric.objects
+            .filter(timestamp__gte=bucket_start, timestamp__lt=bucket_end)
+            .values("device_id", "metric_key")
+            .annotate(
+                avg=Avg("value"),
+                min=Min("value"),
+                max=Max("value"),
+                count=Count("id"),
+            )
+        )
+
+        objs = []
+        for r in rows:
+            m_key = r.get("metric_key") or configs.get(r["device_id"]) or "power"
+            energy_wh = (r["avg"] / 60) if m_key in ["power", "value"] and r["avg"] is not None else None
+            objs.append(
+                DeviceMetric1m(
+                    device_id=r["device_id"],
+                    metric_key=m_key,
+                    bucket=bucket_start,
+                    avg=r["avg"],
+                    min=r["min"],
+                    max=r["max"],
+                    count=r["count"],
+                    energy_wh=energy_wh,
+                )
+            )
+
+        if objs:
+            DeviceMetric1m.objects.bulk_create(
+                objs,
+                update_conflicts=True,
+                unique_fields=["device", "metric_key", "bucket"],
+                update_fields=["avg", "min", "max", "count", "energy_wh"],
+            )
+
+        current += timedelta(minutes=1)
+
+    # 5m, 15m, 1h Rollups nachziehen
+    aggregate_5m()
+    aggregate_15m()
+    aggregate_1h()
