@@ -105,7 +105,7 @@
 │ MEILENSTEIN 2: EMS-PRO VERSION (Monetarisierung via SaaS-Abo)                  │
 └───────────────────────────────────────────────────────────────────────────────┘
   ├── 2.1 Smarte Speicher- & Last-Steuerung (Optimierung nach Börsenstrompreisen)
-  ├── 2.2 Machine Learning PV-Prognose (Hybrid Physics + ML)
+  ├── 2.2 ✅ Machine Learning PV-Prognose (Hybrid Physics + ML - RandomForest/Residuals)
   ├── 2.3 Erweiterte Langzeit-Historie & Export-Funktionen
   └── 2.4 Stripe Subscription-Integration (Free vs. Pro Module)
 

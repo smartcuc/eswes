@@ -23,9 +23,40 @@ DEFAULT_LON = getattr(settings, "DEFAULT_WEATHER_LON", 6.97)
 # =========================
 
 
+def geocode_location(postal_code=None, city=None):
+    """
+    Ermittelt Koordinaten über Open-Meteo Geocoding anhand von PLZ und Ort.
+    """
+    query = f"{postal_code or ''} {city or ''}".strip()
+    if not query:
+        return None, None
+    try:
+        url = "https://geocoding-api.open-meteo.com/v1/search"
+        params = {"name": query, "count": 1, "language": "de", "format": "json"}
+        resp = requests.get(url, params=params, timeout=5)
+        if resp.status_code == 200:
+            results = resp.json().get("results", [])
+            if results:
+                return float(results[0]["latitude"]), float(results[0]["longitude"])
+    except Exception:
+        pass
+    return None, None
+
+
 def resolve_forecast_coordinates(home):
     lat = getattr(home, "latitude", None)
     lon = getattr(home, "longitude", None)
+
+    if (lat is None or lon is None) and (getattr(home, "postal_code", None) or getattr(home, "city", None)):
+        geo_lat, geo_lon = geocode_location(home.postal_code, home.city)
+        if geo_lat is not None and geo_lon is not None:
+            try:
+                home.latitude = geo_lat
+                home.longitude = geo_lon
+                home.save(update_fields=["latitude", "longitude"])
+            except Exception:
+                pass
+            lat, lon = geo_lat, geo_lon
 
     if lat is None or lon is None:
         lat = DEFAULT_LAT

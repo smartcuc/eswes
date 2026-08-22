@@ -407,6 +407,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "forecast.tasks_weather_observations.fetch_weather_observations",
         "schedule": 60 * 15,
     },
+    #  ✅ ML Forecast Training (nächtlich)
+    "train-ml-forecast-models": {
+        "task": "forecast.tasks.train_all_generator_ml_models",
+        "schedule": crontab(hour=2, minute=30),
+    },
 }
 
 # =============================

@@ -33,7 +33,13 @@ class HealthStateAdmin(admin.ModelAdmin):
         "checked_at",
     )
 
-    actions = ["trigger_health_checks"]
+    actions = [
+        "trigger_health_checks",
+        "trigger_backfill_aggregations",
+        "trigger_spot_prices",
+        "trigger_weather_sync",
+        "trigger_tibber_sync",
+    ]
 
     HUMAN_LABELS = {
         "mqtt": "📡 MQTT Ingress / Telemetrie",
@@ -51,6 +57,7 @@ class HealthStateAdmin(admin.ModelAdmin):
         "celery_queue_aggregation": "⏱️ Celery Queue: Aggregation",
         "celery_queue_telemetry": "📡 Celery Queue: Telemetry",
         "celery_queue_forecast": "☀️ Celery Queue: Forecast",
+        "celery_queue_demo": "🎮 Celery Queue: Demo",
     }
 
     def service_name(self, obj):
@@ -97,7 +104,32 @@ class HealthStateAdmin(admin.ModelAdmin):
 
     pretty_details.short_description = "Details (JSON)"
 
-    @admin.action(description="⚡ Health-Checks jetzt manuell ausführen")
+    @admin.action(description="⚡ Health-Checks jetzt ausführen")
     def trigger_health_checks(self, request, queryset):
-        run_health_checks.delay()
-        self.message_user(request, "Health-Checks wurden im Hintergrund gestartet.")
+        run_health_checks()
+        self.message_user(request, "Health-Checks wurden erfolgreich ausgeführt!")
+
+    @admin.action(description="⏱️ Aggregationen (1m, 5m, 15m, 1h) für letzte 2h nachziehen")
+    def trigger_backfill_aggregations(self, request, queryset):
+        from devices.services.aggregation import backfill_aggregations
+        backfill_aggregations(hours=2)
+        run_health_checks()
+        self.message_user(request, "Aggregationen der letzten 2 Stunden wurden nachgezogen und Health-Checks aktualisiert!")
+
+    @admin.action(description="📈 EPEX Spotpreise jetzt fetchen")
+    def trigger_spot_prices(self, request, queryset):
+        from market.tasks import fetch_spot_prices_retry
+        fetch_spot_prices_retry.delay()
+        self.message_user(request, "Spotpreis-Fetch Task wurde in die Celery Queue eingereiht!")
+
+    @admin.action(description="☀️ Wetter- & PV-Prognose jetzt aktualisieren")
+    def trigger_weather_sync(self, request, queryset):
+        from forecast.tasks import fetch_weather_and_solar_forecast
+        fetch_weather_and_solar_forecast.delay()
+        self.message_user(request, "Wetter- & Solarprognose Task wurde in die Celery Queue eingereiht!")
+
+    @admin.action(description="🔌 Tibber Zählerdaten jetzt synchronisieren")
+    def trigger_tibber_sync(self, request, queryset):
+        from integrations.tasks import sync_tibber
+        sync_tibber.delay()
+        self.message_user(request, "Tibber Synchronisation wurde in die Celery Queue eingereiht!")

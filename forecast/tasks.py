@@ -103,3 +103,39 @@ def update_all_forecasts():
         "run_at": str(timezone.now()),
         "results": results,
     }
+
+
+@shared_task
+def train_all_generator_ml_models():
+    """
+    Trainiert wöchentlich/nächtlich die ML-Modelle aller aktiven GeneratorStrings.
+    """
+    from producer.models import GeneratorString
+    from forecast.services_ml import train_generator_string_model
+
+    strings = list(GeneratorString.objects.filter(generator__home__isnull=False))
+    results = []
+
+    for s in strings:
+        try:
+            res = train_generator_string_model(s)
+            results.append(res)
+        except Exception as e:
+            results.append({
+                "string_id": str(s.id),
+                "status": "error",
+                "error": str(e),
+            })
+
+    return {
+        "trained_at": str(timezone.now()),
+        "results": results,
+    }
+
+
+@shared_task
+def fetch_weather_and_solar_forecast():
+    """
+    Alias-Task für Admin-Actions und Periodic Schedule.
+    """
+    return update_all_forecasts()

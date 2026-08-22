@@ -67,7 +67,6 @@ class ForecastServiceTest(TestCase):
 
     def test_predict_next_24h_physics_for_generator_string(self):
         base_now = timezone.now()
-        # Store weather forecast first
         weather_objs = [
             WeatherForecast(
                 home=self.home,
@@ -84,4 +83,69 @@ class ForecastServiceTest(TestCase):
         self.assertGreaterEqual(len(physics_preds), 1)
         self.assertIn("forecast_kw", physics_preds[0])
         self.assertGreater(physics_preds[0]["forecast_kw"], 0)
+
+    def test_ml_feature_vector_generation(self):
+        from forecast.services_ml_features import build_solar_feature_vector
+        now = timezone.now()
+        feat = build_solar_feature_vector(
+            dt=now,
+            weather={"shortwave_radiation_wm2": 600, "temperature_c": 25, "cloud_cover_pct": 20},
+            physics_kw=3.5,
+            lag_24=3.2,
+            lag_48=3.0,
+            lag_1=3.4,
+        )
+        self.assertEqual(len(feat), 13)
+        self.assertEqual(feat[0], 3.5)  # physics_kw
+        self.assertEqual(feat[1], 600.0)  # radiation
+
+    def test_save_all_forecasts_hybrid_pipeline(self):
+        from forecast.services_store import save_all_forecasts_for_generator_string
+        from devices.models import Device, DeviceConfig, DeviceRole, DeviceMetric1h
+
+        base_now = timezone.now().replace(minute=0, second=0, microsecond=0)
+
+        # 1. Wetterdaten für Vergangenheit & Zukunft anlegen
+        weather_objs = [
+            WeatherForecast(
+                home=self.home,
+                ts=base_now - timedelta(hours=48) + timedelta(hours=i),
+                temperature_c=20.0,
+                cloud_cover_pct=10.0,
+                shortwave_radiation_wm2=700.0 if 6 <= (i % 24) <= 18 else 0.0,
+            )
+            for i in range(72)
+        ]
+        WeatherForecast.objects.bulk_create(weather_objs, ignore_conflicts=True)
+
+        # 2. PV Device & historische Erzeugungsdaten anlegen
+        role_producer = DeviceRole.objects.create(key="producer", label="Producer")
+        pv_dev = Device.objects.create(home=self.home, identifier="pv_inv_test", configured=True)
+        DeviceConfig.objects.create(device=pv_dev, home=self.home, role=role_producer)
+
+        metric_objs = [
+            DeviceMetric1h(
+                device=pv_dev,
+                metric_key="power",
+                bucket=base_now - timedelta(hours=48) + timedelta(hours=i),
+                avg=3500.0 if 6 <= (i % 24) <= 18 else 0.0,
+                min=3000.0 if 6 <= (i % 24) <= 18 else 0.0,
+                max=4000.0 if 6 <= (i % 24) <= 18 else 0.0,
+                count=60,
+                energy_wh=3500.0 if 6 <= (i % 24) <= 18 else 0.0,
+            )
+            for i in range(48)
+        ]
+        DeviceMetric1h.objects.bulk_create(metric_objs, ignore_conflicts=True)
+
+        # 3. Hybrid Forecast Pipeline ausführen
+        result = save_all_forecasts_for_generator_string(self.string)
+        self.assertEqual(result["status"], "ok")
+        self.assertGreater(result["counts"]["hybrid"], 0)
+        self.assertGreater(result["counts"]["physics"], 0)
+
+        # 4. Überprüfen, ob SolarForecast Einträge existieren
+        hybrid_forecasts = SolarForecast.objects.filter(generator_string=self.string, source="hybrid")
+        self.assertGreaterEqual(hybrid_forecasts.count(), 1)
+
 

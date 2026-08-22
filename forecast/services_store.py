@@ -5,6 +5,7 @@
 from forecast.services_compare import build_hybrid_series
 from producer.models import GeneratorString
 from forecast.services_physics import predict_next_24h_physics_for_generator_string
+from forecast.services_ml import predict_next_24h_ml_for_generator_string
 from django.utils import timezone
 
 from forecast.models import (
@@ -79,7 +80,12 @@ def save_all_forecasts_for_generator_string(generator_string):
         or []
     )
 
-    ml = []
+    ml = (
+        predict_next_24h_ml_for_generator_string(
+            generator_string,
+        )
+        or []
+    )
 
     # ✅ kein Input → fertig
     if not ml and not phys:

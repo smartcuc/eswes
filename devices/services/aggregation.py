@@ -92,14 +92,17 @@ def aggregate_1m():
         if metric_key in ["power", "value"] and row["avg"] is not None:
             energy_wh = row["avg"] / 60
 
+        min_val = row["min"] if row["min"] is not None else row["avg"]
+        max_val = row["max"] if row["max"] is not None else row["avg"]
+
         objs_to_upsert.append(
             DeviceMetric1m(
                 device_id=row["device_id"],
                 metric_key=metric_key,
                 bucket=target,
                 avg=row["avg"],
-                min=row["min"],
-                max=row["max"],
+                min=min_val,
+                max=max_val,
                 count=row["count"],
                 energy_wh=energy_wh,
             )
@@ -194,13 +197,13 @@ def rollup(
         )
 
         min_value = min(
-            item.min
-            for item in items
+            (item.min for item in items if item.min is not None),
+            default=avg,
         )
 
         max_value = max(
-            item.max
-            for item in items
+            (item.max for item in items if item.max is not None),
+            default=avg,
         )
 
         energy_wh = sum(
