@@ -116,24 +116,23 @@ def build_device_signals(user):
         signals["battery"]["discharge"] = 0
         signals["battery"]["charge"] = abs(battery_power)
 
-    # 7. Last (Hausverbrauch)
+    # 7. Last (Hausverbrauch & getrackte Einzelgeräte)
     tracked_load_devs = [
         d_id for d_id in load_device_ids
         if d_id not in grid_device_ids and d_id not in pv_device_ids and d_id not in battery_device_ids
     ]
     load_power = sum(max(values.get(d_id, 0), 0) for d_id in tracked_load_devs)
+    signals["load"]["tracked_consumption"] = load_power
 
-    if load_device_ids:
-        signals["load"]["consumption"] = load_power
-    else:
-        # Physikalische Bilanzierung: PV + Batterie-Entladung + Netz-Bezug - Batterie-Ladung - Netz-Einspeisung
-        derived = (
-            signals["pv"]["production"]
-            + signals["battery"]["discharge"]
-            + signals["grid"]["import"]
-            - signals["battery"]["charge"]
-            - signals["grid"]["export"]
-        )
-        signals["load"]["consumption"] = max(derived, 0)
+    # Gesamthausbedarf immer physikalisch bilanzieren:
+    # Bedarf = PV-Erzeugung + Batterie-Entladung + Netz-Bezug - Batterie-Ladung - Netz-Einspeisung
+    derived = (
+        signals["pv"]["production"]
+        + signals["battery"]["discharge"]
+        + signals["grid"]["import"]
+        - signals["battery"]["charge"]
+        - signals["grid"]["export"]
+    )
+    signals["load"]["consumption"] = max(derived, load_power, 0)
 
     return signals
